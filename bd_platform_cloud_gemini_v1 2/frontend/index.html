@@ -2189,6 +2189,14 @@ function filterList(){
     list.appendChild(row);
   });
 }
+ 
+function priorityColorClass(priority){
+  priority = String(priority || '').toLowerCase();
+  if(priority === 'high') return 'sbh';
+  if(priority === 'medium' || priority === 'med') return 'sbm';
+  if(priority === 'low') return 'sbl';
+  return 'sbm';
+}
 
 // 
 // DASHBOARD
