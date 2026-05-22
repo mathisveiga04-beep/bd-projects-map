@@ -1572,6 +1572,70 @@ const supabaseClient = supabase.createClient(
 );
 let currentUser = null;
 let currentRole = "user";
+async function signUp(email,password){
+  const { data, error } = await supabaseClient.auth.signUp({
+    email,
+    password
+  });
+
+  if(error){
+    alert(error.message);
+    return false;
+  }
+
+  alert("Compte créé");
+  return true;
+}
+
+async function signIn(email,password){
+  const { data, error } = await supabaseClient.auth.signInWithPassword({
+    email,
+    password
+  });
+
+  if(error){
+    alert(error.message);
+    return false;
+  }
+
+  currentUser = data.user;
+
+  await loadCurrentRole();
+
+  alert("Connecté");
+  return true;
+}
+
+async function signOut(){
+  await supabaseClient.auth.signOut();
+
+  currentUser = null;
+  currentRole = "user";
+
+  alert("Déconnecté");
+}
+
+async function loadCurrentRole(){
+
+  if(!currentUser){
+    currentRole = "user";
+    return;
+  }
+
+  const { data, error } = await supabaseClient
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', currentUser.id)
+    .single();
+
+  if(data && data.role){
+    currentRole = data.role;
+  }else{
+    currentRole = "user";
+  }
+
+  console.log("ROLE =", currentRole);
+}
 /* ---------- LANGUAGE SYSTEM v2 ---------- */
 const LANG_PACK = {
   fr: {
