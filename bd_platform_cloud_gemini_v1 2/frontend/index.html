@@ -5178,24 +5178,31 @@ document.querySelectorAll('.lang-btn').forEach(function(b){if(b.getAttribute('on
   function safeLang(){try{return (typeof currentLang==='function'&&currentLang()==='en')?'en':'fr';}catch(e){return 'fr';}}
   function tr(fr,en){return safeLang()==='en'?en:fr;}
   function esc(v){try{if(typeof escapeHtml==='function')return escapeHtml(v==null?'':String(v));}catch(e){} return String(v==null?'':v).replace(/[&<>'"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c];});}
-  function priorityLabel(w){
+function priorityLabel(w){
+  var f=(w&&((w.fit||w.priority)||'med'))||'med';
+  try{
+    if(typeof watchPriorityLabel==='function') return watchPriorityLabel(f);
+  }catch(e){}
+  return f==='high'
+    ? tr('Priorité élevée','High priority')
+    : f==='medium'||f==='med'
+      ? tr('Priorité moyenne','Medium priority')
+      : tr('Veille simple','Watch');
 }
-  function priorityColorClass(priority){
+
+function priorityColorClass(priority){
   switch(priority){
     case 'high':
       return 'sbh';
     case 'medium':
+    case 'med':
       return 'sbm';
     case 'low':
       return 'sbl';
     default:
       return 'sbm';
-    }
   }
-    var f=(w&&((w.fit||w.priority)||'med'))||'med';
-    try{if(typeof watchPriorityLabel==='function')return watchPriorityLabel(f);}catch(e){}
-    return f==='high'?tr('Priorité élevée','High priority'):f==='med'?tr('Priorité moyenne','Medium priority'):tr('Veille simple','Low priority');
-  }
+}
   function isNonLocalized(w){
     if(!w)return false;
     var lat=Number(w.lat), lng=Number(w.lng);
