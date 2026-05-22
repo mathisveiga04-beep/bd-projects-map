@@ -1322,7 +1322,7 @@ body{background:var(--bg);}
         <div style="margin-top:14px"><label class="fl" style="display:block;margin-bottom:4px">Nom de l'équipe</label><input class="fi" id="team-name" placeholder="ex. Artelia Cambodia — BD Team" value="Artelia Cambodia"></div>
         <div class="api-sync-box">
           <label class="fl" style="display:block;margin-bottom:4px">Backend API URL <span class="mode-badge hosted">optionnel</span></label>
-          <input class="fi" id="backend-url" placeholder="http://localhost:8000" value="http://localhost:8000">
+          <input class="fi" id="backend-url" placeholder="https://bd-projects-map-akh.onrender.com" value="https://bd-projects-map-akh.onrender.com">
           <div class="fi-hint">Utilise le mode local par défaut. Renseignez une URL uniquement lorsque FastAPI/PostgreSQL est disponible.</div>
           <div class="api-actions">
             <button class="btn bw" onclick="apiTestAndDisplay()">Tester backend</button>
@@ -3171,7 +3171,7 @@ function sbTab2(id){document.querySelectorAll('.sbt').forEach((x,i)=>{const ids=
 //
 function backendBase(){
   const el=document.getElementById('backend-url');
-  const raw=(el&&el.value?el.value:localStorage.getItem('bd_backend_url')||'http://localhost:8000').trim();
+  const raw=(el&&el.value?el.value:localStorage.getItem('bd_backend_url')||'https://bd-projects-map-akh.onrender.com').trim();
   return raw.replace(/\/$/,'');
 }
 function setApiStatus(message,kind){
