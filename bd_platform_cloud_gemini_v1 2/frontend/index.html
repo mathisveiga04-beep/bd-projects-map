@@ -1330,7 +1330,7 @@ body{background:var(--bg);}
             <button class="btn bw" onclick="apiPushAll()">Push local</button>
             <button class="btn bc" onclick="triggerRemoteScraper()">Lancer scraper</button>
           </div>
-          <div class="api-status off" id="api-status-widget">● Mode local actif</div>
+          <div class="api-status off" id="api-status-widget">● Backend connecté</div>
           <div class="api-status" id="backend-status">Backend non testé.</div>
         </div>
       </div>
@@ -1530,7 +1530,7 @@ async function apiTestAndDisplay(){
   }catch(e){
     setHybridWidget('✗ Backend indisponible — mode local conservé', 'err');
     if(typeof setApiStatus==='function')setApiStatus('Mode local : '+(e.message||e), 'warn');
-    if(typeof toast==='function')toast('Mode local actif');
+    if(typeof toast==='function')toast('Backend connecté');
     return false;
   }
 }
