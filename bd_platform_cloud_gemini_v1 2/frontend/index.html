@@ -5402,6 +5402,79 @@ const sb = supabase.createClient(
 
 window.currentUser = null;
 window.currentRole = "user";
+function isAdmin(){
+  return window.currentRole === "admin";
+}
+
+async function loadRole(){
+
+  if(!window.currentUser){
+    window.currentRole = "user";
+    return "user";
+  }
+
+  const { data,error } = await sb
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", window.currentUser.id)
+    .single();
+
+  if(error || !data){
+    window.currentRole = "user";
+  }else{
+    window.currentRole = data.role;
+  }
+
+  console.log("Role:", window.currentRole);
+
+  return window.currentRole;
+}
+
+async function login(email,password){
+
+  const { data,error } =
+    await sb.auth.signInWithPassword({
+      email,
+      password
+    });
+
+  if(error){
+    alert(error.message);
+    return;
+  }
+
+  window.currentUser = data.user;
+
+  await loadRole();
+
+  alert("Connexion réussie");
+}
+
+async function signup(email,password){
+
+  const { data,error } =
+    await sb.auth.signUp({
+      email,
+      password
+    });
+
+  if(error){
+    alert(error.message);
+    return;
+  }
+
+  alert("Compte créé");
+}
+
+async function logout(){
+
+  await sb.auth.signOut();
+
+  window.currentUser = null;
+  window.currentRole = "user";
+
+  alert("Déconnecté");
+}
 async function loadRole(){
 
   if(!window.currentUser){
