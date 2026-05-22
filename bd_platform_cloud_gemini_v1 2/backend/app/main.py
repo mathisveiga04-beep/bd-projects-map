@@ -1,0 +1,126 @@
+from datetime import datetime
+import os
+from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
+from .database import Base, engine, get_db
+from . import crud, models, schemas
+from .ai import analyze_with_gemini
+from .scrapers.worldbank import scrape_world_bank_cambodia
+from .scrapers.rss import scrape_rss_sources
+
+Base.metadata.create_all(bind=engine)
+
+SCRAPER_API_KEY = os.getenv("SCRAPER_API_KEY", "").strip()
+
+app = FastAPI(title="BD Intelligence Platform API", version="1.0-cloud-gemini-production-ready")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok", "database": "connected", "version": "v1-cloud-gemini-production-ready"}
+
+
+@app.get("/projects", response_model=list[schemas.ProjectOut])
+def get_projects(db: Session = Depends(get_db)):
+    return crud.list_projects(db)
+
+
+@app.post("/projects", response_model=schemas.ProjectOut)
+def post_project(payload: schemas.ProjectCreate, db: Session = Depends(get_db)):
+    payload.is_localized = bool(payload.latitude is not None and payload.longitude is not None)
+    return crud.create_project(db, payload)
+
+
+@app.patch("/projects/{project_id}", response_model=schemas.ProjectOut)
+def patch_project(project_id: int, payload: schemas.ProjectUpdate, db: Session = Depends(get_db)):
+    obj = crud.update_project(db, project_id, payload)
+    if not obj:
+        raise HTTPException(404, "Project not found")
+    return obj
+
+
+@app.delete("/projects/{project_id}")
+def remove_project(project_id: int, db: Session = Depends(get_db)):
+    if not crud.delete_project(db, project_id):
+        raise HTTPException(404, "Project not found")
+    return {"ok": True}
+
+
+@app.get("/tenders", response_model=list[schemas.TenderOut])
+def get_tenders(db: Session = Depends(get_db)):
+    return crud.list_tenders(db)
+
+
+@app.post("/tenders", response_model=schemas.TenderOut)
+def post_tender(payload: schemas.TenderCreate, db: Session = Depends(get_db)):
+    return crud.create_tender(db, payload)
+
+
+@app.post("/ai/analyze")
+def ai_analyze(payload: schemas.AnalyzeRequest):
+    return analyze_with_gemini(payload.title, payload.text, payload.source_url)
+
+
+@app.post("/scraper/run")
+def scraper_run(payload: schemas.ScraperRequest, db: Session = Depends(get_db), x_api_key: str | None = Header(default=None)):
+    if SCRAPER_API_KEY and x_api_key != SCRAPER_API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid or missing scraper API key")
+    run = models.ScraperRun(source=payload.source or "all", status="started")
+    db.add(run)
+    db.commit()
+    saved = 0
+    opportunities = []
+    if payload.source in (None, "all", "worldbank"):
+        opportunities.extend(scrape_world_bank_cambodia())
+    if payload.source in (None, "all", "rss"):
+        opportunities.extend(scrape_rss_sources())
+
+    if not payload.dry_run:
+        for item in opportunities:
+            ai = analyze_with_gemini(item.title, item.text, item.source_url)
+            project = models.Project(
+                title=item.title,
+                description=item.text,
+                country=ai.get("country") or item.country or "Cambodia",
+                city=ai.get("city") or "",
+                is_localized=False,
+                sector=ai.get("sector") or "",
+                project_type=ai.get("project_type") or "Opportunity",
+                status="identified",
+                priority=ai.get("priority") or "medium",
+                source=item.source,
+                source_url=item.source_url,
+                funder=ai.get("funder") or item.funder,
+                estimated_budget=ai.get("estimated_budget") or "unknown",
+                deadline=ai.get("deadline") or "",
+                reliability=ai.get("confidence") or "medium",
+                confidence=ai.get("confidence") or "medium",
+                opportunity_size=ai.get("opportunity_size") or "unknown",
+                scope_summary=ai.get("scope_summary") or "",
+                ai_summary=ai.get("summary") or "",
+                ai_recommendation=ai.get("recommendation") or "watch",
+                contributor="scraper+gemini",
+            )
+            try:
+                db.add(project)
+                db.commit()
+                saved += 1
+            except Exception:
+                db.rollback()
+
+    run.status = "finished"
+    run.items_found = len(opportunities)
+    run.items_saved = saved
+    run.finished_at = datetime.utcnow()
+    run.message = "OK"
+    db.commit()
+    return {"ok": True, "items_found": len(opportunities), "items_saved": saved}
