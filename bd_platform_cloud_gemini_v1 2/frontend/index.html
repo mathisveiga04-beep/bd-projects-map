@@ -5390,5 +5390,61 @@ function priorityColorClass(priority){
 <style>.city-dd-wrap,#city-select{display:none!important;visibility:hidden!important;pointer-events:none!important;}</style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "https://xyvsfkalaeatwmcobwrg.supabase.co";
+
+const SUPABASE_ANON_KEY = "sb_publishable_TOFmN_cy8ojrm4PItiuxDw_8349Gjo6";
+
+const sb = supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
+
+window.currentUser = null;
+window.currentRole = "user";
+
+async function login(email,password){
+
+  const { data,error } =
+    await sb.auth.signInWithPassword({
+      email,
+      password
+    });
+
+  if(error){
+    alert(error.message);
+    return;
+  }
+
+  window.currentUser = data.user;
+
+  alert("Connexion réussie");
+}
+
+async function signup(email,password){
+
+  const { data,error } =
+    await sb.auth.signUp({
+      email,
+      password
+    });
+
+  if(error){
+    alert(error.message);
+    return;
+  }
+
+  alert("Compte créé");
+}
+
+async function logout(){
+
+  await sb.auth.signOut();
+
+  window.currentUser = null;
+
+  alert("Déconnecté");
+}
+</script>
 </body>
 </html>
