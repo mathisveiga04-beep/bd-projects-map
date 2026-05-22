@@ -2189,7 +2189,19 @@ function filterList(){
     list.appendChild(row);
   });
 }
- 
+function priorityLabel(w){
+  const f=(w&&((w.fit||w.priority)||'med'))||'med';
+
+  if(f==='high'){
+    return 'Priorité élevée';
+  }
+
+  if(f==='medium' || f==='med'){
+    return 'Priorité moyenne';
+  }
+
+  return 'Veille simple';
+}
 function priorityColorClass(priority){
   priority = String(priority || '').toLowerCase();
   if(priority === 'high') return 'sbh';
