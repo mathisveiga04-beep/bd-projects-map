@@ -1562,7 +1562,16 @@ document.addEventListener('DOMContentLoaded',function(){
 
 </script>
 <script>
+const SUPABASE_URL = "https://xyvsfkalaeatwmcobwrg.supabase.co";
 
+const SUPABASE_ANON_KEY = "sb_publishable_TOFmN_cy8ojrm4PItiuxDw_8349Gjo6";
+
+const supabaseClient = supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
+let currentUser = null;
+let currentRole = "user";
 /* ---------- LANGUAGE SYSTEM v2 ---------- */
 const LANG_PACK = {
   fr: {
@@ -5388,5 +5397,6 @@ function priorityColorClass(priority){
 })();
 </script>
 <style>.city-dd-wrap,#city-select{display:none!important;visibility:hidden!important;pointer-events:none!important;}</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </body>
 </html>
