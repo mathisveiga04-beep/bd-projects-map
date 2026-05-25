@@ -2608,7 +2608,7 @@ function deleteCurrent(){
   buildings=buildings.filter(x=>x.id!==currentId);
   save();updateCityDropdown();closeDP();renderMarkers();filterList();updateStats();renderDashboard();renderSuivi();toast(t('toast.deleted'));
 }
-function saveBuilding(){
+  async function saveBuilding(){
   const existing=editId?buildings.find(x=>x.id===editId):null;
   if(editId && !canEditBuilding(existing)){toast('Vous ne pouvez modifier que vos propres créations.');return;}
   const name=document.getElementById('f-name').value.trim();if(!name){alert('Nom requis');return;}
@@ -2633,7 +2633,45 @@ function saveBuilding(){
     aiCache:editId?(buildings.find(x=>x.id===editId)||{}).aiCache||'':'',
     liCache:editId?(buildings.find(x=>x.id===editId)||{}).liCache||'':'',
   };
-  if(editId)buildings=buildings.map(x=>x.id===editId?obj:x);else buildings.push(obj);
+if(editId){
+
+  buildings = buildings.map(x=>x.id===editId ? obj : x);
+
+  await sb
+    .from('projects')
+    .update({
+      title: obj.name,
+      lat: obj.lat,
+      lng: obj.lng,
+      notes: obj.notes,
+      services: obj.services
+    })
+    .eq('id', editId);
+
+}else{
+  if(!window.currentUser){
+    toast("Veuillez vous connecter avant de créer un projet");
+    return;
+  }
+
+  obj.owner_id = window.currentUser.id;
+
+  buildings.push(obj);
+
+  const { data,error } = await sb
+    .from('projects')
+    .insert([{
+      id: obj.id,
+      owner_id: window.currentUser.id,
+      title: obj.name,
+      lat: obj.lat,
+      lng: obj.lng,
+      notes: obj.notes,
+      services: obj.services
+    }]);
+
+  console.log(data,error);
+}
   save();syncProjectToApi(obj);closeMo('mo-add');updateCityDropdown();renderMarkers();filterList();updateStats();renderDashboard();renderSuivi();
   if(obj.lat&&obj.lng)mapObj.setView([obj.lat,obj.lng],15);
   toast(editId?'Actif mis à jour OK':'Actif ajouté OK');
