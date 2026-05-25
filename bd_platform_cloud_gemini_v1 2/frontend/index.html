@@ -5600,7 +5600,6 @@ document.addEventListener('DOMContentLoaded', async function(){
   if(session?.user){
     window.currentUser = session.user;
     await loadRole();
-    await loadProjectsFromSupabase();
     refreshAdminUI();
     console.log("Session restaurée");
   }else{
@@ -5609,6 +5608,24 @@ document.addEventListener('DOMContentLoaded', async function(){
     refreshAdminUI();
     console.log("Session fermée");
   }
+    function forceReloadLocalProjects(){
+  try{
+    load();
+
+    if(typeof updateCityDropdown === "function") updateCityDropdown();
+    if(typeof renderMarkers === "function") renderMarkers();
+    if(typeof filterList === "function") filterList();
+    if(typeof updateStats === "function") updateStats();
+    if(typeof renderDashboard === "function") renderDashboard();
+    if(typeof renderSuivi === "function") renderSuivi();
+
+    console.log("Projets locaux rechargés :", buildings.length);
+  }catch(e){
+    console.error("Erreur rechargement local :", e);
+  }
+}
+
+setTimeout(forceReloadLocalProjects, 800);
 });
 </script>
 </body>
