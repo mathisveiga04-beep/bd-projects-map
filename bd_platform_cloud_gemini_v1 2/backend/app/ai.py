@@ -9,8 +9,12 @@ SYSTEM_PROMPT = """You are a business development analyst for Artelia Cambodia.
 Analyze construction, infrastructure, water, environment, urban planning and building opportunities.
 Return ONLY valid JSON with these keys:
 summary, sector, project_type, city, country, funder, estimated_budget, deadline,
-confidence, opportunity_size, priority, recommendation, scope_summary.
-Use concise English. If unknown, use an empty string or 'unknown'."""
+confidence, opportunity_size, priority, recommendation, scope_summary, score, message_fr.
+
+score: integer 1-10 measuring relevance for Artelia Cambodia (10 = perfect match).
+message_fr: a 3-sentence professional French email proposing Artelia Cambodia's services
+  for this specific opportunity (address to the project owner, mention Artelia's expertise).
+Use concise English for all fields except message_fr. If unknown, use empty string or 'unknown'."""
 
 
 def _fallback(title: str, text: str) -> Dict[str, Any]:
@@ -23,6 +27,13 @@ def _fallback(title: str, text: str) -> Dict[str, Any]:
     elif any(k in joined for k in ["road", "bridge", "transport"]):
         sector = "Infrastructure"
     priority = "high" if any(k in joined for k in ["eoi", "reoi", "rfp", "deadline", "expression of interest"]) else "medium"
+    score = 7 if priority == "high" else 5
+    message_fr = (
+        f"Madame, Monsieur, Artelia Cambodia souhaite vous proposer ses services d'ing\u00e9nierie et de conseil "
+        f"pour l'opportunit\u00e9 '{title}'. Fort de son expertise locale et internationale dans les domaines de "
+        f"l'infrastructure, de l'eau et du b\u00e2timent, Artelia est id\u00e9alement positionn\u00e9e pour "
+        f"contribuer au succ\u00e8s de ce projet. Nous restons \u00e0 votre disposition pour tout \u00e9change."
+    )
     return {
         "summary": (text[:500] + "...") if len(text) > 500 else text,
         "sector": sector or "To qualify",
@@ -36,7 +47,9 @@ def _fallback(title: str, text: str) -> Dict[str, Any]:
         "opportunity_size": "unknown",
         "priority": priority,
         "recommendation": "watch",
-        "scope_summary": "Review source and qualify Artelia scope."
+        "scope_summary": "Review source and qualify Artelia scope.",
+        "score": score,
+        "message_fr": message_fr,
     }
 
 
@@ -53,8 +66,15 @@ def analyze_with_gemini(title: str, text: str, source_url: str = "") -> Dict[str
         response = client.models.generate_content(model=model_name, contents=prompt)
         raw = (response.text or "").strip()
         raw = raw.removeprefix("```json").removesuffix("```").strip()
-        return json.loads(raw)
+        data = json.loads(raw)
+        # ensure score is int
+        if "score" in data:
+            try:
+                data["score"] = int(data["score"])
+            except (ValueError, TypeError):
+                data["score"] = 5
+        return data
     except Exception as exc:
         data = _fallback(title, text)
-        data["ai_summary"] = f"Gemini fallback used: {exc}"
+        data["ai_error"] = f"Gemini fallback: {exc}"
         return data
