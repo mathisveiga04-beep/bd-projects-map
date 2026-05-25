@@ -5548,7 +5548,7 @@ async function logout(){
   await sb.auth.signOut();
 
   window.currentUser = null;
-
+protectAdminActions();
   alert("Déconnecté");
 }
 </script>
