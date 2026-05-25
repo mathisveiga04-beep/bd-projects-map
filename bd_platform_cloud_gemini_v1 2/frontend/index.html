@@ -3053,6 +3053,8 @@ function updateAdminUI(){
   if(st)st.textContent=isAdmin()?'Mode administrateur actif':'Mode exploitation uniquement';
 }
 function adminLogout(){
+  localStorage.removeItem("bd_admin_ok");
+protectAdminActions();
   sessionStorage.removeItem('artelia_admin');
   refreshAdminState();
   updateAdminUI();
@@ -3104,6 +3106,8 @@ function clearAllOperationalData(){
 }
 
 async function adminLogin(){
+  localStorage.setItem("bd_admin_ok","1");
+protectAdminActions();
   const input=document.getElementById('admin-pwd');
   const err=document.getElementById('admin-err');
   if(!input)return;
