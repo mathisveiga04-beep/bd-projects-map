@@ -1904,7 +1904,60 @@ function load(){
   const tn=localStorage.getItem('artelia_team');if(tn)document.getElementById('team-name').value=tn;
   const bu=localStorage.getItem('bd_backend_url');if(bu&&document.getElementById('backend-url'))document.getElementById('backend-url').value=bu;
 }
+async function loadProjectsFromSupabase(){
 
+  if(!window.currentUser){
+    console.log("Pas connecté : chargement local uniquement");
+    return;
+  }
+
+  const { data,error } = await sb
+    .from('projects')
+    .select('*')
+    .order('created_at',{ ascending:false });
+
+  if(error){
+    console.error("Erreur chargement Supabase",error);
+    return;
+  }
+
+  if(!data || !data.length){
+    console.log("Aucun projet Supabase");
+    return;
+  }
+
+  data.forEach(p=>{
+
+    const exists =
+      buildings.some(b=>String(b.id)===String(p.id));
+
+    if(!exists){
+
+      buildings.push({
+        id:p.id,
+        owner_id:p.owner_id,
+        name:p.title,
+        lat:p.lat,
+        lng:p.lng,
+        notes:p.notes || '',
+        services:p.services || '',
+        type:p.type || 'Projet',
+        status:p.status || 'identify',
+        pot:p.priority || 'med',
+        zone:p.zone || '',
+        year:p.year || ''
+      });
+
+    }
+
+  });
+
+  save();
+  renderMarkers();
+  filterList();
+  updateStats();
+  renderDashboard();
+}
 function migrateStatuses(){
   let changed=false;
   buildings.forEach(b=>{
@@ -2599,15 +2652,36 @@ function editBld(id){
   document.getElementById('mo-add-t').textContent='Modifier l\'actif';
   openMo('mo-add');
 }
-function editCurrent(){if(currentId)editBld(currentId);}
-function deleteCurrent(){
-  if(!currentId)return;const b=buildings.find(x=>x.id===currentId);
+async function deleteCurrent(){
+  if(!currentId)return;
+
+  const b=buildings.find(x=>x.id===currentId);
   if(!b)return;
-  if(!canEditBuilding(b)){toast('Vous ne pouvez supprimer que vos propres créations.');return;}
+
+  if(!canEditBuilding(b)){
+    toast('Vous ne pouvez supprimer que vos propres créations.');
+    return;
+  }
+
   if(!confirm('Supprimer '+b.name+' ?'))return;
+
   buildings=buildings.filter(x=>x.id!==currentId);
-  save();updateCityDropdown();closeDP();renderMarkers();filterList();updateStats();renderDashboard();renderSuivi();toast(t('toast.deleted'));
-}
+
+  await sb
+    .from('projects')
+    .delete()
+    .eq('id', currentId);
+
+  save();
+  updateCityDropdown();
+  closeDP();
+  renderMarkers();
+  filterList();
+  updateStats();
+  renderDashboard();
+  renderSuivi();
+  toast(t('toast.deleted'));
+}();closeDP();renderMarkers();filterList();updateStats();renderDashboard();renderSuivi();toast(t('toast.deleted'));
   async function saveBuilding(){
   const existing=editId?buildings.find(x=>x.id===editId):null;
   if(editId && !canEditBuilding(existing)){toast('Vous ne pouvez modifier que vos propres créations.');return;}
@@ -5503,7 +5577,7 @@ async function login(email,password){
   alert("Connexion réussie");
   return true;
 }
-
+await loadProjectsFromSupabase();
 async function signup(email,password){
   const { error } = await sb.auth.signUp({email,password});
   if(error){alert(error.message);return false;}
@@ -5529,6 +5603,20 @@ document.addEventListener('DOMContentLoaded', async function(){
       updateAdminUI();
     }
   }catch(e){console.warn('Supabase session init failed',e);}
+});
+  sb.auth.onAuthStateChange(async (event, session) => {
+  if(session?.user){
+    window.currentUser = session.user;
+    await loadRole();
+    await loadProjectsFromSupabase();
+    refreshAdminUI();
+    console.log("Session restaurée");
+  }else{
+    window.currentUser = null;
+    window.currentRole = "user";
+    refreshAdminUI();
+    console.log("Session fermée");
+  }
 });
 </script>
 </body>
