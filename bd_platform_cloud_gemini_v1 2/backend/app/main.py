@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from .database import Base, engine, get_db
 from . import crud, models, schemas
 from .ai import analyze_with_gemini
+from .auth import verify_supabase_jwt
 from .scrapers.worldbank import scrape_world_bank_cambodia
 from .scrapers.rss import scrape_rss_sources
 
@@ -35,13 +36,13 @@ def get_projects(db: Session = Depends(get_db)):
 
 
 @app.post("/projects", response_model=schemas.ProjectOut)
-def post_project(payload: schemas.ProjectCreate, db: Session = Depends(get_db)):
+def post_project(payload: schemas.ProjectCreate, db: Session = Depends(get_db), token: dict = Depends(verify_supabase_jwt)):
     payload.is_localized = bool(payload.latitude is not None and payload.longitude is not None)
     return crud.create_project(db, payload)
 
 
 @app.patch("/projects/{project_id}", response_model=schemas.ProjectOut)
-def patch_project(project_id: int, payload: schemas.ProjectUpdate, db: Session = Depends(get_db)):
+def patch_project(project_id: int, payload: schemas.ProjectUpdate, db: Session = Depends(get_db), token: dict = Depends(verify_supabase_jwt)):
     obj = crud.update_project(db, project_id, payload)
     if not obj:
         raise HTTPException(404, "Project not found")
@@ -49,7 +50,7 @@ def patch_project(project_id: int, payload: schemas.ProjectUpdate, db: Session =
 
 
 @app.delete("/projects/{project_id}")
-def remove_project(project_id: int, db: Session = Depends(get_db)):
+def remove_project(project_id: int, db: Session = Depends(get_db), token: dict = Depends(verify_supabase_jwt)):
     if not crud.delete_project(db, project_id):
         raise HTTPException(404, "Project not found")
     return {"ok": True}
@@ -61,12 +62,12 @@ def get_tenders(db: Session = Depends(get_db)):
 
 
 @app.post("/tenders", response_model=schemas.TenderOut)
-def post_tender(payload: schemas.TenderCreate, db: Session = Depends(get_db)):
+def post_tender(payload: schemas.TenderCreate, db: Session = Depends(get_db), token: dict = Depends(verify_supabase_jwt)):
     return crud.create_tender(db, payload)
 
 
 @app.post("/ai/analyze")
-def ai_analyze(payload: schemas.AnalyzeRequest):
+def ai_analyze(payload: schemas.AnalyzeRequest, token: dict = Depends(verify_supabase_jwt)):
     return analyze_with_gemini(payload.title, payload.text, payload.source_url)
 
 
