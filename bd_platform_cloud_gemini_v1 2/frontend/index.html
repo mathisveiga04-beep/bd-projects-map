@@ -20,7 +20,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;font-family:Calibri, 'Segoe UI', Arial, sans-serif;overflow:hidden;background:var(--bg);color:var(--text)}
 
-/*  LOGIN  */
+/*  LOGIN  *
 #ls{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;
   background:linear-gradient(135deg,#001840 0%,var(--navy) 40%,var(--blue) 100%)}
 #ls::before{content:'';position:absolute;inset:0;
@@ -5766,7 +5766,7 @@ function startProjectsRealtime(){
   }
 }
 
-startProjectsRealtime();
+async function loadProjectsFromSupabase(){try{if(typeof sb==='undefined'||!sb)return false;const{data,error}=await sb.from('projects').select('*').order('created_at',{ascending:false});if(error){console.warn('Supabase load:',error);return false;}if(data&&data.length>0){buildings=data.map(normalizeSupabaseProject);try{if(typeof filterList==='function')filterList();if(typeof renderMarkers==='function'&&typeof mapObj!=='undefined'&&mapObj)renderMarkers();if(typeof updateStats==='function')updateStats();if(typeof renderDashboard==='function')renderDashboard();}catch(re){}return true;}return false;}catch(e){console.warn('loadFromSupabase:',e);return false;}}async function migrateLocalToSupabase(){try{const raw=localStorage.getItem('artelia_bld_v2');if(!raw)return;const ld=JSON.parse(raw);if(!Array.isArray(ld)||!ld.length)return;const tm=ld.filter(b=>!b.id||String(b.id).startsWith('local_')||b.source==='local');if(!tm.length)return;let ok=0,fail=0;for(const b of tm){const{aiCache,liCache,activity,...p}=b;delete p.id;p.source='local_migrated';p.updated_at=new Date().toISOString();const{error}=await sb.from('projects').insert(p);if(error)fail++;else ok++;}console.log('Migration:',ok,'ok,',fail,'failed');if(ok>0)localStorage.removeItem('artelia_bld_v2');}catch(e){console.warn('migrate:',e);}}async function syncToSupabase(project){try{if(!project||typeof sb==='undefined'||!sb)return;const{aiCache,liCache,activity,...p}=project;if(p.id&&String(p.id).startsWith('local_'))delete p.id;await sb.from('projects').upsert(p,{onConflict:'id'});}catch(e){console.warn('syncToSupabase:',e);}}async function initSupabaseData(){try{if(typeof sb==='undefined'||!sb)return;const ok=await loadProjectsFromSupabase();if(ok)await migrateLocalToSupabase();else{try{const r=localStorage.getItem('artelia_bld_v2');if(r)buildings=JSON.parse(r)||[];}catch(e){}}}catch(e){console.warn('initSupabase:',e);}}startProjectsRealtime();initSupabaseData().catch(e=>console.warn('initSupabase:',e));
 </script>
 </body>
 </html>
