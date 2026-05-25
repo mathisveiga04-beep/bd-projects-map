@@ -1,0 +1,26 @@
+name: Daily Scraper
+
+on:
+  schedule:
+    # Every day at 06:00 UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch:  # allow manual trigger
+
+jobs:
+  run-scraper:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger scraper on Render
+        run: |
+          HTTP_STATUS=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+            -X POST https://bd-projects-map-akh.onrender.com/scraper/run \
+            -H "X-API-Key: ${{ secrets.SCRAPER_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            --max-time 120)
+          echo "HTTP status: $HTTP_STATUS"
+          cat /tmp/response.json
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "Scraper failed with status $HTTP_STATUS"
+            exit 1
+          fi
+          echo "Scraper completed successfully"
