@@ -3046,7 +3046,11 @@ function doExport(){
 // 
 
 
-function isAdmin(){return sessionStorage.getItem('artelia_admin')==='1';}
+function isAdmin(){
+  return sessionStorage.getItem('artelia_admin')==='1'
+    || localStorage.getItem('bd_admin_ok')==='1'
+    || window.currentRole === "admin";
+}
 function requireAdmin(actionName='cette action'){
   if(isAdmin())return true;
   toast('Accès administrateur requis pour '+actionName); return false;
