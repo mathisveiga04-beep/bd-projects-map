@@ -1822,8 +1822,8 @@ const WATCH_PRESETS=[
   {id:306,title:'Sihanoukville Stalled Buildings and Resort Repositioning Watch',kind:'renovation',source:'Press',sourceType:'Manual public-source watch category',verified:'Not a confirmed tender',zone:'Sihanoukville',lat:10.6241,lng:103.5226,fit:'high',frequency:'Weekly',scope:'Technical due diligence, structure inspection, retrofit strategy, fire safety',actions:'Track press and broker announcements; identify owners of stalled buildings; prepare due diligence and safety audit pitch; propose phased recommissioning strategy.',link:'',notes:'This is a watch category for future opportunities around stalled assets and resorts. Confirm each lead against owner/developer communication before action.'}
 ];
 
-let buildings=[], markers={}, watchMarkers={}, mapObj, currentId=null, editId=null, filterMode='all', bdActions=[], tenders=[], editTenderId=null, watchItems=[], editWatchId=null, selectedWatchId=null, watchFilter='all';
-
+var buildings=[], markers={}, watchMarkers={}, mapObj, currentId=null, editId=null, filterMode='all', bdActions=[], tenders=[], editTenderId=null, watchItems=[], editWatchId=null, selectedWatchId=null, watchFilter='all';
+  
 function escapeHtml(str){return String(str||'').replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];});}
 function escapeAttr(str){return escapeHtml(str);}
 function cityOf(b){
@@ -5627,6 +5627,43 @@ document.addEventListener('DOMContentLoaded', async function(){
 
 setTimeout(forceReloadLocalProjects, 800);
 });
+</script>
+function restoreLocalProjectsNow(){
+  try{
+    const raw = localStorage.getItem('artelia_bld_v2');
+
+    if(raw){
+      buildings = JSON.parse(raw);
+    }
+
+    if(!buildings || !buildings.length){
+      buildings = PRESETS.map(b=>({
+        ...b,
+        activity:[],
+        aiCache:'',
+        liCache:'',
+        email:'',
+        phone:'',
+        competitor:''
+      }));
+    }
+
+    markers = {};
+
+    updateCityDropdown();
+    renderMarkers();
+    filterList();
+    updateStats();
+    renderDashboard();
+    renderSuivi();
+
+    console.log("Pings restaurés :", buildings.length);
+  }catch(e){
+    console.error("Erreur restauration pings :", e);
+  }
+}
+
+setTimeout(restoreLocalProjectsNow, 800);
 </script>
 </body>
 </html>
