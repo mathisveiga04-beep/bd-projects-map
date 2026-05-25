@@ -5577,15 +5577,6 @@ async function login(email,password){
   alert("Connexion réussie");
   return true;
 }
-  //await loadProjectsFromSupabase();
-await loadProjectsFromSupabase();
-async function signup(email,password){
-  const { error } = await sb.auth.signUp({email,password});
-  if(error){alert(error.message);return false;}
-  alert("Compte créé");
-  return true;
-}
-
 async function logout(){
   await sb.auth.signOut();
   window.currentUser = null;
