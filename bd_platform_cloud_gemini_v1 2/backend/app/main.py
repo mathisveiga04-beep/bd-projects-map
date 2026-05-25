@@ -125,3 +125,32 @@ def scraper_run(payload: schemas.ScraperRequest, db: Session = Depends(get_db), 
     run.message = "OK"
     db.commit()
     return {"ok": True, "items_found": len(opportunities), "items_saved": saved}
+
+
+# ── Admin config ──────────────────────────────────────────────────────────────
+SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
+
+
+@app.get("/admin/users")
+def admin_list_users(token: dict = Depends(verify_supabase_jwt)):
+    from .auth import get_user_role
+    if get_user_role(token) != "admin":
+        raise HTTPException(403, "Admin access required")
+    url = f"{SUPABASE_URL}/auth/v1/admin/users"
+    headers = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"}
+    r = requests.get(url, headers=headers, params={"page": 1, "per_page": 100})
+    r.raise_for_status()
+    return r.json()
+
+
+@app.post("/admin/users/{user_id}/set-role")
+def admin_set_role(user_id: str, role: str, token: dict = Depends(verify_supabase_jwt)):
+    from .auth import get_user_role
+    if get_user_role(token) != "admin":
+        raise HTTPException(403, "Admin access required")
+    url = f"{SUPABASE_URL}/auth/v1/admin/users/{user_id}"
+    headers = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"}
+    r = requests.put(url, headers=headers, json={"app_metadata": {"role": role}})
+    r.raise_for_status()
+    return {"success": True, "user_id": user_id, "role": role}
