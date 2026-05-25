@@ -1058,6 +1058,24 @@ body{background:var(--bg);}
 </div>
 <input type="password" class="lc-inp" id="pwd-input" placeholder="Mot de passe" onkeydown="if(event.key==='Enter')doLogin()">
     <button class="lc-btn" id="login-btn" onclick="doLogin()">Connexion</button>
+    <div class="lc-tabs" style="display:flex;gap:8px;margin-top:12px;">
+      <button class="lc-tab-btn" onclick="showAuthTab('login')" id="tab-login" style="flex:1;padding:6px;background:#1a2740;color:#7eb8f7;border:1px solid #2d4a7a;border-radius:4px;cursor:pointer;font-size:12px;">Connexion</button>
+      <button class="lc-tab-btn" onclick="showAuthTab('signup')" id="tab-signup" style="flex:1;padding:6px;background:#1a2740;color:#7eb8f7;border:1px solid #2d4a7a;border-radius:4px;cursor:pointer;font-size:12px;">Créer un compte</button>
+      <button class="lc-tab-btn" onclick="showAuthTab('reset')" id="tab-reset" style="flex:1;padding:6px;background:#1a2740;color:#7eb8f7;border:1px solid #2d4a7a;border-radius:4px;cursor:pointer;font-size:12px;">Mot de passe oublié</button>
+    </div>
+    <!-- SIGNUP FORM -->
+    <div id="auth-signup-form" style="display:none;margin-top:10px;">
+      <input type="email" class="lc-inp" id="signup-email" placeholder="Email" style="width:100%;margin-bottom:6px;">
+      <input type="password" class="lc-inp" id="signup-pwd" placeholder="Mot de passe (min. 6 caractères)" style="width:100%;margin-bottom:6px;">
+      <button class="lc-btn" onclick="doSignup()">Créer mon compte</button>
+      <div class="lc-err" id="signup-msg" style="display:none;"></div>
+    </div>
+    <!-- RESET PASSWORD FORM -->
+    <div id="auth-reset-form" style="display:none;margin-top:10px;">
+      <input type="email" class="lc-inp" id="reset-email" placeholder="Email" style="width:100%;margin-bottom:6px;">
+      <button class="lc-btn" onclick="doResetPassword()">Envoyer le lien de réinitialisation</button>
+      <div class="lc-err" id="reset-msg" style="display:none;"></div>
+    </div>
     <div class="lc-err" id="login-err">Mot de passe incorrect.</div>
   </div>
 </div>
@@ -5600,6 +5618,44 @@ async function logout(){
   window.currentRole = "user";
   refreshAdminStateSafe();
   alert("Déconnecté");
+}
+
+
+// === Task 6: Signup & Reset Password (Supabase) ===
+function showAuthTab(tab) {
+  document.getElementById('auth-signup-form').style.display = tab === 'signup' ? 'block' : 'none';
+  document.getElementById('auth-reset-form').style.display = tab === 'reset' ? 'block' : 'none';
+  const loginEl = document.getElementById('pwd-input');
+  if (loginEl) loginEl.closest('.lc-inp')?.parentElement && (loginEl.style.display = tab === 'login' ? '' : 'none');
+  document.getElementById('login-btn').style.display = tab === 'login' ? '' : 'none';
+  ['tab-login','tab-signup','tab-reset'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.fontWeight = id === 'tab-' + tab ? 'bold' : 'normal';
+  });
+}
+
+async function doSignup() {
+  const email = document.getElementById('signup-email').value.trim();
+  const pwd = document.getElementById('signup-pwd').value;
+  const msgEl = document.getElementById('signup-msg');
+  msgEl.style.display = 'none';
+  if (!email || !pwd) { msgEl.textContent = 'Email et mot de passe requis.'; msgEl.style.display='block'; return; }
+  if (pwd.length < 6) { msgEl.textContent = 'Mot de passe trop court (min. 6 caractères).'; msgEl.style.display='block'; return; }
+  const { error } = await supabase.auth.signUp({ email, password: pwd });
+  if (error) { msgEl.textContent = error.message; msgEl.style.display='block'; }
+  else { msgEl.style.color='#4caf50'; msgEl.textContent = 'Compte créé ! Vérifiez votre email pour confirmer.'; msgEl.style.display='block'; }
+}
+
+async function doResetPassword() {
+  const email = document.getElementById('reset-email').value.trim();
+  const msgEl = document.getElementById('reset-msg');
+  msgEl.style.display = 'none';
+  if (!email) { msgEl.textContent = 'Email requis.'; msgEl.style.display='block'; return; }
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + '/?reset=true'
+  });
+  if (error) { msgEl.textContent = error.message; msgEl.style.display='block'; }
+  else { msgEl.style.color='#4caf50'; msgEl.textContent = 'Email envoyé ! Vérifiez votre boîte mail.'; msgEl.style.display='block'; }
 }
 
 function restoreLocalProjectsNow(){
