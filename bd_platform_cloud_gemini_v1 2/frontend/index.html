@@ -1326,9 +1326,15 @@ body{background:var(--bg);}
           <div class="fi-hint">Utilise le mode local par défaut. Renseignez une URL uniquement lorsque FastAPI/PostgreSQL est disponible.</div>
           <div class="api-actions">
             <button class="btn bw" onclick="apiTestAndDisplay()">Tester backend</button>
-            <button class="btn bw" onclick="apiPull(false)">Synchroniser</button>
-            <button class="btn bw" onclick="apiPushAll()">Push local</button>
-            <button class="btn bc" onclick="triggerRemoteScraper()">Lancer scraper</button>
+            <button class="btn bw" data-admin-only="true" onclick="apiPull(false)">Synchroniser</button>
+
+            <button class="btn bw" data-admin-only="true" onclick="apiPushAll()">
+  Push local
+</button>
+
+<button class="btn bc" data-admin-only="true" onclick="triggerRemoteScraper()">
+  Lancer scraper
+</button>
           </div>
           <div class="api-status off" id="api-status-widget">● Backend connecté</div>
           <div class="api-status" id="backend-status">Backend non testé.</div>
