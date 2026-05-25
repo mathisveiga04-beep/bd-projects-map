@@ -5577,6 +5577,7 @@ async function login(email,password){
   alert("Connexion réussie");
   return true;
 }
+  //await loadProjectsFromSupabase();
 await loadProjectsFromSupabase();
 async function signup(email,password){
   const { error } = await sb.auth.signUp({email,password});
