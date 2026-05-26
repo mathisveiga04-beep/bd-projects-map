@@ -3014,12 +3014,15 @@ async function initApp(){
   if(!buildings||!buildings.length)buildings=PRESETS.map(b=>({...b,activity:[],aiCache:'',liCache:'',email:'',phone:'',competitor:''}));
   updateCityDropdown();
   if(!mapObj)initMap();
-  setTimeout(()=>{if(mapObj)mapObj.invalidateSize();},350);
+  setTimeout(()=>{try{if(mapObj){mapObj.invalidateSize();}}catch(e){}},100);
+  setTimeout(()=>{try{if(mapObj){mapObj.invalidateSize();mapObj.setView([11.5564,104.9282],13);}}catch(e){}},500);
+  setTimeout(()=>{try{if(mapObj)mapObj.invalidateSize();}catch(e){}},1500);
   refreshAppViews();   // affichage local immédiat
   updateAdminUI();
   try{await apiAutoPull();}catch(e){console.warn('API pull:',e);}
   refreshAppViews();   // refresh après API
   updateAdminUI();
+  setTimeout(()=>{try{if(mapObj){mapObj.invalidateSize();if(typeof renderMarkers==='function')renderMarkers();}if(typeof filterList==='function')filterList();}catch(e){}},200);
 }
 function toggleFullscreen(){
   const mw=document.querySelector('.map-wrap');
