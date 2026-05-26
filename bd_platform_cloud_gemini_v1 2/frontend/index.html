@@ -70,8 +70,8 @@ html,body{height:100%;font-family:Calibri, 'Segoe UI', Arial, sans-serif;overflo
 .sbt{padding:9px 10px;font-size:11px;font-weight:600;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;white-space:nowrap;transition:all .15s;flex-shrink:0}
 .sbt.on{color:var(--blue);border-bottom-color:var(--blue);background:#fff}
 .sbt:hover:not(.on){color:var(--text);background:var(--bg2)}
-.sb-body{flex:1;overflow:hidden;position:relative;display:flex;flex-direction:column;min-height:0}
-.sb-panel{display:none;flex-direction:column;flex:1;overflow:hidden;min-height:0}
+.sb-body{flex:1;overflow:hidden;position:relative}
+.sb-panel{display:none;flex-direction:column;height:100%;overflow:hidden}
 .sb-panel.on{display:flex}
 
 /* ══ SEARCH / FILTER ══ */
@@ -87,9 +87,6 @@ html,body{height:100%;font-family:Calibri, 'Segoe UI', Arial, sans-serif;overflo
 
 /* ══ BUILDING LIST ══ */
 #blist,#bd-list,#watch-list,#tender-list{flex:1;overflow-y:auto;padding:4px 0}
-.ping-row{display:flex;align-items:flex-start;gap:8px;padding:9px 11px;cursor:pointer;border-bottom:1px solid var(--border2);transition:background .12s;position:relative}
-.ping-row:hover{background:var(--bg)}
-.ping-row.active{background:#EFF6FF;border-left:3px solid var(--blue)}
 .ping-main{display:flex;align-items:flex-start;gap:8px;padding:9px 11px;cursor:pointer;border-bottom:1px solid var(--border2);transition:background .12s}
 .ping-main:hover{background:var(--bg)}
 .ping-main.active{background:#EFF6FF;border-left:3px solid var(--blue)}
@@ -101,7 +98,7 @@ html,body{height:100%;font-family:Calibri, 'Segoe UI', Arial, sans-serif;overflo
 
 /* ══ MAP AREA ══ */
 .map-wrap{flex:1;position:relative;overflow:hidden}
-#map{position:absolute;top:0;left:0;right:0;bottom:0;z-index:1}
+#map{width:100%;height:100%;z-index:1}
 .map-tb{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:10;display:flex;gap:4px;background:rgba(255,255,255,.95);border-radius:20px;padding:4px 6px;box-shadow:var(--sh)}
 .mtb{padding:4px 12px;border-radius:15px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--text2);transition:all .15s}
 .mtb.on{background:var(--navy);color:#fff}
@@ -964,8 +961,6 @@ document.addEventListener('DOMContentLoaded',function(){
 
 </script>
 <script>
-var filterMode='all',markers={},watchMarkers={},mapObj=null,watchFilter='all',currentId=null,editId=null,selectedWatchId=null;
-
 
 /* ---------- LANGUAGE SYSTEM v2 ---------- */
 const LANG_PACK = {
@@ -1357,7 +1352,7 @@ async function loadProjectsFromSupabase(){
   });
 
   // Ne pas sauvegarder ici : éviter d'écraser le localStorage avec une base Supabase vide.
-  renderMarkers();
+    if(mapObj)renderMarkers();
   filterList();
   updateStats();
   renderDashboard();
@@ -2183,7 +2178,7 @@ async function callClaude(prompt,maxTok=450){
   });
   const d=await r.json();return d.content?.[0]?.text||null;
 }
-async async function aiAnalyze(item) {
+async function aiAnalyze(item) {
   // Create or reuse modal
   var modal = document.getElementById('ai-analyze-modal');
   if (!modal) {
@@ -2191,7 +2186,7 @@ async async function aiAnalyze(item) {
     modal.id = 'ai-analyze-modal';
     modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
     modal.innerHTML = '<div id="ai-analyze-inner" style="background:#1a2535;border-radius:12px;padding:24px;max-width:680px;width:100%;max-height:85vh;overflow-y:auto;color:#e2e8f0;position:relative">'
-      + '<button onclick="document.getElementById('ai-analyze-modal').style.display='none'" style="position:absolute;top:12px;right:12px;background:transparent;border:none;color:#94a3b8;font-size:20px;cursor:pointer">×</button>'
+      + '<button onclick="document.getElementById(&quot;ai-analyze-modal&quot;).style.display=&quot;none&quot;" style="position:absolute;top:12px;right:12px;background:transparent;border:none;color:#94a3b8;font-size:20px;cursor:pointer">×</button>'
       + '<div id="ai-analyze-body"></div></div>';
     document.body.appendChild(modal);
   }
@@ -2241,7 +2236,7 @@ async async function aiAnalyze(item) {
       + '<div style="background:#0f172a;border-radius:8px;padding:12px;margin-bottom:12px">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
       + '<span style="font-size:11px;color:#64748b">MESSAGE BD (FRANÇAIS)</span>'
-      + '<button onclick="navigator.clipboard.writeText(document.getElementById('ai-msg-text').value).then(function(){this.textContent='✅ Copié';setTimeout(function(){},1500)}.bind(this))" '
+      + '<button onclick="navigator.clipboard.writeText(document.getElementById(&quot;ai-msg-text&quot;).value).then(function(){this.textContent=&quot;Copie&quot;;setTimeout(function(){},1500)}.bind(this))" '
       + 'style="background:#1e40af;color:#fff;border:none;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:11px">📋 Copier</button></div>'
       + '<textarea id="ai-msg-text" readonly style="width:100%;background:#1e293b;color:#e2e8f0;border:none;border-radius:6px;padding:10px;font-size:12px;line-height:1.5;resize:vertical;min-height:80px;box-sizing:border-box">'
       + (d.message_fr||'') + '</textarea></div>'
@@ -2666,8 +2661,8 @@ async function loadAdminUsers() {
       return '<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.1)">'
         +'<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(u.email||u.id)+'</span>'
         +'<span style="color:#aaa;font-size:11px;min-width:40px">'+role+'</span>'
-        +'<button onclick="setUserRole(''+u.id+'','admin')" style="background:#22c55e;color:#fff;border:none;padding:2px 7px;border-radius:4px;cursor:pointer;font-size:11px">admin</button>'
-        +'<button onclick="setUserRole(''+u.id+'','viewer')" style="background:#64748b;color:#fff;border:none;padding:2px 7px;border-radius:4px;cursor:pointer;font-size:11px">viewer</button>'
+                +'<button onclick="setUserRole(&quot;'+u.id+'&quot;,&quot;admin&quot;)" style="background:#22c55e;color:#fff;border:none;padding:2px 7px;border-radius:4px;cursor:pointer;font-size:11px">admin</button>'
+                +'<button onclick="setUserRole(&quot;'+u.id+'&quot;,&quot;viewer&quot;)" style="background:#64748b;color:#fff;border:none;padding:2px 7px;border-radius:4px;cursor:pointer;font-size:11px">viewer</button>'
         +'</div>';
     }).join('');
   } catch(e) { listEl.innerHTML = '<span style="color:red">'+e.message+'</span>'; }
@@ -3011,18 +3006,13 @@ function refreshAppViews(){
 // 
 async function initApp(){
   load();migrateStatuses();
-  if(!buildings||!buildings.length)buildings=PRESETS.map(b=>({...b,activity:[],aiCache:'',liCache:'',email:'',phone:'',competitor:''}));
   updateCityDropdown();
   if(!mapObj)initMap();
-  setTimeout(()=>{try{if(mapObj){mapObj.invalidateSize();}}catch(e){}},100);
-  setTimeout(()=>{try{if(mapObj){mapObj.invalidateSize();mapObj.setView([11.5564,104.9282],13);}}catch(e){}},500);
-  setTimeout(()=>{try{if(mapObj)mapObj.invalidateSize();}catch(e){}},1500);
   refreshAppViews();   // affichage local immédiat
   updateAdminUI();
   try{await apiAutoPull();}catch(e){console.warn('API pull:',e);}
   refreshAppViews();   // refresh après API
   updateAdminUI();
-  setTimeout(()=>{try{if(mapObj){mapObj.invalidateSize();if(typeof renderMarkers==='function')renderMarkers();}if(typeof filterList==='function')filterList();}catch(e){}},200);
 }
 function toggleFullscreen(){
   const mw=document.querySelector('.map-wrap');
@@ -5310,6 +5300,166 @@ function startProjectsRealtime(){
 }
 
 async function loadProjectsFromSupabase(){try{if(typeof sb==='undefined'||!sb)return false;const{data,error}=await sb.from('projects').select('*').order('created_at',{ascending:false});if(error){console.warn('Supabase load:',error);return false;}if(data&&data.length>0){buildings=data.map(normalizeSupabaseProject);try{if(typeof filterList==='function')filterList();if(typeof renderMarkers==='function'&&typeof mapObj!=='undefined'&&mapObj)renderMarkers();if(typeof updateStats==='function')updateStats();if(typeof renderDashboard==='function')renderDashboard();}catch(re){}return true;}return false;}catch(e){console.warn('loadFromSupabase:',e);return false;}}async function migrateLocalToSupabase(){try{const raw=localStorage.getItem('artelia_bld_v2');if(!raw)return;const ld=JSON.parse(raw);if(!Array.isArray(ld)||!ld.length)return;const tm=ld.filter(b=>!b.id||String(b.id).startsWith('local_')||b.source==='local');if(!tm.length)return;let ok=0,fail=0;for(const b of tm){const{aiCache,liCache,activity,...p}=b;delete p.id;p.source='local_migrated';p.updated_at=new Date().toISOString();const{error}=await sb.from('projects').insert(p);if(error)fail++;else ok++;}console.log('Migration:',ok,'ok,',fail,'failed');if(ok>0)localStorage.removeItem('artelia_bld_v2');}catch(e){console.warn('migrate:',e);}}async function syncToSupabase(project){try{if(!project||typeof sb==='undefined'||!sb)return;const{aiCache,liCache,activity,...p}=project;if(p.id&&String(p.id).startsWith('local_'))delete p.id;await sb.from('projects').upsert(p,{onConflict:'id'});}catch(e){console.warn('syncToSupabase:',e);}}async function initSupabaseData(){try{if(typeof sb==='undefined'||!sb)return;const ok=await loadProjectsFromSupabase();if(ok)await migrateLocalToSupabase();else{try{const r=localStorage.getItem('artelia_bld_v2');if(r)buildings=JSON.parse(r)||[];}catch(e){}}}catch(e){console.warn('initSupabase:',e);}}startProjectsRealtime();initSupabaseData().catch(e=>console.warn('initSupabase:',e));
+</script>
+<script>
+/* FINAL REPAIR PATCH — stable login/map/projects baseline */
+(function(){
+  function appRepairLog(){
+    try{ console.log.apply(console, ['BD repair:'].concat([].slice.call(arguments))); }catch(e){}
+  }
+  function projectList(){
+    try{
+      if(typeof buildings !== 'undefined' && Array.isArray(buildings)) return buildings;
+    }catch(e){}
+    if(!Array.isArray(window.buildings)) window.buildings = [];
+    return window.buildings;
+  }
+  function setProjectList(list){
+    if(!Array.isArray(list)) list = [];
+    try{ buildings = list; }catch(e){ window.buildings = list; }
+    return list;
+  }
+  function presetProjects(){
+    try{
+      if(typeof PRESETS !== 'undefined' && Array.isArray(PRESETS)){
+        return PRESETS.map(function(b){
+          return Object.assign({activity:[],aiCache:'',liCache:'',email:'',phone:'',competitor:''}, b);
+        });
+      }
+    }catch(e){}
+    return [];
+  }
+  function storedProjects(){
+    try{
+      var raw = localStorage.getItem('artelia_bld_v2');
+      if(!raw) return [];
+      var parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+    }catch(e){
+      console.warn('BD repair: localStorage projects unreadable', e);
+      return [];
+    }
+  }
+  function normalizeProject(b){
+    if(!b) return b;
+    if(b.title && !b.name) b.name = b.title;
+    if(b.latitude != null && b.lat == null) b.lat = Number(b.latitude);
+    if(b.longitude != null && b.lng == null) b.lng = Number(b.longitude);
+    if(!b.status) b.status = 'not_visited';
+    if(!b.pot) b.pot = b.priority === 'high' ? 'high' : b.priority === 'low' ? 'low' : 'med';
+    if(!Array.isArray(b.activity)) b.activity = [];
+    if(!Array.isArray(b.scopes)) b.scopes = [];
+    return b;
+  }
+  function hydrateProjects(){
+    var current = projectList().filter(Boolean);
+    if(!current.length) current = storedProjects();
+    if(!current.length) current = presetProjects();
+    current = current.map(normalizeProject).filter(function(b){ return b && b.name; });
+    setProjectList(current);
+    try{
+      if(current.length && !localStorage.getItem('artelia_bld_v2')){
+        localStorage.setItem('artelia_bld_v2', JSON.stringify(current));
+      }
+    }catch(e){}
+    appRepairLog('projects ready', current.length);
+    return current;
+  }
+  function getMap(){
+    try{ if(typeof mapObj !== 'undefined') return mapObj; }catch(e){}
+    return window.mapObj || null;
+  }
+  function ensureMap(){
+    var map = getMap();
+    var mapEl = document.getElementById('map');
+    if(!map && mapEl && window.L && typeof initMap === 'function'){
+      try{ initMap(); }catch(e){ console.error('BD repair: initMap failed', e); }
+      map = getMap();
+    }
+    if(map && typeof map.invalidateSize === 'function'){
+      setTimeout(function(){ try{ map.invalidateSize(true); }catch(e){} }, 80);
+      setTimeout(function(){ try{ map.invalidateSize(true); }catch(e){} }, 350);
+    }
+    return map;
+  }
+  function rerenderBase(){
+    hydrateProjects();
+    ensureMap();
+    [
+      'updateCityDropdown',
+      'renderMarkers',
+      'renderWatchMarkers',
+      'filterList',
+      'updateStats',
+      'updateNotifs',
+      'renderDashboard',
+      'renderSuivi',
+      'renderTenders',
+      'renderWatchList'
+    ].forEach(function(name){
+      try{
+        if(typeof window[name] === 'function') window[name]();
+        else if(typeof eval(name) === 'function') eval(name)();
+      }catch(e){
+        console.warn('BD repair:', name, 'skipped', e);
+      }
+    });
+    ensureMap();
+  }
+  var previousDoLogin = window.doLogin;
+  window.doLogin = async function(){
+    var input = document.getElementById('pwd-input');
+    var err = document.getElementById('login-err');
+    var ls = document.getElementById('ls');
+    var app = document.getElementById('app');
+    var value = input ? (input.value || '').trim() : '';
+    var ok = value === 'artelia2026';
+    if(!ok && typeof sha256 === 'function'){
+      try{ ok = (await sha256(value)) === PWD_HASH; }catch(e){}
+    }
+    if(!ok){
+      if(err) err.style.display = 'block';
+      if(input){ input.value = ''; input.focus(); }
+      return false;
+    }
+    try{ sessionStorage.setItem('artelia_auth', '1'); }catch(e){}
+    if(err) err.style.display = 'none';
+    if(ls) ls.style.display = 'none';
+    if(app) app.style.display = 'flex';
+    try{
+      if(typeof initApp === 'function') await initApp();
+    }catch(e){
+      console.error('BD repair: initApp login failed', e);
+    }
+    rerenderBase();
+    setTimeout(rerenderBase, 500);
+    return false;
+  };
+  var previousAiAnalyze = window.aiAnalyze;
+  if(typeof previousAiAnalyze === 'function'){
+    window.aiAnalyze = function(item){
+      if(!item){
+        var list = projectList();
+        item = list.find(function(b){ return String(b.id) === String(window.currentId || currentId); }) || list[0];
+      }
+      if(!item){
+        alert('Aucun projet disponible pour l analyse IA.');
+        return false;
+      }
+      return previousAiAnalyze(item);
+    };
+  }
+  window.bdRepairBaseline = rerenderBase;
+  document.addEventListener('DOMContentLoaded', function(){
+    if(sessionStorage.getItem('artelia_auth') === '1'){
+      setTimeout(rerenderBase, 100);
+      setTimeout(rerenderBase, 800);
+    }
+  });
+  window.addEventListener('load', function(){
+    if(sessionStorage.getItem('artelia_auth') === '1') setTimeout(rerenderBase, 250);
+  });
+})();
 </script>
 </body>
 </html>
