@@ -4613,7 +4613,7 @@ document.querySelectorAll('.lang-btn').forEach(function(b){if(b.getAttribute('on
     return L.divIcon({html:'<svg xmlns="http://www.w3.org/2000/svg" width="'+SZ+'" height="'+H+'" viewBox="0 0 28 33" style="opacity:'+opacity+'">'+path+'</svg>',iconSize:[SZ,H],iconAnchor:[SZ/2,H],popupAnchor:[0,-H],className:'confidence-'+(b.confidence||'high')});
   };
 
-  window.renderMarkers=function(){
+  window.__badRM_skip_=function(){
     Object.values(markers).forEach(m=>mapObj.removeLayer(m)); markers={};
     buildings.forEach(b=>{
       if(!b.lat||!b.lng)return;
