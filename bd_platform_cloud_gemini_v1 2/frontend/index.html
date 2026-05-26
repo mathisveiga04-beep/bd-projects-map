@@ -1352,7 +1352,7 @@ async function loadProjectsFromSupabase(){
   });
 
   // Ne pas sauvegarder ici : éviter d'écraser le localStorage avec une base Supabase vide.
-  renderMarkers();
+    if(mapObj)renderMarkers();
   filterList();
   updateStats();
   renderDashboard();
