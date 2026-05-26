@@ -2661,8 +2661,8 @@ async function loadAdminUsers() {
       return '<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.1)">'
         +'<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(u.email||u.id)+'</span>'
         +'<span style="color:#aaa;font-size:11px;min-width:40px">'+role+'</span>'
-        +'<button onclick="setUserRole(''+u.id+'','admin')" style="background:#22c55e;color:#fff;border:none;padding:2px 7px;border-radius:4px;cursor:pointer;font-size:11px">admin</button>'
-        +'<button onclick="setUserRole(''+u.id+'','viewer')" style="background:#64748b;color:#fff;border:none;padding:2px 7px;border-radius:4px;cursor:pointer;font-size:11px">viewer</button>'
+                +'<button onclick="setUserRole(&quot;'+u.id+'&quot;,&quot;admin&quot;)" style="background:#22c55e;color:#fff;border:none;padding:2px 7px;border-radius:4px;cursor:pointer;font-size:11px">admin</button>'
+                +'<button onclick="setUserRole(&quot;'+u.id+'&quot;,&quot;viewer&quot;)" style="background:#64748b;color:#fff;border:none;padding:2px 7px;border-radius:4px;cursor:pointer;font-size:11px">viewer</button>'
         +'</div>';
     }).join('');
   } catch(e) { listEl.innerHTML = '<span style="color:red">'+e.message+'</span>'; }
