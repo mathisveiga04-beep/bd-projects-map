@@ -5505,5 +5505,59 @@ async function loadProjectsFromSupabase(){try{if(typeof sb==='undefined'||!sb)re
   });
 })();
 </script>
+<script>
+/* BD runtime repair: expose map/stat globals and force post-login init */
+(function(){
+  function exposeRuntime(){
+    try{
+      if(typeof filterMode === 'undefined'){
+        window.filterMode = window.filterMode || 'all';
+      }else{
+        filterMode = filterMode || window.filterMode || 'all';
+        window.filterMode = filterMode;
+      }
+    }catch(e){ window.filterMode = window.filterMode || 'all'; }
+    try{ if(typeof updateStats === 'function') window.updateStats = updateStats; }catch(e){}
+    try{ if(typeof mapObj !== 'undefined' && mapObj) window.mapObj = mapObj; }catch(e){}
+    try{
+      if(typeof initMap === 'function' && !window.__bdInitMapPatched){
+        var originalInitMap = initMap;
+        window.initMap = initMap = function(){
+          var result = originalInitMap.apply(this, arguments);
+          try{ if(typeof mapObj !== 'undefined') window.mapObj = mapObj; }catch(e){}
+          return result;
+        };
+        window.__bdInitMapPatched = true;
+      }else if(typeof initMap === 'function'){
+        window.initMap = initMap;
+      }
+    }catch(e){}
+  }
+  function ensureRuntimeReady(){
+    exposeRuntime();
+    try{ if(typeof initMap === 'function' && !window.mapObj) initMap(); }catch(e){ console.error('BD runtime repair: initMap failed', e); }
+    try{ if(typeof mapObj !== 'undefined' && mapObj) window.mapObj = mapObj; }catch(e){}
+    try{ if(window.mapObj && window.mapObj.invalidateSize) setTimeout(function(){ window.mapObj.invalidateSize(true); }, 120); }catch(e){}
+    try{ if(typeof filterList === 'function') filterList(); }catch(e){}
+    try{ if(typeof window.updateStats === 'function') window.updateStats(); }catch(e){}
+  }
+  var previousLogin = window.doLogin;
+  window.doLogin = async function(){
+    var result = previousLogin ? await previousLogin.apply(this, arguments) : false;
+    ensureRuntimeReady();
+    setTimeout(ensureRuntimeReady, 500);
+    return result;
+  };
+  document.addEventListener('DOMContentLoaded', function(){
+    exposeRuntime();
+    if(sessionStorage.getItem('artelia_auth') === '1') setTimeout(ensureRuntimeReady, 250);
+  });
+  window.addEventListener('load', function(){
+    exposeRuntime();
+    if(sessionStorage.getItem('artelia_auth') === '1') setTimeout(ensureRuntimeReady, 500);
+  });
+})();
+</script>
 </body>
+
 </html>
