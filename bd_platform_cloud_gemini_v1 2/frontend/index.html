@@ -2236,7 +2236,7 @@ async function aiAnalyze(item) {
       + '<div style="background:#0f172a;border-radius:8px;padding:12px;margin-bottom:12px">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
       + '<span style="font-size:11px;color:#64748b">MESSAGE BD (FRANÇAIS)</span>'
-      + '<button onclick="navigator.clipboard.writeText(document.getElementById('ai-msg-text').value).then(function(){this.textContent='✅ Copié';setTimeout(function(){},1500)}.bind(this))" '
+      + '<button onclick="navigator.clipboard.writeText(document.getElementById(&quot;ai-msg-text&quot;).value).then(function(){this.textContent=&quot;Copie&quot;;setTimeout(function(){},1500)}.bind(this))" '
       + 'style="background:#1e40af;color:#fff;border:none;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:11px">📋 Copier</button></div>'
       + '<textarea id="ai-msg-text" readonly style="width:100%;background:#1e293b;color:#e2e8f0;border:none;border-radius:6px;padding:10px;font-size:12px;line-height:1.5;resize:vertical;min-height:80px;box-sizing:border-box">'
       + (d.message_fr||'') + '</textarea></div>'
