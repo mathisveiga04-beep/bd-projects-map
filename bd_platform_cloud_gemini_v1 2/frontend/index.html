@@ -2178,7 +2178,7 @@ async function callClaude(prompt,maxTok=450){
   });
   const d=await r.json();return d.content?.[0]?.text||null;
 }
-async async function aiAnalyze(item) {
+async function aiAnalyze(item) {
   // Create or reuse modal
   var modal = document.getElementById('ai-analyze-modal');
   if (!modal) {
