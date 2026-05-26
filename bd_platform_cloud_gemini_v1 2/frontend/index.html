@@ -899,7 +899,8 @@ textarea.fi{min-height:70px;resize:vertical}
 </div>
 
 <div class="toast" id="toast"></div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
 setTimeout(()=>{ if(typeof wrapLanguageRenderers==='function')wrapLanguageRenderers(); if(typeof setLang==='function')setLang(currentLang()); }, 150);
 
 
@@ -2731,50 +2732,7 @@ function clearAllOperationalData(){
   setTimeout(()=>location.reload(),700);
 }
 
-async function adminLogin(){<script>
-/* DEDUPE REPAIR PATCH - remove duplicated restored projects */
-(function(){
-  function bdKey(b){
-    var name = String((b && (b.name || b.title)) || '').toLowerCase().replace(/\s+/g,' ').trim();
-    var zone = String((b && (b.zone || b.city || b.address)) || '').toLowerCase().replace(/\s+/g,' ').trim();
-    return name ? name + '|' + zone : String((b && b.id) || '');
-  }
-  function bdList(){
-    try{ if(Array.isArray(buildings)) return buildings; }catch(e){}
-    if(!Array.isArray(window.buildings)) window.buildings = [];
-    return window.buildings;
-  }
-  function bdDedupe(){
-    var seen = new Set();
-    var clean = [];
-    bdList().forEach(function(b){
-      if(!b) return;
-      if(b.title && !b.name) b.name = b.title;
-      if(b.latitude != null && b.lat == null) b.lat = Number(b.latitude);
-      if(b.longitude != null && b.lng == null) b.lng = Number(b.longitude);
-      var key = bdKey(b);current = current.map(normalizeProject).filter(function(b){ return b && b.name; });current = dedupeProjects(current).filter(function(b){ return b && b.name; });https://github.com/mathisveiga04-beep/bd-projects-map/upload/main/bd_platform_cloud_gemini_v1%202/frontend
-      
-      if(!key || seen.has(key)) return;
-      seen.add(key);
-      clean.push(b);
-    });
-    try{ buildings = clean; }catch(e){ window.buildings = clean; }
-    try{ localStorage.setItem('artelia_bld_v2', JSON.stringify(clean)); }catch(e){}
-    ['filterList','renderMarkers','renderWatchMarkers','updateStats','updateNotifs','renderDashboard','renderSuivi','renderTenders','renderWatchList'].forEach(function(name){
-      try{ if(typeof window[name] === 'function') window[name](); else if(typeof eval(name) === 'function') eval(name)(); }catch(e){}
-    });
-    try{ if(typeof mapObj !== 'undefined' && mapObj && mapObj.invalidateSize) mapObj.invalidateSize(true); }catch(e){}
-  }
-  var prev = window.bdRepairBaseline;
-  window.bdRepairBaseline = function(){
-    if(typeof prev === 'function') prev();
-    bdDedupe();
-  };
-  document.addEventListener('DOMContentLoaded', function(){ setTimeout(bdDedupe, 900); });
-  window.addEventListener('load', function(){ setTimeout(bdDedupe, 900); });
-})();
-</script>
-</body>
+async function adminLogin(){
   const input=document.getElementById('admin-pwd');
   const err=document.getElementById('admin-err');
   if(!input)return;
@@ -5395,14 +5353,32 @@ async function loadProjectsFromSupabase(){try{if(typeof sb==='undefined'||!sb)re
     if(!Array.isArray(b.scopes)) b.scopes = [];
     return b;
   }
+  function projectKey(b){
+    var name = String((b && (b.name || b.title)) || '').toLowerCase().replace(/\s+/g, ' ').trim();
+    var zone = String((b && (b.zone || b.city || b.address)) || '').toLowerCase().replace(/\s+/g, ' ').trim();
+    if(name) return name + '|' + zone;
+    return String((b && b.id) || '');
+  }
+  function dedupeProjects(list){
+    var seen = new Set();
+    var clean = [];
+    list.forEach(function(b){
+      b = normalizeProject(b);
+      var key = projectKey(b);
+      if(!key || seen.has(key)) return;
+      seen.add(key);
+      clean.push(b);
+    });
+    return clean;
+  }
   function hydrateProjects(){
     var current = projectList().filter(Boolean);
     if(!current.length) current = storedProjects();
     if(!current.length) current = presetProjects();
-    current = current.map(normalizeProject).filter(function(b){ return b && b.name; });
+    current = dedupeProjects(current).filter(function(b){ return b && b.name; });
     setProjectList(current);
     try{
-      if(current.length && !localStorage.getItem('artelia_bld_v2')){
+      if(current.length){
         localStorage.setItem('artelia_bld_v2', JSON.stringify(current));
       }
     }catch(e){}
