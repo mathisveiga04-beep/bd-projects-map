@@ -1224,6 +1224,7 @@ const WATCH_PRESETS=[
 ];
 
 var buildings=[], markers={}, watchMarkers={}, mapObj, currentId=null, editId=null, filterMode='all', bdActions=[], tenders=[], editTenderId=null, watchItems=[], editWatchId=null, selectedWatchId=null, watchFilter='all';
+window.filterMode = filterMode;
   
 function escapeHtml(str){return String(str||'').replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];});}
 function escapeAttr(str){return escapeHtml(str);}
@@ -1379,7 +1380,7 @@ function save(){
 // MAP
 // 
 function initMap(){
-  mapObj=L.map('map',{center:[11.5564,104.9282],zoom:13,zoomControl:true,preferCanvas:true});
+  window.mapObj = mapObj = L.map('map',{center:[11.5564,104.9282],zoom:13,zoomControl:true,preferCanvas:true});
   // Layer control — multiple tile styles
   const tileVoyager=L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{attribution:'&copy; OpenStreetMap & CARTO',maxZoom:19});
   const tileLight=L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{attribution:'&copy; OpenStreetMap & CARTO',maxZoom:19});
@@ -1406,6 +1407,7 @@ function initMap(){
     }
   });
 }
+window.initMap = initMap;
 
 
 function addEnglishMapLabels(){
@@ -1529,7 +1531,7 @@ function sbTab(id,el){
   if(id==='tenders')renderTenders();
   if(id==='watch')renderWatchList();
 }
-function setF(f,el){document.querySelectorAll('.fc').forEach(x=>x.classList.remove('on'));el.classList.add('on');filterMode=f;filterList();}
+function setF(f,el){document.querySelectorAll('.fc').forEach(x=>x.classList.remove('on'));el.classList.add('on');window.filterMode=filterMode=f;filterList();}
 
 function statusClassFromValue(status){
   if(status==='not_visited')return 'status-identify';
@@ -2592,6 +2594,7 @@ function updateStats(){
   const avgSc=activeB.length?Math.round(activeB.reduce((s,b)=>s+calcScore(b),0)/activeB.length):0;
   const el=document.getElementById('hs-avgscore');if(el)el.textContent=avgSc+'/100';
 }
+window.updateStats = updateStats;
 function doExport(){
   let html='<html><head><meta charset="UTF-8"><style>body{font-family:Calibri, Arial, sans-serif}table{border-collapse:collapse;width:100%}th{background:#002F6C;color:white;padding:8px}td{padding:6px;border:1px solid #ddd}h2{color:#002F6C}h3{color:#0052A5;margin-top:20px}</style></head><body>';
   html+=`<h2>Artelia Cambodia — BD Suivi — ${new Date().toLocaleDateString('fr-FR')}</h2>`;
@@ -5194,6 +5197,9 @@ sb.auth.onAuthStateChange(async (event, session) => {
     window.currentRole = "user";
     refreshAdminStateSafe();
     console.log("Session fermée");
+  }
+  if(session && !window.mapObj && typeof initMap === 'function'){
+    initMap();
   }
   setTimeout(restoreLocalProjectsNow, 300);
 });
