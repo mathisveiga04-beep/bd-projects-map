@@ -5013,13 +5013,20 @@ function priorityColorClass(priority){
     try {
       if(typeof initApp === 'function') initApp();
       else {
-        if(typeof initMap === 'function' && !window.map) initMap();
+                if(typeof initMap === 'function' && !window.mapObj) initMap();
         if(typeof renderAll === 'function') renderAll();
         if(typeof updateStats === 'function') updateStats();
         if(typeof renderMap === 'function') renderMap();
       }
+      if(typeof restoreLocalProjectsNow === 'function') restoreLocalProjectsNow();
+      if(typeof renderMarkers === 'function' && typeof mapObj !== 'undefined' && mapObj) renderMarkers();
+      if(typeof filterList === 'function') filterList();
+      if(typeof updateStats === 'function') updateStats();
     } catch(e) { console.error('Login init error', e); }
-    try { if(window.map && window.map.invalidateSize) setTimeout(function(){ window.map.invalidateSize(); },120); } catch(e) {}
+        try {
+      var activeMap = window.mapObj || (typeof mapObj !== 'undefined' ? mapObj : null) || window.map;
+      if(activeMap && activeMap.invalidateSize) setTimeout(function(){ activeMap.invalidateSize(true); },120);
+    } catch(e) {}
     return false;
   };
   window.cityFDD = function(){ return false; };
