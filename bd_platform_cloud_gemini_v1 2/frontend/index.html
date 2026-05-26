@@ -2752,7 +2752,8 @@ async function adminLogin(){<script>
       if(b.title && !b.name) b.name = b.title;
       if(b.latitude != null && b.lat == null) b.lat = Number(b.latitude);
       if(b.longitude != null && b.lng == null) b.lng = Number(b.longitude);
-      var key = bdKey(b);
+      var key = bdKey(b);current = current.map(normalizeProject).filter(function(b){ return b && b.name; });current = dedupeProjects(current).filter(function(b){ return b && b.name; });https://github.com/mathisveiga04-beep/bd-projects-map/upload/main/bd_platform_cloud_gemini_v1%202/frontend
+      
       if(!key || seen.has(key)) return;
       seen.add(key);
       clean.push(b);
