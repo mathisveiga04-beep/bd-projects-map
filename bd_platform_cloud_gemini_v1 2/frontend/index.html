@@ -1116,6 +1116,9 @@ async function doLogin(){
   // Password restored explicitly: artelia2026
   if(v==='artelia2026' || h===PWD_HASH){
     sessionStorage.setItem('artelia_auth','1');
+    sessionStorage.setItem('artelia_app_token', v);
+    sessionStorage.setItem('artelia_admin','1');
+    localStorage.setItem('bd_admin_ok','1');
     document.getElementById('ls').style.display='none';
     document.getElementById('app').style.display='flex';
     initApp();
@@ -2205,6 +2208,10 @@ async function aiAnalyze(item) {
     var token = sess ? sess.access_token : null;
     var headers = {'Content-Type':'application/json'};
     if (token) headers['Authorization'] = 'Bearer ' + token;
+    else {
+      var appToken = sessionStorage.getItem('artelia_app_token') || '';
+      if (appToken) headers['X-App-Token'] = appToken;
+    }
     var r = await fetch('https://bd-projects-map-akh.onrender.com/ai/analyze', {
       method:'POST', headers:headers,
       body: JSON.stringify({title:title, text:text.slice(0,4000), source_url:sourceUrl})
@@ -5455,7 +5462,12 @@ async function loadProjectsFromSupabase(){try{if(typeof sb==='undefined'||!sb)re
       if(input){ input.value = ''; input.focus(); }
       return false;
     }
-    try{ sessionStorage.setItem('artelia_auth', '1'); }catch(e){}
+        try{
+      sessionStorage.setItem('artelia_auth', '1');
+      sessionStorage.setItem('artelia_app_token', value);
+      sessionStorage.setItem('artelia_admin', '1');
+      localStorage.setItem('bd_admin_ok', '1');
+        }catch(e){}
     if(err) err.style.display = 'none';
     if(ls) ls.style.display = 'none';
     if(app) app.style.display = 'flex';
