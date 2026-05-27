@@ -2779,13 +2779,12 @@ function updateAdminUI(){
 }
 
 async function loadAdminUsers() {
-  var sess = supabase && supabase.auth ? (await supabase.auth.getSession()).data.session : null;
-  var token = sess ? sess.access_token : null;
   var listEl = document.getElementById('admin-users-list');
-  if (!token) { listEl.innerHTML = '<span style="color:red">Non authentifié</span>'; return; }
+  var headers = typeof aiAuthHeaders === 'function' ? await aiAuthHeaders() : {};
+  if (!headers.Authorization && !headers['X-App-Token']) { listEl.innerHTML = '<span style="color:red">Non authentifié</span>'; return; }
   listEl.innerHTML = 'Chargement...';
   try {
-    var r = await fetch('https://bd-projects-map-akh.onrender.com/admin/users', {headers:{Authorization:'Bearer '+token}});
+    var r = await fetch('https://bd-projects-map-akh.onrender.com/admin/users', {headers:headers});
     if (!r.ok) { listEl.innerHTML = '<span style="color:red">Erreur '+r.status+'</span>'; return; }
     var data = await r.json();
     var users = data.users || data;
@@ -2803,11 +2802,10 @@ async function loadAdminUsers() {
 }
 
 async function setUserRole(userId, role) {
-  var sess = supabase && supabase.auth ? (await supabase.auth.getSession()).data.session : null;
-  var token = sess ? sess.access_token : null;
-  if (!token) return;
+  var headers = typeof aiAuthHeaders === 'function' ? await aiAuthHeaders() : {};
+  if (!headers.Authorization && !headers['X-App-Token']) return;
   var r = await fetch('https://bd-projects-map-akh.onrender.com/admin/users/'+userId+'/set-role?role='+role, {
-    method:'POST', headers:{Authorization:'Bearer '+token}
+    method:'POST', headers:headers
   });
   if (r.ok) { loadAdminUsers(); } else { alert('Erreur: '+r.status); }
 }
