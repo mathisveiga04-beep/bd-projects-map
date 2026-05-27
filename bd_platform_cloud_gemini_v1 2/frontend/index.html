@@ -2308,13 +2308,10 @@ async function aiAuthHeaders(){
   return headers;
 }
 async function callGemini(prompt,maxTok=700,mode='general'){
-  const r=await fetch(backendBase()+'/ai/generate',{
+  const d=await apiRequest('/ai/generate',{
     method:'POST',
-    headers:await aiAuthHeaders(),
     body:JSON.stringify({prompt:prompt,max_tokens:maxTok,mode:mode})
   });
-  if(!r.ok)throw new Error('HTTP '+r.status);
-  const d=await r.json();
   return d.text||null;
 }
 async function aiAnalyze(item) {
@@ -2336,12 +2333,10 @@ async function aiAnalyze(item) {
   var sourceUrl = item.source_url || item.url || '';
   body.innerHTML = '<div style="text-align:center;padding:32px;color:#94a3b8">⏳ Analyse en cours avec Gemini...</div>';
   try {
-    var r = await fetch(backendBase()+'/ai/analyze', {
-      method:'POST', headers:await aiAuthHeaders(),
+    var d = await apiRequest('/ai/analyze', {
+      method:'POST',
       body: JSON.stringify({title:title, text:text.slice(0,4000), source_url:sourceUrl})
     });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    var d = await r.json();
     var score = d.score || 0;
     var scoreColor = score >= 8 ? '#22c55e' : score >= 6 ? '#f59e0b' : score >= 4 ? '#f97316' : '#ef4444';
     var scoreBar = Array.from({length:10}, function(_,i) {
