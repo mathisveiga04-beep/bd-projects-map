@@ -3,6 +3,8 @@ from pydantic import BaseModel, ConfigDict
 
 
 class ProjectBase(BaseModel):
+    owner_id: str = ""
+    owner_email: str = ""
     title: str
     description: str = ""
     country: str = "Cambodia"
@@ -75,6 +77,12 @@ class AnalyzeRequest(BaseModel):
     title: str
     text: str
     source_url: str = ""
+
+
+class GenerateRequest(BaseModel):
+    prompt: str
+    max_tokens: int = 700
+    mode: str = "general"
 
 
 class ScraperRequest(BaseModel):
