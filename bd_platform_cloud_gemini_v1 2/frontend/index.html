@@ -5020,7 +5020,7 @@ function priorityColorClass(priority){
     try {
       if(typeof initApp === 'function') initApp();
       else {
-                if(typeof initMap === 'function' && !window.mapObj) initMap();
+        if(typeof initMap === 'function' && !window.mapObj) initMap();
         if(typeof renderAll === 'function') renderAll();
         if(typeof updateStats === 'function') updateStats();
         if(typeof renderMap === 'function') renderMap();
@@ -5030,7 +5030,7 @@ function priorityColorClass(priority){
       if(typeof filterList === 'function') filterList();
       if(typeof updateStats === 'function') updateStats();
     } catch(e) { console.error('Login init error', e); }
-        try {
+    try {
       var activeMap = window.mapObj || (typeof mapObj !== 'undefined' ? mapObj : null) || window.map;
       if(activeMap && activeMap.invalidateSize) setTimeout(function(){ activeMap.invalidateSize(true); },120);
     } catch(e) {}
@@ -5462,12 +5462,12 @@ async function loadProjectsFromSupabase(){try{if(typeof sb==='undefined'||!sb)re
       if(input){ input.value = ''; input.focus(); }
       return false;
     }
-        try{
+    try{
       sessionStorage.setItem('artelia_auth', '1');
       sessionStorage.setItem('artelia_app_token', value);
       sessionStorage.setItem('artelia_admin', '1');
       localStorage.setItem('bd_admin_ok', '1');
-        }catch(e){}
+    }catch(e){}
     if(err) err.style.display = 'none';
     if(ls) ls.style.display = 'none';
     if(app) app.style.display = 'flex';
