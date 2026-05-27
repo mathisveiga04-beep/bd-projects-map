@@ -21,7 +21,7 @@
 2. Connecte le repo GitHub.
 3. Build command : `pip install -r backend/requirements.txt`
 4. Start command : `cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-5. Ajoute les variables : `DATABASE_URL`, `GEMINI_API_KEY`, `GEMINI_MODEL`.
+5. Ajoute les variables : `DATABASE_URL`, `SUPABASE_JWT_SECRET`, `SUPABASE_URL`, `SUPABASE_KEY`, `APP_SECRET`, `SCRAPER_API_KEY`, `GEMINI_API_KEY`, `GEMINI_MODEL`.
 6. Teste `/health`.
 
 ## 5. Déployer le frontend
@@ -33,11 +33,19 @@ Dans l'interface :
 3. Clique `Tester API`.
 4. Clique `Sync`.
 
-## 6. Activer le scraping quotidien
+## 6. Activer le scraping toutes les 4 heures
 1. Dans GitHub > Settings > Secrets > Actions.
-2. Ajoute `BACKEND_URL=https://ton-api.onrender.com`.
+2. Ajoute `SCRAPER_API_KEY` avec la même valeur que Render.
 3. Va dans Actions.
-4. Lance `Daily opportunity scraper` manuellement une première fois.
+4. Lance `Opportunity Scraper` manuellement une première fois.
+5. Vérifie que les nouveaux éléments apparaissent dans les alertes / opportunités non localisées.
 
-## 7. Workflow final
+## 7. Production propre
+1. Domaine : connecter le domaine dans Vercel, puis vérifier HTTPS.
+2. Variables Vercel : vérifier `SUPABASE_URL` et `SUPABASE_KEY` si elles sont utilisées côté frontend.
+3. Sauvegarde Supabase : activer les backups disponibles ou exporter régulièrement le schéma et les tables critiques.
+4. Sécurité : `APP_SECRET` protège les appels applicatifs, `SCRAPER_API_KEY` protège le cron, `SUPABASE_JWT_SECRET` protège les routes utilisateur/admin.
+5. Démo : login `artelia2026`, carte, 42+ projets, alertes, lancement scraper manuel, analyse Gemini, export.
+
+## 8. Workflow final
 Scraper GitHub Actions → Backend Render → Gemini API → Supabase → Frontend HTML.
