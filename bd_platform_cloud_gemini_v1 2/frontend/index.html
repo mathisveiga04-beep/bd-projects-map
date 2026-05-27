@@ -970,80 +970,82 @@ document.addEventListener('DOMContentLoaded',function(){
 
 </script>
 <script>
-/* PATCH v62 — traduction FR complète : Veille, Tenders, Réglages */
+/* PATCH v62 — traduction FR complete : Veille Tenders Reglages */
 (function(){
   function lang(){
     try{
-      if(typeof window.currentLang==='function') return window.currentLang()==='en'?'en':'fr';
-      return (window.currentLanguage||'fr')==='en'?'en':'fr';
-    }catch(e){return 'fr';}
+      if(typeof window.currentLang==="function") return window.currentLang()==="en"?"en":"fr";
+      return (window.currentLanguage||"fr")==="en"?"en":"fr";
+    }catch(e){return "fr";}
   }
-  function txt(fr,en){return lang()==='en'?en:fr;}
+  function txt(fr,en){return lang()==="en"?en:fr;}
   function se(el,fr,en){if(el)el.textContent=txt(fr,en);}
 
   function translateExtra(){
     var l=lang();
+    var ap=String.fromCharCode(39);
 
-    // Tenders: filter badge & stage pills
-    document.querySelectorAll('.fc').forEach(function(el){
+    // Tenders: filter badge High fit
+    document.querySelectorAll(".fc").forEach(function(el){
       var t=el.textContent.trim();
-      if(t==='High fit'||t==='Adéquation élevée') se(el,'Adéquation élevée','High fit');
+      if(t==="High fit"||t==="Ad"+ap+"quation "+ap+"lev"+ap+"e") se(el,"Adéquation élevée","High fit");
     });
-    document.querySelectorAll('.stage-pill.sp-rfp').forEach(function(el){
-      se(el,'Proposition en cours','Proposal ongoing');
+    // Stage pills
+    document.querySelectorAll(".stage-pill.sp-rfp").forEach(function(el){
+      se(el,"Proposition en cours","Proposal ongoing");
     });
-    document.querySelectorAll('.stage-pill.sp-eoi').forEach(function(el){
-      se(el,'EOI attendu','EOI expected');
+    document.querySelectorAll(".stage-pill.sp-eoi").forEach(function(el){
+      se(el,"EOI attendu","EOI expected");
     });
 
-    // Veille: Create ping button
-    document.querySelectorAll('button').forEach(function(el){
+    // Veille: Create ping
+    document.querySelectorAll("button").forEach(function(el){
       var t=el.textContent.trim();
-      if(t==='+ Create ping'||t==='+ Créer un ping') se(el,'+ Créer un ping','+ Create ping');
-      if(t==='Delete watch items'||t==='Supprimer les alertes') se(el,'Supprimer les alertes','Delete watch items');
-      if(t==='Delete all local data'||t==='Effacer toutes les données locales') se(el,'Effacer toutes les données locales','Delete all local data');
+      if(t==="+ Create ping"||t==="+ Créer un ping") se(el,"+ Créer un ping","+ Create ping");
+      if(t==="Delete watch items"||t==="Supprimer les alertes") se(el,"Supprimer les alertes","Delete watch items");
+      if(t==="Delete all local data"||t==="Effacer toutes les données locales") se(el,"Effacer toutes les données locales","Delete all local data");
     });
 
-    // Veille: user ping note
-    document.querySelectorAll('.user-ping-note').forEach(function(el){
-      if(l==='fr') el.textContent='Un ping est un signal de projet ajouté manuellement. Il doit être qualifié avant d'être considéré comme une opportunité confirmée.';
-      else el.textContent='A ping is a project signal added manually by a user. It must be qualified before being considered a confirmed opportunity.';
+    // Veille: ping note (no apostrophes)
+    document.querySelectorAll(".user-ping-note").forEach(function(el){
+      if(l==="fr") el.textContent="Un ping est un signal de projet ajouté manuellement. Il doit être qualifié avant d"+ap+"être considéré comme une opportunité confirmée.";
+      else el.textContent="A ping is a project signal added manually by a user. It must be qualified before being considered a confirmed opportunity.";
     });
 
     // Veille: scope card title
-    document.querySelectorAll('.scope-card-title').forEach(function(el){
+    document.querySelectorAll(".scope-card-title").forEach(function(el){
       var t=el.textContent.trim();
-      if(t==='Monitored Artelia scopes'||t==='Périmètres Artelia suivis') se(el,'Périmètres Artelia suivis','Monitored Artelia scopes');
+      if(t==="Monitored Artelia scopes"||t==="Périmètres Artelia suivis") se(el,"Périmètres Artelia suivis","Monitored Artelia scopes");
     });
 
-    // Veille: map nature filter buttons
-    document.querySelectorAll('[onclick*="mapNatureFilter"]').forEach(function(el){
-      var oc=el.getAttribute('onclick')||'';
-      if(oc.indexOf("'all'")>-1) se(el,'Toutes les alertes','All pings');
-      else if(oc.indexOf("'renovation'")>-1) se(el,'Rénovation / retrofit','Renovation / retrofit');
+    // Veille: map nature filter
+    document.querySelectorAll("[onclick*='mapNatureFilter']").forEach(function(el){
+      var oc=el.getAttribute("onclick")||"";
+      if(oc.indexOf("'all'")>-1) se(el,"Toutes les alertes","All pings");
+      else if(oc.indexOf("'renovation'")>-1) se(el,"Rénovation / retrofit","Renovation / retrofit");
     });
 
-    // Veille: watch-sub descriptions
-    document.querySelectorAll('.watch-sub').forEach(function(el){
+    // Veille: watch-sub
+    document.querySelectorAll(".watch-sub").forEach(function(el){
       var t=el.textContent.trim();
-      if(t.indexOf('local HTML file')>-1||t.indexOf('fichier HTML local')>-1){
-        if(l==='fr') el.textContent='Ce fichier HTML local ne scrape pas automatiquement Facebook, LinkedIn ou les sites de bailleurs. Il fournit une base de surveillance, des fréquences recommandées et des notifications internes. Une automatisation réelle nécessite un backend ou une API connectée.';
-        else el.textContent='This local HTML file does not automatically scrape Facebook, LinkedIn or funder websites. It provides a monitoring base, recommended frequencies and internal notifications from entered opportunities. Real automation requires a backend or connected API.';
+      if(t.indexOf("local HTML file")>-1||t.indexOf("fichier HTML local")>-1){
+        if(l==="fr") el.textContent="Ce fichier HTML local ne scrape pas automatiquement Facebook, LinkedIn ou les sites de bailleurs. Il fournit une base de surveillance et des notifications internes. Une automatisation réelle nécessite un backend ou une API connectée.";
+        else el.textContent="This local HTML file does not automatically scrape Facebook, LinkedIn or funder websites. It provides a monitoring base and internal notifications. Real automation requires a backend or connected API.";
       }
     });
 
     // Settings: CSV drop zone
-    document.querySelectorAll('span').forEach(function(el){
+    document.querySelectorAll("span").forEach(function(el){
       var t=el.textContent.trim();
-      if(t==='or drag your file here'||t==='ou déposez le fichier ici') se(el,'ou déposez le fichier ici','or drag your file here');
+      if(t==="or drag your file here"||t==="ou déposez le fichier ici") se(el,"ou déposez le fichier ici","or drag your file here");
     });
 
-    // Settings admin: password hash note
-    document.querySelectorAll('.fi-hint').forEach(function(el){
+    // Settings: admin password note
+    document.querySelectorAll(".fi-hint").forEach(function(el){
       var t=el.textContent.trim();
-      if(t.indexOf('automatically change')>-1||t.indexOf('automatiquement le mot')>-1){
-        if(l==='fr') el.textContent='Cette action ne change pas automatiquement le mot de passe. Elle génère uniquement le hash à intégrer dans le fichier HTML.';
-        else el.textContent='This action does not automatically change the password. It only generates the hash to be integrated into the HTML file.';
+      if(t.indexOf("automatically change")>-1||t.indexOf("automatiquement le mot")>-1){
+        if(l==="fr") el.textContent="Cette action ne change pas automatiquement le mot de passe. Elle génère uniquement le hash à intégrer dans le fichier HTML.";
+        else el.textContent="This action does not automatically change the password. It only generates the hash to be integrated into the HTML file.";
       }
     });
   }
@@ -1051,7 +1053,7 @@ document.addEventListener('DOMContentLoaded',function(){
   window.translateExtra=translateExtra;
 
   var _sl=window.setLang;
-  if(typeof _sl==='function'){
+  if(typeof _sl==="function"){
     window.setLang=function(l,btn){
       var r=_sl.apply(this,arguments);
       setTimeout(translateExtra,80);
@@ -1060,7 +1062,7 @@ document.addEventListener('DOMContentLoaded',function(){
     };
   }
   var _dl=window.doLogin;
-  if(typeof _dl==='function'){
+  if(typeof _dl==="function"){
     window.doLogin=function(){
       var r=_dl.apply(this,arguments);
       setTimeout(translateExtra,250);
@@ -1068,10 +1070,11 @@ document.addEventListener('DOMContentLoaded',function(){
       return r;
     };
   }
-  document.addEventListener('DOMContentLoaded',function(){setTimeout(translateExtra,500);});
-  window.addEventListener('load',function(){setTimeout(translateExtra,700);});
+  document.addEventListener("DOMContentLoaded",function(){setTimeout(translateExtra,500);});
+  window.addEventListener("load",function(){setTimeout(translateExtra,700);});
 })();
 </script>
+
 
 <script>
 /* PATCH v61 — hard language refresh for late-rendered connected buttons */
