@@ -2,6 +2,8 @@
 -- The FastAPI backend can also create these tables automatically via SQLAlchemy.
 create table if not exists projects (
   id bigserial primary key,
+  owner_id text default '',
+  owner_email text default '',
   title text not null,
   description text default '',
   country text default 'Cambodia',
@@ -30,6 +32,9 @@ create table if not exists projects (
   created_at timestamp default now(),
   updated_at timestamp default now()
 );
+
+alter table projects add column if not exists owner_id text default '';
+alter table projects add column if not exists owner_email text default '';
 
 create table if not exists tenders (
   id bigserial primary key,
