@@ -189,7 +189,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 
 
 @app.get("/admin/users")
-def admin_list_users(token: dict = Depends(verify_supabase_jwt)):
+def admin_list_users(token: dict = Depends(verify_app_or_jwt)):
     require_admin_token(token)
     url = f"{SUPABASE_URL}/auth/v1/admin/users"
     headers = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"}
@@ -199,7 +199,7 @@ def admin_list_users(token: dict = Depends(verify_supabase_jwt)):
 
 
 @app.post("/admin/users/{user_id}/set-role")
-def admin_set_role(user_id: str, role: str, token: dict = Depends(verify_supabase_jwt)):
+def admin_set_role(user_id: str, role: str, token: dict = Depends(verify_app_or_jwt)):
     require_admin_token(token)
     url = f"{SUPABASE_URL}/auth/v1/admin/users/{user_id}"
     headers = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"}
