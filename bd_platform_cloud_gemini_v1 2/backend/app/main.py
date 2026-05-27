@@ -1,5 +1,6 @@
 from datetime import datetime
 import os
+import requests
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -13,6 +14,7 @@ from .scrapers.rss import scrape_rss_sources
 Base.metadata.create_all(bind=engine)
 
 SCRAPER_API_KEY = os.getenv("SCRAPER_API_KEY", "").strip()
+APP_SECRET = os.getenv("APP_SECRET", "").strip()
 
 app = FastAPI(title="BD Intelligence Platform API", version="1.0-cloud-gemini-production-ready")
 
@@ -66,8 +68,14 @@ def post_tender(payload: schemas.TenderCreate, db: Session = Depends(get_db), to
     return crud.create_tender(db, payload)
 
 
+def verify_ai_access(authorization: str | None = Header(default=None), x_app_token: str | None = Header(default=None)) -> dict:
+    if APP_SECRET and x_app_token == APP_SECRET:
+        return {"sub": "app-token", "app_metadata": {"role": "admin"}}
+    return verify_supabase_jwt(authorization)
+
+
 @app.post("/ai/analyze")
-def ai_analyze(payload: schemas.AnalyzeRequest, token: dict = Depends(verify_supabase_jwt)):
+def ai_analyze(payload: schemas.AnalyzeRequest, token: dict = Depends(verify_ai_access)):
     return analyze_with_gemini(payload.title, payload.text, payload.source_url)
 
 
