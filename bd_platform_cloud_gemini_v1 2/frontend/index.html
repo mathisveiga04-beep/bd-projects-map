@@ -412,7 +412,7 @@ textarea.fi{min-height:70px;resize:vertical}
 .lang-selector{display:flex;align-items:center;gap:6px;justify-content:center;margin-bottom:22px}
 .lang-btn{padding:4px 12px;border-radius:6px;border:1.5px solid #CBD5E1;background:transparent;color:#64748B;font-size:11px;cursor:pointer;font-weight:600;transition:all .15s;font-family:'Calibri','Segoe UI',Arial,sans-serif;letter-spacing:.05em}
 .lang-btn:hover{border-color:#0052A5;color:#0052A5}
-.lang-btn.active{background:#0052A5;color:#fff;border-color:#0052A5}
+.lang-btn.active{background:#0052A5;color:#fff;border-color:#0052A5}.hdr-lang{display:flex;align-items:center;gap:4px;margin-left:2px}.hdr-lang .lang-btn{height:30px;min-width:34px;padding:0 9px;border-color:rgba(255,255,255,.28);color:#fff;background:rgba(255,255,255,.08)}.hdr-lang .lang-btn.active{background:#fff;color:var(--navy);border-color:#fff}
 .lc-footer{margin-top:22px;padding-top:16px;border-top:1px solid #E2E8F0;font-size:10px;color:#94A3B8;font-family:'Calibri','Segoe UI',Arial,sans-serif;letter-spacing:.04em}
 </style>
 </head>
@@ -476,7 +476,7 @@ textarea.fi{min-height:70px;resize:vertical}
       
     </div>
     <div class="hdr-r" style="position:relative">
-      <span id="admin-status-label" style="font-size:10px;color:rgba(255,255,255,.65);margin-right:4px">Mode exploitation uniquement</span>
+      <span id="admin-status-label" style="font-size:10px;color:rgba(255,255,255,.65);margin-right:4px">Mode exploitation uniquement</span>      <div class="hdr-lang" aria-label="Language"><button class="lang-btn" id="hdr-lang-fr" type="button" onclick="setLang('fr')">FR</button><button class="lang-btn" id="hdr-lang-en" type="button" onclick="setLang('en')">EN</button></div>
       <button class="notif-btn" onclick="toggleNotif()" id="notif-btn" title="Actions & alertes">Alertes<span class="notif-badge" id="notif-cnt" style="display:none">0</span></button>
       <div class="notif-panel" id="notif-panel"><div class="np-hdr">Actions & alertes</div><div id="notif-items"></div></div>
       <button class="btn bg" onclick="openSettings()">Réglages</button>
@@ -611,7 +611,7 @@ textarea.fi{min-height:70px;resize:vertical}
       </div>
       
       <div class="map-note">
-        Latin street labels enabled where available from map data.
+        Libellés de rue affichés en caractères latins quand disponibles.
       </div>
 
       <div class="map-legend">
@@ -5559,6 +5559,7 @@ async function loadProjectsFromSupabase(){try{if(typeof sb==='undefined'||!sb)re
   });
 })();
 </script>
+<script>/* PATCH v61 — hard language refresh for connected buttons */(function(){  function lang(){try{return(typeof currentLang==='function'?currentLang():localStorage.getItem('artelia_lang'))==='en'?'en':'fr'}catch(e){return'fr'}}  function pick(fr,en){return lang()==='en'?en:fr}  function txt(el,fr,en){if(el)el.textContent=pick(fr,en)}  function ttl(el,fr,en){if(el)el.title=pick(fr,en)}  function refreshLangButtons(){    var l=lang(),n=document.getElementById('notif-btn'),c=document.getElementById('notif-cnt');    if(n){Array.from(n.childNodes).forEach(function(x){if(x.nodeType===3)x.nodeValue=''});var lab=n.querySelector('.notif-label');if(!lab){lab=document.createElement('span');lab.className='notif-label';n.insertBefore(lab,c||null)}lab.textContent=pick('Alertes','Alerts');n.title=pick('Alertes de veille','Watch alerts')}    txt(document.getElementById('hdr-lang-fr'),'FR','FR');txt(document.getElementById('hdr-lang-en'),'EN','EN');    document.querySelectorAll('.lang-btn').forEach(function(b){b.classList.toggle('active',b.textContent.trim().toLowerCase()===l)});    document.querySelectorAll('[onclick]').forEach(function(el){var oc=el.getAttribute('onclick')||'';if(oc.includes('openSettings'))txt(el,'Réglages','Settings');else if(oc.includes('doExport'))txt(el,'Exporter','Export');else if(oc.includes('openAdd'))txt(el,'+ Ajouter','+ Add')});    var fr=['Carte','Dashboard','Suivi','Tenders','Veille','Actions'],en=['Map','Dashboard','Pipeline','Tenders','Watch','Actions'];document.querySelectorAll('.sbt').forEach(function(el,i){if(fr[i])el.textContent=l==='en'?en[i]:fr[i]});    var search=document.getElementById('search-inp');if(search)search.placeholder=pick('Rechercher un actif...','Search an asset...');    document.querySelectorAll('.mtb,#fcs .fc').forEach(function(el){var oc=el.getAttribute('onclick')||'',x=el.textContent.trim();if(oc.includes("'all'")||['All','Tous'].includes(x))txt(el,'Tous','All');else if(oc.includes("'high'"))txt(el,el.classList.contains('mtb')?'Priorité haute':'Priorité élevée','High priority');else if(oc.includes("'not_visited'"))txt(el,el.classList.contains('mtb')?'Non contactés':'À identifier',el.classList.contains('mtb')?'Not contacted':'To identify');else if(oc.includes("'contacted'"))txt(el,'Contactés','Contacted');else if(oc.includes("'med'"))txt(el,'Moyenne','Medium');else if(oc.includes("'low'"))txt(el,'Faible','Low');else if(oc.includes("'renovation'"))txt(el,'Rénovation','Renovation');else if(oc.includes("'new'"))txt(el,'Neuf','New build');else if(oc.includes("'mixed'"))txt(el,'Mixte','Mixed');else if(oc.includes("'construction'"))txt(el,'En construction','In construction');else if(oc.includes("'won'"))txt(el,'Gagné','Won');else if(oc.includes("'lost'"))txt(el,'Perdu','Lost')});    document.querySelectorAll('.map-note').forEach(function(el){el.textContent=pick('Libellés de rue affichés en caractères latins quand disponibles.','Street labels shown in Latin characters when available.')});    document.querySelectorAll('.map-ctrl-btn').forEach(function(el){var x=el.textContent.trim();if(x==='+'||x==='+ Ajouter'||x==='+ Add')ttl(el,'Ajouter un bâtiment','Add a building');else if(x==='⌖')ttl(el,'Recentrer','Recenter');else if(x==='⛶'||x==='×')ttl(el,'Plein écran / Normal','Fullscreen / Normal');else if(x==='★')ttl(el,'Brief IA hebdomadaire','Weekly AI brief')});  }  window.hardRefreshLanguage=refreshLangButtons;  document.addEventListener('DOMContentLoaded',function(){setTimeout(refreshLangButtons,300)});  window.addEventListener('load',function(){setTimeout(refreshLangButtons,500)});})();</script>
 <script>
 /* PATCH v60 — language persistence on login */
 (function(){
