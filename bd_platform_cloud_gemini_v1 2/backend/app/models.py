@@ -8,6 +8,8 @@ class Project(Base):
     __table_args__ = (UniqueConstraint("title", "source_url", name="uq_project_title_source"),)
 
     id = Column(Integer, primary_key=True, index=True)
+    owner_id = Column(String(120), default="", index=True)
+    owner_email = Column(String(255), default="")
     title = Column(String(255), nullable=False, index=True)
     description = Column(Text, default="")
     country = Column(String(80), default="Cambodia")
