@@ -913,7 +913,7 @@ setTimeout(()=>{ if(typeof wrapLanguageRenderers==='function')wrapLanguageRender
 
 
 // ── PATCH v53 — HYBRID LOCAL / HOSTED MODE ─────────────────────────────
-function setHybridWidget(message,kind){
+function bdRuntimeLang(){  try{    return (localStorage.getItem('artelia_lang')||window.LANG||window.currentLanguage||'fr')==='en'?'en':'fr';  }catch(e){return 'fr';}}function bdRuntimeText(message){  var out=String(message||'');  var pairs=[    ['● Backend configuré — test conseillé','● Backend configured — test recommended'],    ['• Backend configuré — test conseillé','• Backend configured — test recommended'],    ['● Backend connecté','● Backend connected'],    ['• Backend connecté','• Backend connected'],    ['Synchronisation backend OK','Backend synchronization OK'],    ['projets localisés','localized projects'],    ['projets non localisés','non-localized projects'],    ['Backend non testé.','Backend not tested.'],    ['Données chargées depuis PostgreSQL','Data loaded from PostgreSQL']  ];  pairs.forEach(function(p){out=out.replace(bdRuntimeLang()==='en'?p[0]:p[1],bdRuntimeLang()==='en'?p[1]:p[0]);});  return out;}function setHybridWidget(message,kind){
   var w=document.getElementById('api-status-widget');
   if(!w)return;
   w.className='api-status '+(kind||'off');
@@ -5692,6 +5692,7 @@ async function loadProjectsFromSupabase(){try{if(typeof sb==='undefined'||!sb)re
   });
 })();
 </script>
+
 <script>
 /* PATCH v60 — language persistence on login */
 (function(){
