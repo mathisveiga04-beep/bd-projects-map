@@ -186,23 +186,30 @@ def scraper_run(
 # ── Admin config ──────────────────────────────────────────────────────────────
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip() or SUPABASE_KEY
 
 
 @app.get("/admin/users")
 def admin_list_users(token: dict = Depends(verify_app_or_jwt)):
     require_admin_token(token)
+    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
+        raise HTTPException(503, "Supabase admin config missing: set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY")
     url = f"{SUPABASE_URL}/auth/v1/admin/users"
-    headers = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"}
+    headers = {"apikey": SUPABASE_SERVICE_ROLE_KEY, "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}"}
     r = requests.get(url, headers=headers, params={"page": 1, "per_page": 100})
-    r.raise_for_status()
+    if not r.ok:
+        raise HTTPException(r.status_code, "Supabase admin API refused credentials. Set SUPABASE_SERVICE_ROLE_KEY on Render.")
     return r.json()
 
 
 @app.post("/admin/users/{user_id}/set-role")
 def admin_set_role(user_id: str, role: str, token: dict = Depends(verify_app_or_jwt)):
     require_admin_token(token)
+    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
+        raise HTTPException(503, "Supabase admin config missing: set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY")
     url = f"{SUPABASE_URL}/auth/v1/admin/users/{user_id}"
-    headers = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"}
+    headers = {"apikey": SUPABASE_SERVICE_ROLE_KEY, "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}", "Content-Type": "application/json"}
     r = requests.put(url, headers=headers, json={"app_metadata": {"role": role}})
-    r.raise_for_status()
+    if not r.ok:
+        raise HTTPException(r.status_code, "Supabase admin API refused credentials. Set SUPABASE_SERVICE_ROLE_KEY on Render.")
     return {"success": True, "user_id": user_id, "role": role}
