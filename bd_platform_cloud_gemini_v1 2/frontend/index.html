@@ -5547,6 +5547,39 @@ async function loadProjectsFromSupabase(){try{if(typeof sb==='undefined'||!sb)re
   });
 })();
 </script>
+<script>
+/* PATCH v60 — language persistence on login */
+(function(){
+  function applyLang(lang){
+    try { localStorage.setItem('artelia_lang', lang); } catch(e){}
+    window.LANG = lang;
+    window.currentLanguage = lang;
+    if(typeof window.applyI18n === 'function'){
+      try { window.applyI18n(lang); } catch(e){}
+    }
+  }
+  window.setLang = function(lang, btn){
+    applyLang(lang);
+    document.querySelectorAll('.lang-btn').forEach(function(b){
+      b.classList.toggle('active', (b.getAttribute('data-lang')||b.textContent.trim().toLowerCase()) === lang);
+    });
+    return false;
+  };
+  var _dl = window.doLogin;
+  window.doLogin = function(){
+    var r = _dl ? _dl.apply(this, arguments) : undefined;
+    setTimeout(function(){
+      applyLang(localStorage.getItem('artelia_lang') || 'fr');
+    }, 150);
+    return r;
+  };
+  document.addEventListener('DOMContentLoaded', function(){
+    setTimeout(function(){
+      applyLang(localStorage.getItem('artelia_lang') || 'fr');
+    }, 300);
+  });
+})();
+</script>
 </body>
 
 </html>
