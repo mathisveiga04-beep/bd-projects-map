@@ -1,21 +1,22 @@
-name: Daily Scraper
+name: Opportunity Scraper
 
 on:
   schedule:
-    # Every day at 06:00 UTC
-    - cron: '0 6 * * *'
+    # Every 4 hours. GitHub Actions schedules are UTC.
+    - cron: '0 */4 * * *'
   workflow_dispatch:  # allow manual trigger
 
 jobs:
   run-scraper:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger scraper on Render
+      - name: Trigger scraper on Render every 4 hours
         run: |
           HTTP_STATUS=$(curl -s -o /tmp/response.json -w "%{http_code}" \
             -X POST https://bd-projects-map-akh.onrender.com/scraper/run \
             -H "X-API-Key: ${{ secrets.SCRAPER_API_KEY }}" \
             -H "Content-Type: application/json" \
+            --data '{"source":"all","dry_run":false}' \
             --max-time 120)
           echo "HTTP status: $HTTP_STATUS"
           cat /tmp/response.json
