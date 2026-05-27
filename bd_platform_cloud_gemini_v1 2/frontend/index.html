@@ -412,7 +412,11 @@ textarea.fi{min-height:70px;resize:vertical}
 .lang-selector{display:flex;align-items:center;gap:6px;justify-content:center;margin-bottom:22px}
 .lang-btn{padding:4px 12px;border-radius:6px;border:1.5px solid #CBD5E1;background:transparent;color:#64748B;font-size:11px;cursor:pointer;font-weight:600;transition:all .15s;font-family:'Calibri','Segoe UI',Arial,sans-serif;letter-spacing:.05em}
 .lang-btn:hover{border-color:#0052A5;color:#0052A5}
-.lang-btn.active{background:#0052A5;color:#fff;border-color:#0052A5}.hdr-lang{display:flex;align-items:center;gap:4px;margin-left:2px}.hdr-lang .lang-btn{height:30px;min-width:34px;padding:0 9px;border-color:rgba(255,255,255,.28);color:#fff;background:rgba(255,255,255,.08)}.hdr-lang .lang-btn.active{background:#fff;color:var(--navy);border-color:#fff}
+.lang-btn.active{background:#0052A5;color:#fff;border-color:#0052A5}
+.hdr-lang{display:flex;align-items:center;gap:4px;margin-right:4px}
+.hdr-lang .lang-btn{padding:3px 7px;border-color:rgba(255,255,255,.28);color:rgba(255,255,255,.75);background:rgba(255,255,255,.08);font-size:10px}
+.hdr-lang .lang-btn:hover{border-color:rgba(255,255,255,.6);color:#fff}
+.hdr-lang .lang-btn.active{background:#fff;color:var(--navy);border-color:#fff}
 .lc-footer{margin-top:22px;padding-top:16px;border-top:1px solid #E2E8F0;font-size:10px;color:#94A3B8;font-family:'Calibri','Segoe UI',Arial,sans-serif;letter-spacing:.04em}
 </style>
 </head>
@@ -445,12 +449,12 @@ textarea.fi{min-height:70px;resize:vertical}
     <div id="auth-signup-form" style="display:none;">
       <input type="email" class="lc-inp" id="signup-email" placeholder="Email" onkeydown="if(event.key==='Enter')doSignup()">
       <input type="password" class="lc-inp" id="signup-pwd" placeholder="Mot de passe (min. 6 caractères)" onkeydown="if(event.key==='Enter')doSignup()">
-      <button class="lc-btn" onclick="doSignup()">Créer mon compte</button>
+      <button class="lc-btn" id="signup-btn" onclick="doSignup()">Créer mon compte</button>
       <div class="lc-err" id="signup-msg" style="display:none;"></div>
     </div>
     <div id="auth-reset-form" style="display:none;">
       <input type="email" class="lc-inp" id="reset-email" placeholder="Email" onkeydown="if(event.key==='Enter')doResetPassword()">
-      <button class="lc-btn" onclick="doResetPassword()">Envoyer le lien de réinitialisation</button>
+      <button class="lc-btn" id="reset-btn" onclick="doResetPassword()">Envoyer le lien de réinitialisation</button>
       <div class="lc-err" id="reset-msg" style="display:none;"></div>
     </div>
     <div class="lc-err" id="login-err">Mot de passe incorrect.</div>
@@ -476,7 +480,11 @@ textarea.fi{min-height:70px;resize:vertical}
       
     </div>
     <div class="hdr-r" style="position:relative">
-      <span id="admin-status-label" style="font-size:10px;color:rgba(255,255,255,.65);margin-right:4px">Mode exploitation uniquement</span>      <div class="hdr-lang" aria-label="Language"><button class="lang-btn" id="hdr-lang-fr" type="button" onclick="setLang('fr')">FR</button><button class="lang-btn" id="hdr-lang-en" type="button" onclick="setLang('en')">EN</button></div>
+      <span id="admin-status-label" style="font-size:10px;color:rgba(255,255,255,.65);margin-right:4px">Mode exploitation uniquement</span>
+      <div class="hdr-lang">
+        <button class="lang-btn active" data-lang="fr" onclick="setLang('fr',this)">FR</button>
+        <button class="lang-btn" data-lang="en" onclick="setLang('en',this)">EN</button>
+      </div>
       <button class="notif-btn" onclick="toggleNotif()" id="notif-btn" title="Actions & alertes">Alertes<span class="notif-badge" id="notif-cnt" style="display:none">0</span></button>
       <div class="notif-panel" id="notif-panel"><div class="np-hdr">Actions & alertes</div><div id="notif-items"></div></div>
       <button class="btn bg" onclick="openSettings()">Réglages</button>
@@ -710,9 +718,9 @@ textarea.fi{min-height:70px;resize:vertical}
         
       </div>
       <div class="stab2-panel on" id="st-ia">
-        <label class="fl" style="display:block;margin-bottom:4px">Clé API IA <span class="mode-badge local">optionnel</span></label>
-        <input class="fi" id="api-input" type="password" placeholder="sk-ant-api03-...">
-        <div class="fi-hint">Stockée localement. Active l'analyse IA par bâtiment, les messages LinkedIn et le brief hebdomadaire. Claude reste compatible ; le backend pourra plus tard router vers Claude, OpenAI ou Gemini sans changer l'interface.</div>
+        <label class="fl" style="display:block;margin-bottom:4px">IA Gemini <span class="mode-badge hosted">backend</span></label>
+        <input class="fi" id="api-input" type="password" placeholder="Gemini est configuré côté Render" disabled>
+        <div class="fi-hint">L'IA passe par le backend Render avec Gemini en fournisseur principal. Aucune clé payante n'est demandée dans le navigateur ; si Gemini est indisponible, le backend utilise un fallback local gratuit.</div>
         <div class="hybrid-note"><strong>Mode hybride v53.</strong> Sans backend, le fichier fonctionne en local dans ce navigateur. Avec backend connecté, les projets, tenders et opportunités peuvent être synchronisés avec PostgreSQL et alimentés par scraper.</div>
         <div style="margin-top:14px"><label class="fl" style="display:block;margin-bottom:4px">Nom de l'équipe</label><input class="fi" id="team-name" placeholder="ex. Artelia Cambodia — BD Team" value="Artelia Cambodia"></div>
         <div class="api-sync-box">
@@ -943,7 +951,7 @@ async function triggerRemoteScraper(){
   try{
     var ctrl=new AbortController();
     var tm=setTimeout(function(){ctrl.abort();},12000);
-    var r=await fetch(base+'/scraper/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({source:null,dry_run:false}),signal:ctrl.signal});
+    var r=await fetch(base+'/scraper/run',{method:'POST',headers:await aiAuthHeaders(),body:JSON.stringify({source:null,dry_run:false}),signal:ctrl.signal});
     clearTimeout(tm);
     if(!r.ok)throw new Error('HTTP '+r.status);
     setHybridWidget('● Scraper lancé — synchronisation automatique ensuite','ok');
@@ -963,13 +971,112 @@ document.addEventListener('DOMContentLoaded',function(){
 
 </script>
 <script>
+/* PATCH v61 — hard language refresh for late-rendered connected buttons */
+(function(){
+  function lang(){
+    try{
+      if(typeof window.currentLang === 'function') return window.currentLang() === 'en' ? 'en' : 'fr';
+      return (window.currentLanguage || localStorage.getItem('artelia_lang') || 'fr') === 'en' ? 'en' : 'fr';
+    }catch(e){return 'fr';}
+  }
+  function txt(fr,en){return lang()==='en'?en:fr;}
+  function setText(el, fr, en){if(el)el.textContent=txt(fr,en);}
+  function setTitle(el, fr, en){if(el)el.title=txt(fr,en);}
+  function hardRefreshLanguage(){
+    var l=lang();
+    var notif=document.getElementById('notif-btn');
+    if(notif){
+      var badge=document.getElementById('notif-cnt');
+      Array.from(notif.childNodes).forEach(function(n){if(n.nodeType===3)n.nodeValue='';});
+      var label=notif.querySelector('.notif-label');
+      if(!label){label=document.createElement('span');label.className='notif-label';notif.insertBefore(label,badge||null);}
+      label.textContent=txt('Alertes','Alerts');
+      notif.title=txt('Alertes de veille','Watch alerts');
+    }
+    document.querySelectorAll('[onclick]').forEach(function(el){
+      var oc=el.getAttribute('onclick')||'';
+      if(oc.indexOf('openSettings')>-1)setText(el,'Réglages','Settings');
+      else if(oc.indexOf('doExport')>-1)setText(el,'Exporter','Export');
+      else if(oc.indexOf('openAdd')>-1)setText(el,'+ Ajouter','+ Add');
+      else if(oc.indexOf('generateBrief')>-1)setTitle(el,'Brief IA hebdomadaire','Weekly AI brief');
+    });
+    var tabs=['Carte','Dashboard','Suivi','Tenders','Veille','Actions'];
+    var tabsEn=['Map','Dashboard','Pipeline','Tenders','Watch','Actions'];
+    document.querySelectorAll('.sbt').forEach(function(el,i){if(tabs[i])el.textContent=l==='en'?tabsEn[i]:tabs[i];});
+    var search=document.getElementById('search-inp');
+    if(search)search.placeholder=txt('Rechercher un actif...','Search an asset...');
+    document.querySelectorAll('.mtb').forEach(function(el){
+      var oc=el.getAttribute('onclick')||'';
+      var label=el.textContent.trim();
+      if(oc.indexOf("'all'")>-1||label==='All'||label==='Tous')setText(el,'Tous','All');
+      else if(oc.indexOf("'high'")>-1||label==='High priority'||label==='Priorité haute')setText(el,'Priorité haute','High priority');
+      else if(oc.indexOf("'not_visited'")>-1||label==='Not contacted'||label==='Non contactés')setText(el,'Non contactés','Not contacted');
+      else if(oc.indexOf("'contacted'")>-1||label==='Contacted'||label==='Contactés')setText(el,'Contactés','Contacted');
+      else if(oc.indexOf("'med'")>-1||label==='Medium'||label==='Moyenne')setText(el,'Moyenne','Medium');
+      else if(oc.indexOf("'low'")>-1||label==='Low'||label==='Faible')setText(el,'Faible','Low');
+    });
+    document.querySelectorAll('#fcs .fc').forEach(function(el){
+      var oc=el.getAttribute('onclick')||'';
+      var label=el.textContent.trim();
+      if(oc.indexOf("'all'")>-1||label==='All'||label==='Tous')setText(el,'Tous','All');
+      else if(oc.indexOf("'renovation'")>-1||label==='Renovation'||label==='Rénovation')setText(el,'Rénovation','Renovation');
+      else if(oc.indexOf("'new'")>-1||label==='New build'||label==='Neuf')setText(el,'Neuf','New build');
+      else if(oc.indexOf("'mixed'")>-1||label==='Mixed'||label==='Mixte')setText(el,'Mixte','Mixed');
+      else if(oc.indexOf("'not_visited'")>-1||label==='To identify'||label==='À identifier')setText(el,'À identifier','To identify');
+      else if(oc.indexOf("'high'")>-1||label==='High priority'||label==='Priorité élevée')setText(el,'Priorité élevée','High priority');
+      else if(oc.indexOf("'construction'")>-1||label==='In construction'||label==='En construction')setText(el,'En construction','In construction');
+      else if(oc.indexOf("'design'")>-1||label==='Design')setText(el,'Design','Design');
+      else if(oc.indexOf("'tender'")>-1||label==='Tender')setText(el,'Tender','Tender');
+      else if(oc.indexOf("'won'")>-1||label==='Won'||label==='Gagné')setText(el,'Gagné','Won');
+      else if(oc.indexOf("'lost'")>-1||label==='Lost'||label==='Perdu')setText(el,'Perdu','Lost');
+    });
+    var note=document.querySelector('.map-note');
+    if(note)note.textContent=txt('Libellés de rue affichés en caractères latins quand disponibles.','Street labels shown in Latin characters when available.');
+    var heat=document.getElementById('heat-btn');
+    if(heat)heat.textContent=window.__heatOn?txt('Heatmap off','Heatmap off'):txt('Heatmap','Heatmap');
+    document.querySelectorAll('.map-ctrl-btn').forEach(function(el){
+      var label=el.textContent.trim();
+      if(label==='+'||label==='+ Ajouter'||label==='+ Add')setTitle(el,'Ajouter un bâtiment','Add a building');
+      if(el.textContent==='⌖')setTitle(el,'Recentrer','Recenter');
+      if(el.textContent==='⛶'||el.textContent==='×')setTitle(el,'Plein écran / Normal','Fullscreen / Normal');
+      if(el.textContent==='★')setTitle(el,'Brief IA hebdomadaire','Weekly AI brief');
+    });
+    if(typeof window.updateNotifs==='function'){
+      try{window.updateNotifs();}catch(e){}
+    }
+  }
+  window.hardRefreshLanguage=hardRefreshLanguage;
+  var previousSetLang=window.setLang;
+  if(typeof previousSetLang==='function'){
+    window.setLang=function(lang, btn){
+      var result=previousSetLang.apply(this, arguments);
+      setTimeout(hardRefreshLanguage, 40);
+      setTimeout(hardRefreshLanguage, 250);
+      return result;
+    };
+  }
+  var previousLogin=window.doLogin;
+  if(typeof previousLogin==='function'){
+    window.doLogin=function(){
+      var result=previousLogin.apply(this, arguments);
+      setTimeout(hardRefreshLanguage, 150);
+      setTimeout(hardRefreshLanguage, 650);
+      return result;
+    };
+  }
+  document.addEventListener('DOMContentLoaded',function(){setTimeout(hardRefreshLanguage,300);});
+  window.addEventListener('load',function(){setTimeout(hardRefreshLanguage,500);});
+})();
+</script>
+<script>
 
 /* ---------- LANGUAGE SYSTEM v2 ---------- */
 const LANG_PACK = {
   fr: {
     "Password":"Mot de passe","Login":"Connexion","Incorrect password.":"Mot de passe incorrect.",
-    "Dashboard":"Dashboard","Assets":"Actifs","Tracking":"Suivi","Tenders":"Tenders","Market Watch":"Veille","Actions":"Actions",
-    "Settings":"Réglages","Export":"Exporter","Admin":"Admin","Search...":"Rechercher...",
+    "Create account":"Créer un compte","Forgot password":"Mot de passe oublié","Create my account":"Créer mon compte","Send reset link":"Envoyer le lien de réinitialisation",
+    "Dashboard":"Dashboard","Assets":"Actifs","Tracking":"Suivi","Tenders":"Tenders","Market Watch":"Veille","Actions":"Actions","Map":"Carte",
+    "Settings":"Réglages","Export":"Exporter","Admin":"Admin","Search...":"Rechercher...","Alerts":"Alertes","+ Add":"+ Ajouter",
     "All":"Tous","Renovation":"Rénovation","New build":"Neuf","Mixed":"Mixte","To identify":"À identifier","High priority":"Priorité élevée",
     "All cities":"Toutes les villes","View details":"Voir les détails","Edit":"Modifier","Delete":"Supprimer","Save":"Enregistrer","Cancel":"Annuler","Close":"Fermer",
     "Add watch opportunity":"Ajouter une opportunité de veille","Project watch":"Veille projets","Monitored Artelia scopes":"Scopes Artelia surveillés","Monitored sources":"Sources suivies",
@@ -978,8 +1085,9 @@ const LANG_PACK = {
   },
   en: {
     "Mot de passe":"Password","Connexion":"Login","Mot de passe incorrect.":"Incorrect password.",
-    "Dashboard":"Dashboard","Actifs":"Assets","Suivi":"Tracking","Tenders":"Tenders","Veille":"Market Watch","Actions":"Actions",
-    "Réglages":"Settings","Exporter":"Export","Admin":"Admin","Rechercher...":"Search...",
+    "Créer un compte":"Create account","Mot de passe oublié":"Forgot password","Créer mon compte":"Create my account","Envoyer le lien de réinitialisation":"Send reset link",
+    "Dashboard":"Dashboard","Actifs":"Assets","Suivi":"Tracking","Tenders":"Tenders","Veille":"Market Watch","Actions":"Actions","Carte":"Map",
+    "Réglages":"Settings","Exporter":"Export","Admin":"Admin","Rechercher...":"Search...","Alertes":"Alerts","+ Ajouter":"+ Add",
     "Tous":"All","Rénovation":"Renovation","Neuf":"New build","Mixte":"Mixed","À identifier":"To identify","Priorité élevée":"High priority",
     "Toutes les villes":"All cities","Voir les détails":"View details","Modifier":"Edit","Supprimer":"Delete","Enregistrer":"Save","Annuler":"Cancel","Fermer":"Close",
     "Ajouter une opportunité de veille":"Add watch opportunity","Veille projets":"Project watch","Scopes Artelia surveillés":"Monitored Artelia scopes","Sources suivies":"Monitored sources",
@@ -1022,7 +1130,10 @@ function translateInterface(){
   const ph = {
     'pwd-input': {'fr':'Mot de passe','en':'Password'},
     'search-inp': {'fr':'Rechercher...','en':'Search...'},
-    'admin-pwd': {'fr':'Mot de passe administrateur','en':'Administrator password'}
+    'admin-pwd': {'fr':'Mot de passe administrateur','en':'Administrator password'},
+    'signup-email': {'fr':'Email','en':'Email'},
+    'signup-pwd': {'fr':'Mot de passe (min. 6 caractères)','en':'Password (min. 6 characters)'},
+    'reset-email': {'fr':'Email','en':'Email'}
   };
   Object.keys(ph).forEach(id=>{
     const el=document.getElementById(id);
@@ -1030,7 +1141,12 @@ function translateInterface(){
   });
 
   const fixed = {
+    'tab-login': {'fr':'Connexion','en':'Login'},
+    'tab-signup': {'fr':'Créer un compte','en':'Create account'},
+    'tab-reset': {'fr':'Mot de passe oublié','en':'Forgot password'},
     'login-btn': {'fr':'Connexion','en':'Login'},
+    'signup-btn': {'fr':'Créer mon compte','en':'Create my account'},
+    'reset-btn': {'fr':'Envoyer le lien de réinitialisation','en':'Send reset link'},
     'login-err': {'fr':'Mot de passe incorrect.','en':'Incorrect password.'},
     'admin-status-label': {'fr':'Mode exploitation uniquement','en':'Operation mode only'}
   };
@@ -1056,7 +1172,7 @@ function translateInterface(){
   }
 
   document.querySelectorAll('.map-note').forEach(el=>{
-    el.textContent = {fr:'Street labels shown in Latin characters when available.', en:'Street labels shown in Latin characters when available.'}[lang];
+    el.textContent = {fr:'Libellés de rue affichés en caractères latins quand disponibles.', en:'Street labels shown in Latin characters when available.'}[lang];
   });
 }
 
@@ -1305,7 +1421,7 @@ function load(){
   const a=localStorage.getItem('artelia_bd_v2');bdActions=a?JSON.parse(a):[];
   const t=localStorage.getItem('artelia_td_v2');tenders=t?JSON.parse(t):TENDER_PRESETS;
   const w=localStorage.getItem('artelia_watch_v2');watchItems=w?JSON.parse(w):WATCH_PRESETS;
-  const k=localStorage.getItem('artelia_apikey');if(k)document.getElementById('api-input').value=k;
+  const apiInput=document.getElementById('api-input');if(apiInput)apiInput.value='Gemini via Render';
   const tn=localStorage.getItem('artelia_team');if(tn)document.getElementById('team-name').value=tn;
   const bu=localStorage.getItem('bd_backend_url');if(bu&&document.getElementById('backend-url'))document.getElementById('backend-url').value=bu;
 }
@@ -1866,12 +1982,12 @@ function toggleLeadNotif(){
 function alertProjectRows(){
   const rows=[];
   (relevantLeads ? relevantLeads() : []).forEach(w=>{
-    rows.push({kind:'watch', id:w.id, title:w.title, source:w.source||'Source à qualifier', zone:w.zone||'Zone non précisée', priority:w.fit||'med', scope:w.scope||'Scope à qualifier', link:w.link||'', frequency:w.frequency||'Weekly'});
+    rows.push({kind:'watch', id:w.id, title:w.title, source:w.source||'Source à qualifier', zone:w.zone||'Zone non précisée', priority:w.fit||'med', scope:w.scope||'Scope à qualifier', link:w.link||'', frequency:w.frequency||'Weekly', isNew:!!w.isNew});
   });
   (tenders||[]).filter(t=>t.fit==='high'||t.fit==='med').forEach(t=>{
     rows.push({kind:'tender', id:t.id, title:t.name, source:t.funder||'Bailleur', zone:t.sector||'Secteur', priority:t.fit||'med', scope:t.roles||'Scope à préciser', link:t.link||'', frequency:'Weekly'});
   });
-  return rows;
+  return rows.sort((a,b)=>(b.isNew?1:0)-(a.isNew?1:0));
 }
 function alertActionRows(){
   const today=new Date();today.setHours(0,0,0,0);
@@ -1899,7 +2015,7 @@ function updateNotifs(){
     <div style="padding:9px 14px 6px;font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-weight:700;border-bottom:1px solid var(--border)">Veille / appels d\'offres / projets non localisés</div>
     ${leads.map(l=>`
       <div class="notif-item lead-alert" onclick="openWatchDetail(${l.id});document.getElementById('notif-panel').classList.remove('on')">
-        <div class="ni-t">${l.title}</div>
+        <div class="ni-t">${l.isNew?'<span style="display:inline-block;margin-right:6px;padding:1px 6px;border-radius:999px;background:var(--red-l);color:var(--red);font-size:9px;font-weight:700">'+((typeof currentLang==='function'&&currentLang()==='en')?'NEW':'NOUVEAU')+'</span>':''}${l.title}</div>
         <div class="ni-m">${l.source} · ${l.zone} · ${l.priority==='high'?'Priorité élevée':l.priority==='med'?'Priorité moyenne':'Veille simple'}</div>
         <div class="ni-m" style="color:var(--blue)">${l.scope}</div>
         ${l.link?`<div class="ni-m" style="color:var(--purple)">Source / appel d\'offre disponible dans le détail</div>`:''}
@@ -1909,7 +2025,7 @@ function updateNotifs(){
     ${actions.map(a=>`
       <div class="notif-item ${a.isOverdue?'ni-overdue':a.isToday?'ni-today':''}" ${a.buildingId?`onclick="openDP(${a.buildingId});document.getElementById('notif-panel').classList.remove('on')"`:''}>
         <div class="ni-t">${a.desc}</div>
-        <div class="ni-m">${a.type}${a.date?' · '+new Date(a.date).toLocaleDateString(currentLang==='en'?'en-US':'fr-FR'):''}${a.isOverdue?' — EN RETARD':a.isToday?' — AUJOURD\'HUI':' — DEMAIN'}</div>
+        <div class="ni-m">${a.type}${a.date?' · '+new Date(a.date).toLocaleDateString((typeof currentLang==='function'&&currentLang()==='en')?'en-US':'fr-FR'):''}${a.isOverdue?' — EN RETARD':a.isToday?' — AUJOURD\'HUI':' — DEMAIN'}</div>
         ${a.building?`<div class="ni-m" style="color:var(--blue)">${a.building}</div>`:''}
       </div>`).join('')}`:'';
   items.innerHTML=leadHtml+actionHtml;
@@ -2175,15 +2291,31 @@ function inferScopes(type,svc){
 // 
 // AI — ANALYSE + LINKEDIN
 // 
-function apiKey(){return localStorage.getItem('artelia_apikey')||'';}
-async function callClaude(prompt,maxTok=450){
-  const key=apiKey();if(!key)return null;
-  const r=await fetch('https://api.anthropic.com/v1/messages',{
+async function aiAuthHeaders(){
+  var headers={'Content-Type':'application/json'};
+  try{
+    var sess = (typeof supabase !== 'undefined' && supabase && supabase.auth) ? (await supabase.auth.getSession()).data.session : null;
+    var token = sess ? sess.access_token : null;
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+    else {
+      var appToken = sessionStorage.getItem('artelia_app_token') || '';
+      if (appToken) headers['X-App-Token'] = appToken;
+    }
+  }catch(_){
+    var fallbackToken = sessionStorage.getItem('artelia_app_token') || '';
+    if (fallbackToken) headers['X-App-Token'] = fallbackToken;
+  }
+  return headers;
+}
+async function callGemini(prompt,maxTok=700,mode='general'){
+  const r=await fetch(backendBase()+'/ai/generate',{
     method:'POST',
-    headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-    body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:maxTok,messages:[{role:'user',content:prompt}]})
+    headers:await aiAuthHeaders(),
+    body:JSON.stringify({prompt:prompt,max_tokens:maxTok,mode:mode})
   });
-  const d=await r.json();return d.content?.[0]?.text||null;
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  const d=await r.json();
+  return d.text||null;
 }
 async function aiAnalyze(item) {
   // Create or reuse modal
@@ -2204,16 +2336,8 @@ async function aiAnalyze(item) {
   var sourceUrl = item.source_url || item.url || '';
   body.innerHTML = '<div style="text-align:center;padding:32px;color:#94a3b8">⏳ Analyse en cours avec Gemini...</div>';
   try {
-    var sess = supabase && supabase.auth ? (await supabase.auth.getSession()).data.session : null;
-    var token = sess ? sess.access_token : null;
-    var headers = {'Content-Type':'application/json'};
-    if (token) headers['Authorization'] = 'Bearer ' + token;
-    else {
-      var appToken = sessionStorage.getItem('artelia_app_token') || '';
-      if (appToken) headers['X-App-Token'] = appToken;
-    }
-    var r = await fetch('https://bd-projects-map-akh.onrender.com/ai/analyze', {
-      method:'POST', headers:headers,
+    var r = await fetch(backendBase()+'/ai/analyze', {
+      method:'POST', headers:await aiAuthHeaders(),
       body: JSON.stringify({title:title, text:text.slice(0,4000), source_url:sourceUrl})
     });
     if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -2258,11 +2382,10 @@ async function aiAnalyze(item) {
 }
 async function genLinkedIn(){
   const b=buildings.find(x=>x.id===currentId);if(!b)return;
-  if(!apiKey()){toast(t('toast.api'));openSettings();return;}
   const btn=document.getElementById('li-btn');btn.innerHTML='<span class="spin"></span>';
   try{
     const type=b.contact?`au ${b.contact}`:'au facility manager ou property manager';
-    const txt=await callClaude(`Rédige un message LinkedIn court et percutant d'Artelia Cambodia ${type} du bâtiment "${b.name}" (${b.type}, ${b.zone}, ${b.year||'?'}). Objectif : obtenir un premier rendez-vous pour présenter une expertise en ${b.services||'rénovation technique et efficacité énergétique'}. Ton professionnel mais humain. 4-5 lignes max. Langue: française. Commence directement par le message sans preamble.`);
+    const txt=await callGemini(`Rédige un message LinkedIn court et percutant d'Artelia Cambodia ${type} du bâtiment "${b.name}" (${b.type}, ${b.zone}, ${b.year||'?'}). Objectif : obtenir un premier rendez-vous pour présenter une expertise en ${b.services||'rénovation technique et efficacité énergétique'}. Ton professionnel mais humain. 4-5 lignes max. Langue: française. Commence directement par le message sans preamble.`,450,'linkedin');
     if(txt){b.liCache=txt;save();renderDPBody(b);toast(t('toast.li_done'));}
   }catch(e){toast('Erreur API: '+e.message);}
   btn.innerHTML='Contact';
@@ -2270,7 +2393,6 @@ async function genLinkedIn(){
 
 // Weekly Brief
 async function generateBrief(){
-  if(!apiKey()){toast(t('toast.api'));openSettings();closeMo('mo-brief');return;}
   const btn=document.getElementById('brief-btn');btn.innerHTML='<span class="spin"></span> Génération...';
   const today=new Date();today.setHours(0,0,0,0);
   const overdue=bdActions.filter(a=>a.date&&new Date(a.date)<today);
@@ -2278,7 +2400,7 @@ async function generateBrief(){
   const hot=buildings.filter(b=>b.pot==='high'&&b.status==='not_visited').slice(0,5);
   const activePipe=buildings.filter(b=>['contacted','meeting','proposal'].includes(b.status));
   try{
-    const txt=await callClaude(`Tu es le directeur BD d'Artelia Cambodia. Génère un brief hebdomadaire BD en français, structuré, pour l'équipe. Inclus : (1) TOP 3 actions prioritaires cette semaine, (2) analyse du pipeline actuel, (3) 2-3 actifs à contacter en urgence, (4) recommandations stratégiques pour les 30 prochains jours. Données : ${buildings.length} actifs mappés | Suivi actif: ${activePipe.map(b=>b.name).join(', ')||'aucun'} | Top opportunités: ${top5.map(b=>b.name).join(', ')} | Priorité haute non contactés: ${hot.map(b=>b.name).join(', ')||'aucun'} | Actions en retard: ${overdue.map(a=>a.desc).join(', ')||'aucune'} | Tenders actifs: ${tenders.filter(t=>t.fit==='high').length} à fort potentiel. Sois concret, actionnable, 200 mots max.`,700);
+    const txt=await callGemini(`Tu es le directeur BD d'Artelia Cambodia. Génère un brief hebdomadaire BD en français, structuré, pour l'équipe. Inclus : (1) TOP 3 actions prioritaires cette semaine, (2) analyse du pipeline actuel, (3) 2-3 actifs à contacter en urgence, (4) recommandations stratégiques pour les 30 prochains jours. Données : ${buildings.length} actifs mappés | Suivi actif: ${activePipe.map(b=>b.name).join(', ')||'aucun'} | Top opportunités: ${top5.map(b=>b.name).join(', ')} | Priorité haute non contactés: ${hot.map(b=>b.name).join(', ')||'aucun'} | Actions en retard: ${overdue.map(a=>a.desc).join(', ')||'aucune'} | Tenders actifs: ${tenders.filter(t=>t.fit==='high').length} à fort potentiel. Sois concret, actionnable, 200 mots max.`,700,'brief');
     document.getElementById('brief-content').innerHTML=`<div class="brief-txt">${txt||'Génération échouée.'}</div>`;
     window._briefTxt=txt;
   }catch(e){document.getElementById('brief-content').innerHTML=`<div style="color:var(--red);font-size:12px">Erreur: ${e.message}</div>`;}
@@ -2736,7 +2858,6 @@ function clearAllOperationalData(){
   localStorage.removeItem('artelia_bd_v2');
   localStorage.removeItem('artelia_td_v2');
   localStorage.removeItem('artelia_watch_v2');
-  localStorage.removeItem('artelia_apikey');
   localStorage.removeItem('artelia_team');
   toast('Données locales supprimées');
   setTimeout(()=>location.reload(),700);
@@ -2783,7 +2904,6 @@ function stTab(id,el){
   if(id==='admin')refreshAdminState();
 }
 function saveSettings(){
-  const k=document.getElementById('api-input').value.trim();if(k)localStorage.setItem('artelia_apikey',k);
   const tn=document.getElementById('team-name').value.trim();if(tn)localStorage.setItem('artelia_team',tn);
   const bu=document.getElementById('backend-url')?document.getElementById('backend-url').value.trim():'';if(bu)localStorage.setItem('bd_backend_url',bu.replace(/\/$/,''));
   closeMo('mo-settings');toast('Réglages sauvegardés OK');
@@ -2904,6 +3024,12 @@ function projectFromApi(p){
   };
 }
 function nonLocalizedProjectToWatch(p){
+  const apiId=String(p.id||'');
+  let isNew=false;
+  try{
+    const seen=JSON.parse(localStorage.getItem('bd_seen_backend_projects')||'[]').map(String);
+    isNew=apiId && !seen.includes(apiId);
+  }catch(e){}
   return {
     id:2000000+Number(p.id||Date.now()),
     apiId:p.id,
@@ -2917,6 +3043,8 @@ function nonLocalizedProjectToWatch(p){
     lat:null,lng:null,
     fit:p.priority==='high'||p.priority==='critical'?'high':(p.priority==='low'?'low':'med'),
     frequency:'Backend sync',
+    isNew:isNew,
+    detectedAt:p.created_at||p.updated_at||new Date().toISOString(),
     scope:p.sector||p.project_type||'Scope to qualify',
     actions:'Review source, qualify opportunity, assign responsible person.',
     link:'',
@@ -2973,6 +3101,10 @@ async function apiPull(silent){
   if(nonlocalized.length)watchItems=[...WATCH_PRESETS.filter(w=>w.sourceType!=='Backend non-localized project'),...nonlocalized];
   if(tendersApi&&tendersApi.length)tenders=tendersApi.map(tenderFromApi);
   save();
+  try{
+    const seenIds=(projectsApi||[]).map(p=>String(p.id)).filter(Boolean);
+    localStorage.setItem('bd_seen_backend_projects',JSON.stringify(seenIds));
+  }catch(e){}
   refreshAppViews();
   const msg='Synchronisation backend OK : '+localized.length+' projets localisés, '+nonlocalized.length+' projets non localisés, '+(tendersApi||[]).length+' tenders.';
   setApiStatus(msg,'ok');
@@ -3084,7 +3216,7 @@ var TR = {
     'dp.floors':'Étages','dp.budget':'Budget estimé','dp.score':'Priorité',
     'dp.priority':'Priorité','dp.pipeline':'Statut pipeline',
     'dp.contact':'Contact identifié','dp.competitor':'Concurrent actif',
-    'dp.ai_analysis':'Analyse Claude IA',
+    'dp.ai_analysis':'Analyse Gemini IA',
     'dp.linkedin_msg':'Message d\'approche LinkedIn',
     'dp.scopes':'Scopes Artelia recommandés',
     'dp.notes':'Notes terrain','dp.activity':'Journal d\'activité',
@@ -3160,7 +3292,7 @@ var TR = {
     'dp.floors':'Floors','dp.budget':'Est. budget','dp.score':'Priority',
     'dp.priority':'Priority','dp.pipeline':'Pipeline status',
     'dp.contact':'Identified contact','dp.competitor':'Active competitor',
-    'dp.ai_analysis':'Claude AI Analysis',
+    'dp.ai_analysis':'Gemini AI Analysis',
     'dp.linkedin_msg':'LinkedIn approach message',
     'dp.scopes':'Recommended Artelia scopes',
     'dp.notes':'Field notes','dp.activity':'Activity log',
@@ -3434,7 +3566,7 @@ document.querySelectorAll('.lang-btn').forEach(function(b){if(b.getAttribute('on
     'ex. Phnom Penh, Kampot, Battambang':'e.g. Phnom Penh, Kampot, Battambang','ex. BKK1, Riverside, city center':'e.g. BKK1, Riverside, city center',
     'Les champs marqués * sont nécessaires pour que l’équipe puisse qualifier le ping. Le ping sera visible dans la veille et sur la carte si les coordonnées sont renseignées.':'Fields marked * are required so the team can qualify the ping. The ping will appear in the watch list and on the map if coordinates are provided.',
     'Nouvel actif':'New asset','Modifier l\'actif':'Edit asset','Nom du bâtiment *':'Building name *','Type *':'Type *','Zone':'Area','Année construction':'Construction year','Nombre d\'étages':'Number of floors','Priorité':'Priority','Statut Pipeline':'Pipeline status','Budget estimé ($)':'Estimated budget ($)','Contact principal':'Main contact','Email contact':'Contact email','Téléphone':'Phone','Concurrent actif':'Active competitor','Services Artelia envisageables':'Possible Artelia services','Notes terrain':'Field notes','Latitude':'Latitude','Longitude':'Longitude','Enregistrer':'Save',
-    'Informations clés':'Key information','Année':'Year','Étages':'Floors','Priorité':'Priority','Statut pipeline':'Pipeline status','Contact identifié':'Identified contact','Analyse Claude IA':'Claude AI analysis','Message d\'approche LinkedIn':'LinkedIn approach message','Scopes Artelia recommandés':'Recommended Artelia scopes','Journal d\'activité':'Activity log','Aucune activité enregistrée.':'No activity recorded.',
+    'Informations clés':'Key information','Année':'Year','Étages':'Floors','Priorité':'Priority','Statut pipeline':'Pipeline status','Contact identifié':'Identified contact','Analyse Gemini IA':'Gemini AI analysis','Message d\'approche LinkedIn':'LinkedIn approach message','Scopes Artelia recommandés':'Recommended Artelia scopes','Journal d\'activité':'Activity log','Aucune activité enregistrée.':'No activity recorded.',
     'Modifier':'Edit','Supprimer':'Delete','Analyse IA':'AI analysis','Contact':'Contact','Ajouter':'Add','Fermer':'Close',
     'Opportunités institutionnelles':'Institutional opportunities','Actions BD planifiées':'Planned BD actions','Aucune action planifiée.':'No planned actions.','Actions & alertes':'Actions & alerts','Projets pertinents détectés':'Relevant projects detected','Aucun ping à afficher':'No pings to display',
     'Ping utilisateur':'User ping','Actif':'Asset','Source':'Source','Statut':'Status','Projet':'Project','To identify':'To identify','À qualifier':'To qualify','Contact initié':'Contact initiated','Échange prévu':'Meeting planned','Note transmise':'Note sent','Opportunité qualifiée':'Qualified opportunity','Archivé':'Archived',
@@ -4255,7 +4387,7 @@ document.querySelectorAll('.lang-btn').forEach(function(b){if(b.getAttribute('on
 </style>
 <script>
 (function(){
-  const EN_DICT = {"+ Ajouter": "+ Add", "+ Créer un ping": "+ Create ping", "+ Planifier": "+ Schedule", "Veille admin": "Admin watch", "API non testée.": "API not tested.", "Accès réservé aux administrateurs pour les fonctions sensibles.": "Administrator access only for sensitive functions.", "Accéder": "Access", "Actifs": "Assets", "Actions & alertes": "Actions & alerts", "Actions BD planifiées": "Planned BD actions", "Actions attendues pour Artelia Cambodia": "Expected actions for Artelia Cambodia", "Alertes": "Alerts", "Analyse": "Analysis", "Annuler": "Cancel", "Année construction": "Construction year", "Appel téléphonique": "Phone call", "Archivé": "Archived", "Articles, publications publiques, financeurs et opportunités naissantes. Lecture ouverte ; modification réservée à l\\'admin.": "Articles, public posts, funders and emerging opportunities. Open read access; editing reserved for admin.", "Attention : ces actions suppriment les données stockées localement dans le navigateur. Elles ne peuvent pas être annulées.": "Warning: these actions delete the data stored locally in the browser. They cannot be undone.", "Auto": "Other", "Autre": "Other", "Bailleur": "Funder", "Bordure = Pipeline": "Border = Pipeline", "Brief BD hebdomadaire - IA": "Weekly BD brief - AI", "Budget estimé": "Estimated budget", "Budget estimé ($)": "Estimated budget ($)", "Bureau": "Office", "Carte": "Map", "Ce fichier HTML local ne scrape pas automatiquement Facebook, LinkedIn ou les sites des financeurs. Il fournit une base de monitoring, des fréquences recommandées et des notifications internes à partir des opportunités renseignées. Pour une vraie automatisation, il faut un backend ou une API connectée.": "This local HTML file does not automatically scrape Facebook, LinkedIn or funder websites. It provides a monitoring base, recommended frequencies and internal notifications from entered opportunities. Real automation requires a backend or connected API.", "Cette action ne change pas automatiquement le mot de passe. Elle génère uniquement le hash à intégrer dans le fichier HTML.": "This action does not automatically change the password. It only generates the hash to be integrated into the HTML file.", "Chantier Identifié": "Identified construction site", "Charger depuis PostgreSQL": "Load from PostgreSQL", "Clic carte - ajouter": "Click map - add", "Clic marqueur - details": "Click marker - details", "Clé API Anthropic (Claude AI)": "Anthropic API key (Claude AI)", "Concurrent actif": "Active competitor", "Connecte le prototype HTML au backend FastAPI/PostgreSQL. L'outil reste utilisable hors ligne si le backend est indisponible.": "Connects the HTML prototype to the FastAPI/PostgreSQL backend. The tool remains usable offline if the backend is unavailable.", "Connexion": "Login", "Contact / partie prenante connue": "Known contact / stakeholder", "Contact principal": "Main contact", "Contacte": "Contacted", "Contacté": "Contacted", "Contactés": "Contacted", "Copier": "Copy", "Couleur = Priorite BD": "Color = BD priority", "Couleur du ping": "Ping color", "Créer le ping": "Create ping", "Créer un ping projet": "Create project ping", "Date prévue": "Planned date", "Deadline": "Deadline", "Description *": "Description *", "Enregistrer": "Save", "Envoi proposition": "Proposal sent", "Envoyer les données locales": "Send local data", "Exporter": "Export", "Faible": "Low", "Fermer": "Close", "Fit élevé": "High fit", "Fonctionnement de la veille": "How monitoring works", "Forme = Type batiment": "Shape = building type", "Fréquence recommandée :": "Recommended frequency:", "Gagne": "Won", "Générer le brief": "Generate brief", "Générer le hash": "Generate hash", "Générer un hash pour un nouveau mot de passe principal": "Generate a hash for a new main password", "Hôtel": "Hotel", "Importez des actifs depuis un fichier CSV. Format attendu : Nom, Type, Zone, Année, Priorité (high/med/low), Statut, Budget, Contact, Services, Notes, Latitude, Longitude": "Import assets from a CSV file. Expected format: Name, Type, Area, Year, Priority (high/med/low), Status, Budget, Contact, Services, Notes, Latitude, Longitude", "Industriel": "Industrial", "Institutionnel": "Institutional", "Latitude": "Latitude", "Les champs marqués * sont nécessaires pour que l’équipe puisse qualifier le ping. Le ping sera visible dans la veille et sur la carte si les coordonnées sont renseignées.": "Fields marked * are required so the team can qualify the ping. The ping will be visible in the watch and on the map if coordinates are provided.", "Les fonctions de modification structurelle sont déverrouillées : ajout, modification, suppression, import et réinitialisation.": "Structural editing functions are unlocked: add, edit, delete, import and reset.", "Lien ou preuve source": "Link or source evidence", "Lien source": "Source link", "Longitude": "Longitude", "Mixte": "Mixed", "Mode administrateur actif.": "Administrator mode active.", "Mode exploitation uniquement": "Operation mode only", "Modifier": "Edit", "Monthly": "Monthly", "Mot de passe administrateur": "Administrator password", "Mot de passe administrateur incorrect.": "Incorrect administrator password.", "Mot de passe incorrect.": "Incorrect password.", "Moyen": "Medium", "Moyenne": "Medium", "Méthode de qualification :": "Qualification method:", "Nature": "Nature", "Nature du projet *": "Project nature *", "Neuf": "New build", "Niveau de vérification": "Verification level", "Nom de l'équipe": "Team name", "Nom du bâtiment *": "Building name *", "Nom du projet *": "Project name *", "Nom du projet / bâtiment *": "Project / building name *", "Nombre d'étages": "Number of floors", "Non contactés": "Not contacted", "Non identifie": "Unidentified", "Nos concurrents": "Our competitors", "Note transmise": "Note sent", "Notes stratégiques": "Strategic notes", "Notes terrain": "Field notes", "Nouvel actif": "New asset", "Nouvelle opportunité de veille": "New watch opportunity", "Nouvelle opportunité institutionnelle": "New institutional opportunity", "Obtenir une clé -": "Get a key -", "Opportunités institutionnelles": "Institutional opportunities", "Par défaut, la couleur suit la priorité. Vous pouvez la modifier manuellement.": "By default, the color follows the priority. You can change it manually.", "Planifier": "Schedule", "Planifier une action BD": "Schedule BD action", "Presse": "Press", "Press": "Press", "Priorite faible": "Low priority", "Priorite haute": "High priority", "Priorite moyenne": "Medium priority", "Priorité": "Priority", "Priorité estimée *": "Estimated priority *", "Priorité haute": "High priority", "Priorité élevée": "High priority", "Priorités": "Priorities", "Prochaine action proposée *": "Proposed next action *", "Projets pertinents détectés": "Relevant projects detected", "Prospect": "Prospect", "Présentation": "Presentation", "Qualifie": "Qualified", "Qualifié": "Qualified", "Quitter le mode administrateur": "Exit administrator mode", "Renovation / Retrofit": "Renovation / Retrofit", "Residentiel": "Residential", "Restaurer les données initiales": "Restore initial data", "Récurrence de veille": "Monitoring recurrence", "Réglages": "Settings", "Rénovation": "Renovation", "Rénovation / retrofit": "Renovation / retrofit", "Résidentiel": "Residential", "Résumé / signal faible": "Summary / weak signal", "Résumé du signal *": "Signal summary *", "Réunion": "Meeting", "Réunion fixée": "Meeting scheduled", "Rôles possibles Artelia": "Possible Artelia roles", "Sauvegarder": "Save", "Scope Artelia potentiel": "Potential Artelia scope", "Scope Artelia potentiel *": "Potential Artelia scope *", "Scopes Artelia surveillés": "Monitored Artelia scopes", "Secteur": "Sector", "Services Artelia envisageables": "Potential Artelia services", "Source du signal *": "Signal source *", "Sources suivies": "Monitored sources", "Stade": "Stage", "Statut Suivi": "Tracking status", "Stockée localement. Active l'analyse IA par bâtiment, les messages LinkedIn et le brief hebdomadaire.": "Stored locally. Enables AI analysis by building, LinkedIn messages and the weekly brief.", "Suivi": "Pipeline", "Suivi / Concept": "Tracking / Concept", "Suppression des données locales": "Local data deletion", "Supprimer la veille": "Delete watch items", "Supprimer les actifs": "Delete assets", "Supprimer les actions": "Delete actions", "Supprimer les opportunités": "Delete opportunities", "Supprimer toutes les données locales": "Delete all local data", "Tenders": "Tenders", "Tester API": "Test API", "Titre": "Title", "Tous": "All", "Tous les pings": "All pings", "Toutes les villes": "All cities", "Type *": "Type *", "Téléphone": "Phone", "Un ping est un signal projet ajouté manuellement par un utilisateur. Il reste à qualifier avant d’être considéré comme opportunité confirmée.": "A ping is a project signal manually added by a user. It must still be qualified before being considered a confirmed opportunity.", "Veille": "Watch", "Veille projets": "Project watch", "Ville *": "City *", "Ville / zone": "City / area", "Visite terrain": "Site visit", "Zone / quartier": "Area / district", "Zone": "Area", "aucun projet n\\'est considéré gagné. Les pings correspondent uniquement à des signaux de marché à identifier, qualifier ou suivre.": "no project is considered won. Pings only correspond to market signals to identify, qualify or monitor.", "financeurs officiels chaque semaine, presse deux fois par semaine, réseaux sociaux chaque semaine, signaux privés au fil de l\\'eau.": "official funders weekly, press twice a week, social networks weekly, private signals continuously.", "ou faites glisser votre fichier ici": "or drag your file here", "À identifier": "To identify", "Élevé": "High", "Élevée": "High", "Cliquez pour choisir un fichier CSV": "Click to choose a CSV file", "Cliquez sur Générer pour obtenir votre brief.": "Click Generate to get your brief.", "Couleur = Priorité BD": "Color = BD priority", "Forme = Type bâtiment": "Shape = building type", "Priorité faible": "Low priority", "Priorité moyenne": "Medium priority", "Ajouter un actif": "Add asset", "Ajouter une action": "Add action", "Ajouter une opportunité": "Add opportunity", "Aucun ping à afficher": "No pings to display", "Voir les détails": "View details", "Supprimer": "Delete", "Créer un ping": "Create ping", "Ping utilisateur": "User ping", "Projet": "Project", "Ville": "City", "Type": "Type", "Potentiel": "Potential", "Statut": "Status", "Source": "Source", "Budget": "Budget", "Actions": "Actions", "Dashboard": "Dashboard", "Admin": "Admin", "Proposition": "Proposal", "Gagné": "Won", "Perdu": "Lost", "Contact initié": "Contact initiated", "Échange prévu": "Meeting planned", "Opportunité qualifiée": "Qualified opportunity", "À qualifier": "To qualify", "Buildings": "Buildings", "Bâtiment lié": "Linked building", "Client discussion": "Client discussion", "Discussion avec partie prenante": "Discussed with stakeholder"};
+  const EN_DICT = {"+ Ajouter": "+ Add", "+ Créer un ping": "+ Create ping", "+ Planifier": "+ Schedule", "Veille admin": "Admin watch", "API non testée.": "API not tested.", "Accès réservé aux administrateurs pour les fonctions sensibles.": "Administrator access only for sensitive functions.", "Accéder": "Access", "Actifs": "Assets", "Actions & alertes": "Actions & alerts", "Actions BD planifiées": "Planned BD actions", "Actions attendues pour Artelia Cambodia": "Expected actions for Artelia Cambodia", "Alertes": "Alerts", "Analyse": "Analysis", "Annuler": "Cancel", "Année construction": "Construction year", "Appel téléphonique": "Phone call", "Archivé": "Archived", "Articles, publications publiques, financeurs et opportunités naissantes. Lecture ouverte ; modification réservée à l\\'admin.": "Articles, public posts, funders and emerging opportunities. Open read access; editing reserved for admin.", "Attention : ces actions suppriment les données stockées localement dans le navigateur. Elles ne peuvent pas être annulées.": "Warning: these actions delete the data stored locally in the browser. They cannot be undone.", "Auto": "Other", "Autre": "Other", "Bailleur": "Funder", "Bordure = Pipeline": "Border = Pipeline", "Brief BD hebdomadaire - IA": "Weekly BD brief - AI", "Budget estimé": "Estimated budget", "Budget estimé ($)": "Estimated budget ($)", "Bureau": "Office", "Carte": "Map", "Ce fichier HTML local ne scrape pas automatiquement Facebook, LinkedIn ou les sites des financeurs. Il fournit une base de monitoring, des fréquences recommandées et des notifications internes à partir des opportunités renseignées. Pour une vraie automatisation, il faut un backend ou une API connectée.": "This local HTML file does not automatically scrape Facebook, LinkedIn or funder websites. It provides a monitoring base, recommended frequencies and internal notifications from entered opportunities. Real automation requires a backend or connected API.", "Cette action ne change pas automatiquement le mot de passe. Elle génère uniquement le hash à intégrer dans le fichier HTML.": "This action does not automatically change the password. It only generates the hash to be integrated into the HTML file.", "Chantier Identifié": "Identified construction site", "Charger depuis PostgreSQL": "Load from PostgreSQL", "Clic carte - ajouter": "Click map - add", "Clic marqueur - details": "Click marker - details", "IA Gemini via backend": "Gemini AI via backend", "Concurrent actif": "Active competitor", "Connecte le prototype HTML au backend FastAPI/PostgreSQL. L'outil reste utilisable hors ligne si le backend est indisponible.": "Connects the HTML prototype to the FastAPI/PostgreSQL backend. The tool remains usable offline if the backend is unavailable.", "Connexion": "Login", "Contact / partie prenante connue": "Known contact / stakeholder", "Contact principal": "Main contact", "Contacte": "Contacted", "Contacté": "Contacted", "Contactés": "Contacted", "Copier": "Copy", "Couleur = Priorite BD": "Color = BD priority", "Couleur du ping": "Ping color", "Créer le ping": "Create ping", "Créer un ping projet": "Create project ping", "Date prévue": "Planned date", "Deadline": "Deadline", "Description *": "Description *", "Enregistrer": "Save", "Envoi proposition": "Proposal sent", "Envoyer les données locales": "Send local data", "Exporter": "Export", "Faible": "Low", "Fermer": "Close", "Fit élevé": "High fit", "Fonctionnement de la veille": "How monitoring works", "Forme = Type batiment": "Shape = building type", "Fréquence recommandée :": "Recommended frequency:", "Gagne": "Won", "Générer le brief": "Generate brief", "Générer le hash": "Generate hash", "Générer un hash pour un nouveau mot de passe principal": "Generate a hash for a new main password", "Hôtel": "Hotel", "Importez des actifs depuis un fichier CSV. Format attendu : Nom, Type, Zone, Année, Priorité (high/med/low), Statut, Budget, Contact, Services, Notes, Latitude, Longitude": "Import assets from a CSV file. Expected format: Name, Type, Area, Year, Priority (high/med/low), Status, Budget, Contact, Services, Notes, Latitude, Longitude", "Industriel": "Industrial", "Institutionnel": "Institutional", "Latitude": "Latitude", "Les champs marqués * sont nécessaires pour que l’équipe puisse qualifier le ping. Le ping sera visible dans la veille et sur la carte si les coordonnées sont renseignées.": "Fields marked * are required so the team can qualify the ping. The ping will be visible in the watch and on the map if coordinates are provided.", "Les fonctions de modification structurelle sont déverrouillées : ajout, modification, suppression, import et réinitialisation.": "Structural editing functions are unlocked: add, edit, delete, import and reset.", "Lien ou preuve source": "Link or source evidence", "Lien source": "Source link", "Longitude": "Longitude", "Mixte": "Mixed", "Mode administrateur actif.": "Administrator mode active.", "Mode exploitation uniquement": "Operation mode only", "Modifier": "Edit", "Monthly": "Monthly", "Mot de passe administrateur": "Administrator password", "Mot de passe administrateur incorrect.": "Incorrect administrator password.", "Mot de passe incorrect.": "Incorrect password.", "Moyen": "Medium", "Moyenne": "Medium", "Méthode de qualification :": "Qualification method:", "Nature": "Nature", "Nature du projet *": "Project nature *", "Neuf": "New build", "Niveau de vérification": "Verification level", "Nom de l'équipe": "Team name", "Nom du bâtiment *": "Building name *", "Nom du projet *": "Project name *", "Nom du projet / bâtiment *": "Project / building name *", "Nombre d'étages": "Number of floors", "Non contactés": "Not contacted", "Non identifie": "Unidentified", "Nos concurrents": "Our competitors", "Note transmise": "Note sent", "Notes stratégiques": "Strategic notes", "Notes terrain": "Field notes", "Nouvel actif": "New asset", "Nouvelle opportunité de veille": "New watch opportunity", "Nouvelle opportunité institutionnelle": "New institutional opportunity", "Obtenir une clé -": "Get a key -", "Opportunités institutionnelles": "Institutional opportunities", "Par défaut, la couleur suit la priorité. Vous pouvez la modifier manuellement.": "By default, the color follows the priority. You can change it manually.", "Planifier": "Schedule", "Planifier une action BD": "Schedule BD action", "Presse": "Press", "Press": "Press", "Priorite faible": "Low priority", "Priorite haute": "High priority", "Priorite moyenne": "Medium priority", "Priorité": "Priority", "Priorité estimée *": "Estimated priority *", "Priorité haute": "High priority", "Priorité élevée": "High priority", "Priorités": "Priorities", "Prochaine action proposée *": "Proposed next action *", "Projets pertinents détectés": "Relevant projects detected", "Prospect": "Prospect", "Présentation": "Presentation", "Qualifie": "Qualified", "Qualifié": "Qualified", "Quitter le mode administrateur": "Exit administrator mode", "Renovation / Retrofit": "Renovation / Retrofit", "Residentiel": "Residential", "Restaurer les données initiales": "Restore initial data", "Récurrence de veille": "Monitoring recurrence", "Réglages": "Settings", "Rénovation": "Renovation", "Rénovation / retrofit": "Renovation / retrofit", "Résidentiel": "Residential", "Résumé / signal faible": "Summary / weak signal", "Résumé du signal *": "Signal summary *", "Réunion": "Meeting", "Réunion fixée": "Meeting scheduled", "Rôles possibles Artelia": "Possible Artelia roles", "Sauvegarder": "Save", "Scope Artelia potentiel": "Potential Artelia scope", "Scope Artelia potentiel *": "Potential Artelia scope *", "Scopes Artelia surveillés": "Monitored Artelia scopes", "Secteur": "Sector", "Services Artelia envisageables": "Potential Artelia services", "Source du signal *": "Signal source *", "Sources suivies": "Monitored sources", "Stade": "Stage", "Statut Suivi": "Tracking status", "IA Gemini via backend Render pour l'analyse, les messages LinkedIn et le brief hebdomadaire.": "Gemini runs through the Render backend for analysis, LinkedIn messages and the weekly brief.", "Suivi": "Pipeline", "Suivi / Concept": "Tracking / Concept", "Suppression des données locales": "Local data deletion", "Supprimer la veille": "Delete watch items", "Supprimer les actifs": "Delete assets", "Supprimer les actions": "Delete actions", "Supprimer les opportunités": "Delete opportunities", "Supprimer toutes les données locales": "Delete all local data", "Tenders": "Tenders", "Tester API": "Test API", "Titre": "Title", "Tous": "All", "Tous les pings": "All pings", "Toutes les villes": "All cities", "Type *": "Type *", "Téléphone": "Phone", "Un ping est un signal projet ajouté manuellement par un utilisateur. Il reste à qualifier avant d’être considéré comme opportunité confirmée.": "A ping is a project signal manually added by a user. It must still be qualified before being considered a confirmed opportunity.", "Veille": "Watch", "Veille projets": "Project watch", "Ville *": "City *", "Ville / zone": "City / area", "Visite terrain": "Site visit", "Zone / quartier": "Area / district", "Zone": "Area", "aucun projet n\\'est considéré gagné. Les pings correspondent uniquement à des signaux de marché à identifier, qualifier ou suivre.": "no project is considered won. Pings only correspond to market signals to identify, qualify or monitor.", "financeurs officiels chaque semaine, presse deux fois par semaine, réseaux sociaux chaque semaine, signaux privés au fil de l\\'eau.": "official funders weekly, press twice a week, social networks weekly, private signals continuously.", "ou faites glisser votre fichier ici": "or drag your file here", "À identifier": "To identify", "Élevé": "High", "Élevée": "High", "Cliquez pour choisir un fichier CSV": "Click to choose a CSV file", "Cliquez sur Générer pour obtenir votre brief.": "Click Generate to get your brief.", "Couleur = Priorité BD": "Color = BD priority", "Forme = Type bâtiment": "Shape = building type", "Priorité faible": "Low priority", "Priorité moyenne": "Medium priority", "Ajouter un actif": "Add asset", "Ajouter une action": "Add action", "Ajouter une opportunité": "Add opportunity", "Aucun ping à afficher": "No pings to display", "Voir les détails": "View details", "Supprimer": "Delete", "Créer un ping": "Create ping", "Ping utilisateur": "User ping", "Projet": "Project", "Ville": "City", "Type": "Type", "Potentiel": "Potential", "Statut": "Status", "Source": "Source", "Budget": "Budget", "Actions": "Actions", "Dashboard": "Dashboard", "Admin": "Admin", "Proposition": "Proposal", "Gagné": "Won", "Perdu": "Lost", "Contact initié": "Contact initiated", "Échange prévu": "Meeting planned", "Opportunité qualifiée": "Qualified opportunity", "À qualifier": "To qualify", "Buildings": "Buildings", "Bâtiment lié": "Linked building", "Client discussion": "Client discussion", "Discussion avec partie prenante": "Discussed with stakeholder"};
   function normalize(s){return String(s||'').replace(/\s+/g,' ').trim();}
   function activeLang(){try{return localStorage.getItem('artelia_lang')==='en'?'en':'fr';}catch(e){return 'fr';}}
   function setBodyLang(lang){
@@ -4892,6 +5024,7 @@ function priorityColorClass(priority){
       return isNonLocalized(w) && (f==='high'||f==='med');
     }).sort(function(a,b){
       function score(x){return (x.fit||x.priority)==='high'?2:1;}
+      if(!!a.isNew!==!!b.isNew)return b.isNew?1:-1;
       return score(b)-score(a);
     });
   }
@@ -4931,8 +5064,9 @@ function priorityColorClass(priority){
         var scopes=String(w.scope||tr('Scope à qualifier','Scope to qualify')).split(',').map(function(x){return x.trim();}).filter(Boolean).slice(0,4);
         var acts=String(w.actions||'').split(';').map(function(x){return x.trim();}).filter(Boolean).slice(0,2);
         var sourceLink=w.link?'<a href="'+esc(w.link)+'" target="_blank" onclick="event.stopPropagation()" style="display:inline-flex;margin-top:7px;font-size:10px;font-weight:700;color:var(--blue);text-decoration:none">'+tr('Ouvrir l\'appel d\'offre / source','Open tender / source')+'</a>':'';
+        var newBadge=w.isNew?'<span style="display:inline-block;margin-right:6px;padding:1px 6px;border-radius:999px;background:var(--red-l);color:var(--red);font-size:9px;font-weight:700">'+tr('NOUVEAU','NEW')+'</span>':'';
         return '<div class="notif-item lead-alert" onclick="return window.openAlertWatch('+Number(w.id)+')">'
-          +'<div class="ni-t">'+esc(w.title||tr('Projet sans titre','Untitled project'))+'</div>'
+          +'<div class="ni-t">'+newBadge+esc(w.title||tr('Projet sans titre','Untitled project'))+'</div>'
           +'<div class="ni-m">'+esc(w.zone||tr('Zone non précisée','Unspecified area'))+' · '+esc(w.source||'Source')+' · '+esc(priorityLabel(w))+'</div>'
           +'<div style="margin-top:7px;display:flex;gap:4px;flex-wrap:wrap">'+scopes.map(function(sc){return '<span style="font-size:9px;font-weight:600;border-radius:999px;padding:2px 7px;background:#EEF6FF;color:var(--blue);border:1px solid #BFDBFE">'+esc(sc)+'</span>';}).join('')+'</div>'
           +(acts.length?'<div class="ni-m" style="margin-top:7px;line-height:1.45"><b>'+tr('Actions','Actions')+' :</b> '+esc(acts.join(' · '))+'</div>':'')
@@ -5559,7 +5693,6 @@ async function loadProjectsFromSupabase(){try{if(typeof sb==='undefined'||!sb)re
   });
 })();
 </script>
-<script>/* PATCH v61 — hard language refresh for connected buttons */(function(){  function lang(){try{return(typeof currentLang==='function'?currentLang():localStorage.getItem('artelia_lang'))==='en'?'en':'fr'}catch(e){return'fr'}}  function pick(fr,en){return lang()==='en'?en:fr}  function txt(el,fr,en){if(el)el.textContent=pick(fr,en)}  function ttl(el,fr,en){if(el)el.title=pick(fr,en)}  function refreshLangButtons(){    var l=lang(),n=document.getElementById('notif-btn'),c=document.getElementById('notif-cnt');    if(n){Array.from(n.childNodes).forEach(function(x){if(x.nodeType===3)x.nodeValue=''});var lab=n.querySelector('.notif-label');if(!lab){lab=document.createElement('span');lab.className='notif-label';n.insertBefore(lab,c||null)}lab.textContent=pick('Alertes','Alerts');n.title=pick('Alertes de veille','Watch alerts')}    txt(document.getElementById('hdr-lang-fr'),'FR','FR');txt(document.getElementById('hdr-lang-en'),'EN','EN');    document.querySelectorAll('.lang-btn').forEach(function(b){b.classList.toggle('active',b.textContent.trim().toLowerCase()===l)});    document.querySelectorAll('[onclick]').forEach(function(el){var oc=el.getAttribute('onclick')||'';if(oc.includes('openSettings'))txt(el,'Réglages','Settings');else if(oc.includes('doExport'))txt(el,'Exporter','Export');else if(oc.includes('openAdd'))txt(el,'+ Ajouter','+ Add')});    var fr=['Carte','Dashboard','Suivi','Tenders','Veille','Actions'],en=['Map','Dashboard','Pipeline','Tenders','Watch','Actions'];document.querySelectorAll('.sbt').forEach(function(el,i){if(fr[i])el.textContent=l==='en'?en[i]:fr[i]});    var search=document.getElementById('search-inp');if(search)search.placeholder=pick('Rechercher un actif...','Search an asset...');    document.querySelectorAll('.mtb,#fcs .fc').forEach(function(el){var oc=el.getAttribute('onclick')||'',x=el.textContent.trim();if(oc.includes("'all'")||['All','Tous'].includes(x))txt(el,'Tous','All');else if(oc.includes("'high'"))txt(el,el.classList.contains('mtb')?'Priorité haute':'Priorité élevée','High priority');else if(oc.includes("'not_visited'"))txt(el,el.classList.contains('mtb')?'Non contactés':'À identifier',el.classList.contains('mtb')?'Not contacted':'To identify');else if(oc.includes("'contacted'"))txt(el,'Contactés','Contacted');else if(oc.includes("'med'"))txt(el,'Moyenne','Medium');else if(oc.includes("'low'"))txt(el,'Faible','Low');else if(oc.includes("'renovation'"))txt(el,'Rénovation','Renovation');else if(oc.includes("'new'"))txt(el,'Neuf','New build');else if(oc.includes("'mixed'"))txt(el,'Mixte','Mixed');else if(oc.includes("'construction'"))txt(el,'En construction','In construction');else if(oc.includes("'won'"))txt(el,'Gagné','Won');else if(oc.includes("'lost'"))txt(el,'Perdu','Lost')});    document.querySelectorAll('.map-note').forEach(function(el){el.textContent=pick('Libellés de rue affichés en caractères latins quand disponibles.','Street labels shown in Latin characters when available.')});    document.querySelectorAll('.map-ctrl-btn').forEach(function(el){var x=el.textContent.trim();if(x==='+'||x==='+ Ajouter'||x==='+ Add')ttl(el,'Ajouter un bâtiment','Add a building');else if(x==='⌖')ttl(el,'Recentrer','Recenter');else if(x==='⛶'||x==='×')ttl(el,'Plein écran / Normal','Fullscreen / Normal');else if(x==='★')ttl(el,'Brief IA hebdomadaire','Weekly AI brief')});  }  window.hardRefreshLanguage=refreshLangButtons;  document.addEventListener('DOMContentLoaded',function(){setTimeout(refreshLangButtons,300)});  window.addEventListener('load',function(){setTimeout(refreshLangButtons,500)});})();</script>
 <script>
 /* PATCH v60 — language persistence on login */
 (function(){
@@ -5567,15 +5700,33 @@ async function loadProjectsFromSupabase(){try{if(typeof sb==='undefined'||!sb)re
     try { localStorage.setItem('artelia_lang', lang); } catch(e){}
     window.LANG = lang;
     window.currentLanguage = lang;
+    if(typeof window.translateInterface === 'function'){
+      try { window.translateInterface(); } catch(e){}
+    }
     if(typeof window.applyI18n === 'function'){
       try { window.applyI18n(lang); } catch(e){}
     }
   }
+  var previousSetLang = window.setLang;
   window.setLang = function(lang, btn){
-    applyLang(lang);
+    lang = (lang === 'en') ? 'en' : 'fr';
+    if(typeof previousSetLang === 'function'){
+      try { previousSetLang(lang, btn); } catch(e){ applyLang(lang); }
+    } else {
+      applyLang(lang);
+    }
     document.querySelectorAll('.lang-btn').forEach(function(b){
       b.classList.toggle('active', (b.getAttribute('data-lang')||b.textContent.trim().toLowerCase()) === lang);
     });
+    applyLang(lang);
+    setTimeout(function(){
+      if(typeof window.translateInterface === 'function') window.translateInterface();
+      if(typeof window.updateNotifs === 'function') window.updateNotifs();
+      if(typeof window.hardRefreshLanguage === 'function') window.hardRefreshLanguage();
+    }, 50);
+    setTimeout(function(){
+      if(typeof window.hardRefreshLanguage === 'function') window.hardRefreshLanguage();
+    }, 250);
     return false;
   };
   var _dl = window.doLogin;
@@ -5583,14 +5734,62 @@ async function loadProjectsFromSupabase(){try{if(typeof sb==='undefined'||!sb)re
     var r = _dl ? _dl.apply(this, arguments) : undefined;
     setTimeout(function(){
       applyLang(localStorage.getItem('artelia_lang') || 'fr');
+      if(typeof window.hardRefreshLanguage === 'function') window.hardRefreshLanguage();
     }, 150);
+    setTimeout(function(){
+      if(typeof window.hardRefreshLanguage === 'function') window.hardRefreshLanguage();
+    }, 700);
     return r;
   };
   document.addEventListener('DOMContentLoaded', function(){
     setTimeout(function(){
       applyLang(localStorage.getItem('artelia_lang') || 'fr');
+      if(typeof window.hardRefreshLanguage === 'function') window.hardRefreshLanguage();
     }, 300);
   });
+})();
+</script>
+<script>
+/* PATCH v62 — reversible full UI language layer */
+(function(){
+  function norm(l){return l==='en'?'en':'fr'}
+  function active(){try{return norm(localStorage.getItem('artelia_lang')||window.LANG||window.currentLanguage||'fr')}catch(e){return'fr'}}
+  var pairs=[
+    ['Connexion','Login'],['Créer un compte','Create account'],['Mot de passe oublié','Forgot password'],['Mot de passe','Password'],['Mot de passe incorrect.','Incorrect password.'],['Email requis.','Email required.'],['Email et mot de passe requis.','Email and password required.'],['Mot de passe trop court (min. 6 caractères).','Password too short (min. 6 characters).'],['Compte créé ! Vérifiez votre email pour confirmer.','Account created! Check your email to confirm.'],['Email envoyé ! Vérifiez votre boîte mail.','Email sent! Check your inbox.'],
+    ['Actifs','Assets'],['Priorités','Priorities'],['Suivi','Pipeline'],['Budget estimé','Est. budget'],['Carte','Map'],['Dashboard','Dashboard'],['Tenders','Tenders'],['Veille','Watch'],['Actions','Actions'],['Mode admin actif','Admin mode active'],['Mode exploitation uniquement','Operation mode only'],['Mode lecture seule','Read-only mode'],['Alertes','Alerts'],['Actions & alertes','Actions & alerts'],['Alertes de veille','Watch alerts'],['Réglages','Settings'],['Exporter','Export'],['+ Ajouter','+ Add'],
+    ['Rechercher un actif...','Search an asset...'],['Tous','All'],['Rénovation','Renovation'],['Neuf','New build'],['Mixte','Mixed'],['À identifier','To identify'],['À qualifier','To qualify'],['Priorité élevée','High priority'],['Priorité haute','High priority'],['Priorité moyenne','Medium priority'],['Priorité faible','Low priority'],['Non contactés','Not contacted'],['Contactés','Contacted'],['Contacté','Contacted'],['Moyenne','Medium'],['Faible','Low'],['En construction','In construction'],['Design','Design'],['Tender','Tender'],['Gagné','Won'],['Perdu','Lost'],['Prospect','Prospect'],['Confirmé','Confirmed'],['Estimé','Estimated'],['Actif','Asset'],
+    ['Libellés de rue affichés en caractères latins quand disponibles.','Street labels shown in Latin characters when available.'],['Couleur = Priorité BD','Color = BD priority'],['Bordure = Pipeline','Border = Pipeline'],['Forme = Type bâtiment','Shape = Building type'],['Bureau','Office'],['Hôtel','Hotel'],['Mall','Mall'],['Résidentiel','Residential'],['Chantier identifié','Identified construction site'],['Industriel','Industrial'],['Clic marqueur - détails','Marker click - details'],['Clic carte - ajouter','Map click - add'],['Ajouter un bâtiment','Add a building'],['Plein écran / Normal','Fullscreen / Normal'],['Recentrer','Recenter'],['Brief IA hebdomadaire','Weekly AI brief'],['Heatmap','Heatmap'],
+    ['Veille projets','Project watch'],['Articles, publications publiques, financeurs et opportunités naissantes. Lecture ouverte ; modification réservée à l\\\'admin.','Articles, public posts, funders and emerging opportunities. Open read access; editing reserved for admin.'],['Méthode de qualification :','Qualification method:'],['Fréquence recommandée :','Recommended frequency:'],['Fonctionnement de la veille','How monitoring works'],['Sources suivies','Monitored sources'],['+ Veille admin','+ Admin watch'],['+ Planifier','+ Schedule'],['Actions BD planifiées','Planned BD actions'],['Aucune action planifiée.','No planned actions.'],
+    ['Nouvel actif','New asset'],['Modifier l\'actif','Edit asset'],['Nom du bâtiment *','Building name *'],['Type *','Type *'],['Zone','Area'],['Année construction','Construction year'],['Nombre d\'étages','Number of floors'],['Couleur du ping','Ping color'],['Par défaut, la couleur suit la priorité. Vous pouvez la modifier manuellement.','By default, the color follows priority. You can change it manually.'],['Budget estimé ($)','Estimated budget ($)'],['Contact principal','Main contact'],['Email contact','Contact email'],['Téléphone','Phone'],['Concurrent actif','Active competitor'],['Services Artelia envisageables','Potential Artelia services'],['Notes terrain','Field notes'],['Latitude','Latitude'],['Longitude','Longitude'],['Auto','Auto'],['Annuler','Cancel'],['Enregistrer','Save'],['Sauvegarder','Save'],['Fermer','Close'],['Supprimer','Delete'],['Modifier','Edit'],['Analyse','Analysis'],['Analyse IA','AI analysis'],['Contact','Contact'],
+    ['Réglages sauvegardés OK','Settings saved OK'],['Nom de l\'équipe','Team name'],['Synchronisation backend','Backend synchronization'],['Charger depuis PostgreSQL','Load from PostgreSQL'],['Envoyer les données locales','Push local data'],['Tester API','Test API'],['Accès administrateur','Administrator access'],['Mot de passe administrateur','Administrator password'],['Accéder','Access'],['Quitter le mode administrateur','Exit administrator mode'],['Suppression des données locales','Local data deletion'],['Supprimer les actifs','Delete assets'],['Supprimer les actions','Delete actions'],['Supprimer les opportunités','Delete opportunities'],['Restaurer les données initiales','Restore initial data'],
+    ['Nouvelle opportunité institutionnelle','New institutional opportunity'],['Nom du projet *','Project name *'],['Bailleur','Funder'],['Secteur','Sector'],['Stade','Stage'],['Deadline','Deadline'],['Nos concurrents','Our competitors'],['Rôles possibles Artelia','Possible Artelia roles'],['Lien source','Source link'],['Notes stratégiques','Strategic notes'],['Nouvelle opportunité de veille','New watch opportunity'],['Titre','Title'],['Source du signal *','Signal source *'],['Ville / zone','City / area'],['Niveau de vérification','Verification level'],['Nature','Nature'],['Priorité estimée *','Estimated priority *'],['Récurrence de veille','Monitoring recurrence'],['Résumé / signal faible','Summary / weak signal'],['Scope Artelia potentiel *','Potential Artelia scope *'],['Contact / partie prenante connue','Known contact / stakeholder'],['Actions attendues pour Artelia Cambodia','Expected actions for Artelia Cambodia'],
+    ['Planifier une action BD','Schedule BD action'],['Description *','Description *'],['Date prévue','Planned date'],['Bâtiment lié','Linked building'],['Brief BD hebdomadaire - IA','Weekly BD brief - AI'],['Cliquez sur Générer pour obtenir votre brief.','Click Generate to get your brief.'],['Générer le brief','Generate brief'],['Créer un ping projet','Create project ping'],['Nom du projet / bâtiment *','Project / building name *'],['Ville *','City *'],['Zone / quartier','Area / district'],['Lien ou preuve source','Link or source evidence'],['Scope Artelia potentiel *','Potential Artelia scope *'],['Résumé du signal *','Signal summary *'],['Prochaine action proposée *','Proposed next action *'],['Créer le ping','Create ping'],['Ping utilisateur','User ping'],['Aucun ping à afficher','No pings to display'],['Toutes les villes','All cities']
+  ];
+  var fe={},ef={}; pairs.forEach(function(p){fe[p[0]]=p[1];ef[p[1]]=p[0];});
+  function tr(s){s=String(s||'');var k=s.replace(/\s+/g,' ').trim();if(!k)return s;var m=active()==='en'?fe:ef;if(!Object.prototype.hasOwnProperty.call(m,k))return s;return s.replace(k,m[k]);}
+  function setText(el,fr,en){if(el)el.textContent=active()==='en'?en:fr}
+  function attrs(){['placeholder','title','aria-label','value'].forEach(function(a){document.querySelectorAll('['+a+']').forEach(function(el){if(a==='value'&&!/^(button|submit|reset)$/i.test(el.type||''))return;var v=el.getAttribute(a);var nv=tr(v);if(nv!==v)el.setAttribute(a,nv);});});document.querySelectorAll('option').forEach(function(o){o.textContent=tr(o.textContent);});}
+  var busy=false;
+  function textNodes(root){var w=document.createTreeWalker(root||document.body,NodeFilter.SHOW_TEXT,{acceptNode:function(n){var p=n.parentElement;if(!p||/^(SCRIPT|STYLE|NOSCRIPT|TEXTAREA|CODE|PRE)$/i.test(p.tagName))return NodeFilter.FILTER_REJECT;if(!n.nodeValue||!n.nodeValue.trim())return NodeFilter.FILTER_REJECT;return NodeFilter.FILTER_ACCEPT;}}),n,arr=[];while(n=w.nextNode())arr.push(n);arr.forEach(function(n){var v=n.nodeValue,nv=tr(v);if(nv!==v)n.nodeValue=nv;});}
+  function fixed(){var l=active();document.documentElement.lang=l;window.LANG=l;window.currentLanguage=l;document.querySelectorAll('.lang-btn').forEach(function(b){var val=(b.dataset.lang||b.textContent||'').trim().toLowerCase();b.classList.toggle('active',val===l);});
+    ['hs-total','hs-hot','hs-pipe','hs-val'].forEach(function(id,i){var el=document.getElementById(id),lab=el&&el.parentNode&&el.parentNode.querySelector('.hs-l');if(lab)[['Actifs','Assets'],['Priorités','Priorities'],['Suivi','Pipeline'],['Budget estimé','Est. budget']][i]&&setText(lab,[['Actifs','Assets'],['Priorités','Priorities'],['Suivi','Pipeline'],['Budget estimé','Est. budget']][i][0],[['Actifs','Assets'],['Priorités','Priorities'],['Suivi','Pipeline'],['Budget estimé','Est. budget']][i][1]);});
+    [['tab-login','Connexion','Login'],['tab-signup','Créer un compte','Create account'],['tab-reset','Mot de passe oublié','Forgot password'],['login-btn','Connexion','Login'],['signup-btn','Créer le compte','Create account'],['reset-btn','Envoyer le lien','Send link']].forEach(function(x){setText(document.getElementById(x[0]),x[1],x[2]);});
+    var p=document.getElementById('pwd-input');if(p)p.placeholder=l==='en'?'Password':'Mot de passe';var le=document.getElementById('login-err');setText(le,'Mot de passe incorrect.','Incorrect password.');
+    var tabs=[['Carte','Map'],['Dashboard','Dashboard'],['Suivi','Pipeline'],['Tenders','Tenders'],['Veille','Watch'],['Actions','Actions']];document.querySelectorAll('.sbt').forEach(function(e,i){if(tabs[i])setText(e,tabs[i][0],tabs[i][1]);});
+    var si=document.getElementById('search-inp');if(si)si.placeholder=l==='en'?'Search an asset...':'Rechercher un actif...';
+    document.querySelectorAll('[onclick]').forEach(function(el){var oc=el.getAttribute('onclick')||'';if(oc.indexOf('openSettings')>-1)setText(el,'Réglages','Settings');else if(oc.indexOf('doExport')>-1)setText(el,'Exporter','Export');else if(oc.indexOf('openAdd()')>-1&&!el.classList.contains('fab'))setText(el,'+ Ajouter','+ Add');else if(oc.indexOf('openAddTender')>-1)setText(el,'+ Ajouter','+ Add');else if(oc.indexOf('openAddWatch')>-1)setText(el,'+ Veille admin','+ Admin watch');else if(oc.indexOf('openAddAction')>-1)setText(el,'+ Planifier','+ Schedule');});
+    var notif=document.getElementById('notif-btn'),badge=document.getElementById('notif-cnt');if(notif){Array.from(notif.childNodes).forEach(function(x){if(x.nodeType===3)x.nodeValue=''});var sp=notif.querySelector('.notif-label');if(!sp){sp=document.createElement('span');sp.className='notif-label';notif.insertBefore(sp,badge||null);}setText(sp,'Alertes','Alerts');notif.title=l==='en'?'Watch alerts':'Alertes de veille';}
+    var fcs=[['Tous','All'],['Rénovation','Renovation'],['Neuf','New build'],['Mixte','Mixed'],['À identifier','To identify'],['Priorité élevée','High priority'],['En construction','In construction'],['Design','Design'],['Tender','Tender'],['Gagné','Won'],['Perdu','Lost']];document.querySelectorAll('#fcs .fc').forEach(function(e,i){if(fcs[i])setText(e,fcs[i][0],fcs[i][1]);});
+    var mt=[['Tous','All'],['Priorité haute','High priority'],['Non contactés','Not contacted'],['Contactés','Contacted'],['Moyenne','Medium'],['Faible','Low']];document.querySelectorAll('.mtb').forEach(function(e,i){if(mt[i])setText(e,mt[i][0],mt[i][1]);});
+    document.querySelectorAll('.map-note').forEach(function(e){setText(e,'Libellés de rue affichés en caractères latins quand disponibles.','Street labels shown in Latin characters when available.');});
+    var asl=document.getElementById('admin-status-label');if(asl)setText(asl,(window.isAdmin?'Mode admin actif':'Mode exploitation uniquement'),(window.isAdmin?'Admin mode active':'Operation mode only'));
+  }
+  function render(){try{if(typeof updateSL==='function')updateSL();}catch(e){}try{if(typeof applyI18n==='function')applyI18n();}catch(e){}try{if(typeof updateStats==='function')updateStats();}catch(e){}try{if(typeof updateNotifs==='function')updateNotifs();}catch(e){}var a=document.querySelector('.sb-panel.on');if(a){var id=a.id.replace('sbt-','');try{if(id==='board'&&typeof renderDashboard==='function')renderDashboard();else if(id==='pipe'&&typeof renderSuivi==='function')renderSuivi();else if(id==='actions'&&typeof renderBDActions==='function')renderBDActions();else if(id==='tenders'&&typeof renderTenders==='function')renderTenders();else if(id==='watch'&&typeof renderWatchList==='function')renderWatchList();else if(id==='map'&&typeof filterList==='function')filterList();}catch(e){}}try{if(typeof currentId!=='undefined'&&currentId&&typeof renderDPBody==='function'){var b=(buildings||[]).find(function(x){return String(x.id)===String(currentId)});if(b)renderDPBody(b);}}catch(e){}}
+  function apply(){if(busy||!document.body)return;busy=true;try{fixed();attrs();textNodes(document.body);}finally{busy=false;}}
+  var old=window.setLang;window.currentLang=function(){return active()};window.setLang=function(lang,btn){lang=norm(lang);try{localStorage.setItem('artelia_lang',lang)}catch(e){}window.LANG=lang;window.currentLanguage=lang;if(document.body){document.body.classList.remove('lang-fr','lang-en','lang-kh');document.body.classList.add('lang-'+lang)}try{if(typeof old==='function')old(lang,btn)}catch(e){}render();apply();setTimeout(apply,80);setTimeout(apply,350);return false};
+  window.applyFullLanguage=apply;window.refreshLanguageUI=function(){render();apply()};
+  ['openSettings','openAdd','openAddTender','openAddWatch','openAddAction','openMo','toggleNotif','sbTab','sbTab2'].forEach(function(k){var fn=window[k];if(typeof fn==='function'&&!fn.__lang62){var w=function(){var r=fn.apply(this,arguments);setTimeout(function(){render();apply()},60);return r};w.__lang62=true;window[k]=w;}});
+  var timer=null;function schedule(){clearTimeout(timer);timer=setTimeout(apply,60)}document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){window.setLang(active())},80);try{new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['placeholder','title','aria-label','value']})}catch(e){}});window.addEventListener('load',function(){setTimeout(function(){window.setLang(active())},180)});
 })();
 </script>
 </body>
