@@ -57,7 +57,7 @@ html,body{height:100%;font-family:Calibri, 'Segoe UI', Arial, sans-serif;overflo
 .notif-btn:hover{background:rgba(255,255,255,.18)}
 .notif-badge{position:absolute;top:-4px;right:-4px;background:#DC2626;color:#fff;font-size:9px;font-weight:700;border-radius:10px;padding:1px 5px;min-width:16px;text-align:center}
 .notif-panel{display:none;position:absolute;top:44px;right:0;width:340px;background:#fff;border-radius:var(--r);box-shadow:var(--sh-lg);border:1px solid var(--border);z-index:500;max-height:480px;overflow-y:auto}
-.notif-panel.open{display:block}
+.notif-panel.open{display:block}.notif-panel.on{display:block}
 .np-hdr{padding:12px 15px;font-weight:700;font-size:12px;color:var(--text);border-bottom:1px solid var(--border);background:var(--bg)}
 .notif-item{padding:10px 14px;border-bottom:1px solid var(--border2);font-size:11px;color:var(--text2)}
 .notif-item:last-child{border-bottom:none}
@@ -145,7 +145,7 @@ html,body{height:100%;font-family:Calibri, 'Segoe UI', Arial, sans-serif;overflo
 
 /* ══ MODALS ══ */
 .mo{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;padding:16px}
-.mo.open{display:flex}
+.mo.open{display:flex}.mo.on{display:flex}
 .mo-box{background:#fff;border-radius:var(--r-lg);box-shadow:var(--sh-lg);max-height:90vh;display:flex;flex-direction:column;width:520px;max-width:97vw}
 .mo-hdr{display:flex;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border);flex-shrink:0}
 .mo-title{font-size:15px;font-weight:700;color:var(--text);flex:1}
