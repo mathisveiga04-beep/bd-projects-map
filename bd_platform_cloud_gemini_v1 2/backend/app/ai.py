@@ -2,6 +2,7 @@ import json
 import os
 from typing import Dict, Any
 from dotenv import load_dotenv
+from .sources import source_keyword_context
 
 load_dotenv()
 
@@ -14,7 +15,11 @@ confidence, opportunity_size, priority, recommendation, scope_summary, score, me
 score: integer 1-10 measuring relevance for Artelia Cambodia (10 = perfect match).
 message_fr: a 3-sentence professional French email proposing Artelia Cambodia's services
   for this specific opportunity (address to the project owner, mention Artelia's expertise).
-Use concise English for all fields except message_fr. If unknown, use empty string or 'unknown'."""
+Use concise English for all fields except message_fr. If unknown, use empty string or 'unknown'.
+
+Default Cambodia opportunity sources and keywords to prioritize:
+{source_keywords}
+""".format(source_keywords=source_keyword_context())
 
 
 def _fallback(title: str, text: str) -> Dict[str, Any]:
@@ -78,3 +83,47 @@ def analyze_with_gemini(title: str, text: str, source_url: str = "") -> Dict[str
         data = _fallback(title, text)
         data["ai_error"] = f"Gemini fallback: {exc}"
         return data
+
+
+def _fallback_generate(prompt: str, mode: str = "general") -> str:
+    compact = " ".join(prompt.split())
+    if mode == "linkedin":
+        return (
+            "Bonjour, je me permets de vous contacter au nom d'Artelia Cambodia au sujet de cette opportunite. "
+            "Nos equipes peuvent accompagner les sujets de conception, supervision, energie, eau, infrastructure "
+            "et performance technique. Seriez-vous disponible pour un court echange afin d'identifier les besoins "
+            "et les prochaines etapes possibles ?"
+        )
+    if mode == "brief":
+        return (
+            "Brief BD: prioriser les opportunites a forte valeur technique, verifier les sources bailleurs, "
+            "contacter les prospects non qualifies et suivre les projets eau, energie, infrastructure et resilience climatique. "
+            f"Contexte analyse localement: {compact[:500]}"
+        )
+    return f"Synthese IA locale: {compact[:800]}"
+
+
+def generate_with_gemini(prompt: str, max_tokens: int = 700, mode: str = "general") -> Dict[str, Any]:
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    model_name = os.getenv("GEMINI_MODEL", "gemini-2.0-flash").strip()
+    if not api_key:
+        return {"text": _fallback_generate(prompt, mode), "provider": "local-fallback"}
+
+    try:
+        from google import genai
+        client = genai.Client(api_key=api_key)
+        bounded_prompt = (
+            "You are Gemini working for Artelia Cambodia business development. "
+            "Be concise, practical and directly usable.\n\n"
+            f"Mode: {mode}\n"
+            f"Default Cambodia source keywords:\n{source_keyword_context()}\n\n"
+            f"Task:\n{prompt[:12000]}"
+        )
+        response = client.models.generate_content(model=model_name, contents=bounded_prompt)
+        return {"text": (response.text or "").strip(), "provider": "gemini", "model": model_name}
+    except Exception as exc:
+        return {
+            "text": _fallback_generate(prompt, mode),
+            "provider": "local-fallback",
+            "ai_error": f"Gemini fallback: {exc}",
+        }
