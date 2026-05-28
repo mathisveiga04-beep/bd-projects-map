@@ -6813,6 +6813,156 @@ input:focus, select:focus, textarea:focus {
   else { window.addEventListener("load", init); }
 }());
 </script>
+
+<script>
+/* PATCH v67 — Contrôle d'accès admin via Supabase JWT (remplace MVE_AKH hardcodé)
+   doLogin() → supabase.auth.signInWithPassword()
+   isAdmin() → décode JWT et vérifie app_metadata.role === 'admin' */
+(function(){
+  function _jwt(t){try{return JSON.parse(atob(t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));}catch(e){return{};}}
+  function _sbToken(){for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&/^sb-.+-auth-token/.test(k)){try{var s=JSON.parse(localStorage.getItem(k));return s&&s.access_token||null;}catch(e){}}}return null;}
+  function _role(tok){if(!tok)return'';var p=_jwt(tok);return(p.app_metadata&&p.app_metadata.role)||(p.user_metadata&&p.user_metadata.role)||p.role||'';}
+
+  window.isAdmin=function(){
+    if(_role(_sbToken())==='admin')return true;
+    return!!sessionStorage.getItem('artelia_admin')||!!localStorage.getItem('bd_admin_ok');
+  };
+
+  window._getCurrentUserName=function(){
+    var tok=_sbToken();
+    if(tok){var p=_jwt(tok);return p.email||(p.user_metadata&&(p.user_metadata.full_name||p.user_metadata.name))||'';}
+    return'';
+  };
+
+  var _origLogin=window.doLogin;
+  window.doLogin=async function(){
+    var eEl=document.querySelector('#login-email,#auth-email,[data-auth="email"]');
+    var pEl=document.querySelector('#login-pwd,#login-pass,#auth-pwd,[data-auth="password"]');
+    var email=eEl&&eEl.value.trim()||'';
+    var pwd=pEl&&pEl.value.trim()||'';
+    if(email&&email.includes('@')&&pwd&&window.supabase){
+      try{
+        var res=await window.supabase.auth.signInWithPassword({email:email,password:pwd});
+        if(res.error){alert('❌ '+res.error.message);return;}
+        var tok=res.data.session.access_token;
+        var role=_role(tok);
+        localStorage.setItem('artelia_auth','1');
+        localStorage.setItem('artelia_app_token',tok);
+        if(role==='admin'){sessionStorage.setItem('artelia_admin','1');localStorage.setItem('bd_admin_ok','1');}
+        window.currentUser=res.data.user;
+        if(typeof updateAdminUI==='function')updateAdminUI();
+        if(typeof closeMo==='function')closeMo('mo-login');
+        if(typeof toast==='function')toast(role==='admin'?'✅ Connecté — Mode admin actif':'✅ Connecté');
+      }catch(e){alert('Erreur: '+e.message);}
+      return;
+    }
+    if(_origLogin)_origLogin.apply(this,arguments);
+  };
+
+  console.info('[PATCH v67] isAdmin → JWT Supabase. doLogin → signInWithPassword.');
+})();
+</script>
+
+<script>
+/* PATCH v68 — Nom du créateur visible dans détails ping et liste veille */
+(function(){
+  var _origSWI=window.saveWatchItem;
+  window.saveWatchItem=function(item){
+    if(item&&!item.owner_email&&window._getCurrentUserName){
+      item.owner_email=window._getCurrentUserName();
+    }
+    return _origSWI?_origSWI.apply(this,arguments):undefined;
+  };
+
+  var _origOWD=window.openWatchDetail;
+  window.openWatchDetail=function(p){
+    if(_origOWD)_origOWD.apply(this,arguments);
+    setTimeout(function(){
+      var dp=document.getElementById('dp');
+      if(!dp||!p)return;
+      var creator=(p&&(p.owner_email||p.created_by||p.owner_name))||'';
+      if(!creator)return;
+      var el=dp.querySelector('.dp-creator-row');
+      if(!el){el=document.createElement('div');el.className='dp-creator-row';el.style.cssText='padding:6px 12px;font-size:11px;color:#aaa;border-top:1px solid rgba(255,255,255,0.08);margin-top:4px';dp.appendChild(el);}
+      el.innerHTML='👤 <span style="opacity:.6">Créé par</span> <strong style="color:#ddd">'+creator+'</strong>';
+    },60);
+  };
+
+  var _origRWL=window.renderWatchList;
+  window.renderWatchList=function(){
+    if(_origRWL)_origRWL.apply(this,arguments);
+    setTimeout(function(){
+      var list=document.getElementById('watch-list');
+      if(!list)return;
+      list.querySelectorAll('.ping-row').forEach(function(row,i){
+        if(row.querySelector('.ping-creator-badge'))return;
+        var items=window.watchItems||[];
+        var item=items[i];
+        var creator=item&&(item.owner_email||item.created_by)||'';
+        if(!creator)return;
+        var badge=document.createElement('span');
+        badge.className='ping-creator-badge';
+        badge.style.cssText='font-size:10px;color:#888;margin-left:6px;font-style:italic;white-space:nowrap';
+        badge.textContent='— '+creator;
+        row.appendChild(badge);
+      });
+    },80);
+  };
+
+  console.info('[PATCH v68] Créateur ping visible dans détails + liste.');
+})();
+</script>
+
+<script>
+/* PATCH v69 — Invitation email + UI panel admin restauré */
+(function(){
+  var _bu=(document.getElementById('backend-url')||{value:'https://bd-projects-map-akh.onrender.com'}).value;
+
+  window.inviteUserByEmail=async function(){
+    var emailEl=document.getElementById('invite-email-input');
+    var email=emailEl&&emailEl.value.trim()||'';
+    if(!email||!email.includes('@')){alert('Email invalide');return;}
+    var tok=localStorage.getItem('artelia_app_token')||'';
+    if(!tok){alert('Connectez-vous en tant qu'admin avant d'inviter.');return;}
+    try{
+      var r=await fetch(_bu+'/admin/invite',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},
+        body:JSON.stringify({email:email})
+      });
+      var d=await r.json();
+      if(r.ok){if(typeof toast==='function')toast('✅ Invitation envoyée à '+email);if(emailEl)emailEl.value='';}
+      else{alert('Erreur: '+(d.detail||r.status));}
+    }catch(e){alert('Erreur réseau: '+e.message);}
+  };
+
+  function injectInviteUI(){
+    var panel=document.getElementById('admin-users-section')||document.getElementById('admin-panel')||document.querySelector('.admin-section');
+    if(!panel)return;
+    if(panel.querySelector('.p69-invite'))return;
+    panel.insertAdjacentHTML('beforeend',
+      '<div class="p69-invite" style="margin-top:16px;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px;border:1px solid rgba(255,255,255,0.1)">'
+      +'<div style="font-size:12px;font-weight:600;color:#ccc;margin-bottom:8px">✉️ Inviter un utilisateur</div>'
+      +'<div style="display:flex;gap:8px">'
+      +'<input id="invite-email-input" type="email" placeholder="prenom.nom@artelia.fr" style="flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:6px 10px;color:#fff;font-size:12px"/>'
+      +'<button onclick="inviteUserByEmail()" style="background:#2563eb;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;white-space:nowrap">Envoyer l'invite</button>'
+      +'</div>'
+      +'<div style="font-size:10px;color:#666;margin-top:5px">Un email de création de compte Supabase sera envoyé automatiquement.</div>'
+      +'</div>'
+    );
+  }
+
+  var _origUAUI=window.updateAdminUI;
+  window.updateAdminUI=function(){if(_origUAUI)_origUAUI.apply(this,arguments);setTimeout(injectInviteUI,120);};
+
+  var _origLAU=window.loadAdminUsers;
+  window.loadAdminUsers=function(){if(_origLAU)_origLAU.apply(this,arguments);setTimeout(injectInviteUI,500);};
+
+  setTimeout(injectInviteUI,1200);
+
+  console.info('[PATCH v69] inviteUserByEmail() prêt. UI invitation injectée dans panel admin.');
+})();
+</script>
 </body>
 
 </html>
