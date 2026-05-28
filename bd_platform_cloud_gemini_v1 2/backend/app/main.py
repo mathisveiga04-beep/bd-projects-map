@@ -285,3 +285,29 @@ def admin_set_role(user_id: str, role: str, token: dict = Depends(verify_app_or_
     if not r.ok:
         raise HTTPException(r.status_code, "Supabase admin API refused credentials.")
     return {"success": True, "user_id": user_id, "role": role}
+
+
+@app.post("/admin/invite")
+async def admin_invite_user(request: Request, token: dict = Depends(verify_app_or_jwt)):
+    """Invite a user by email via Supabase Auth admin API."""
+    require_admin_token(token)
+    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
+        raise HTTPException(503, "Supabase admin config missing")
+    body = await request.json()
+    email = (body.get("email") or "").strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(400, "Valid email required")
+    headers = {
+        "apikey": SUPABASE_SERVICE_ROLE_KEY,
+        "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+        "Content-Type": "application/json",
+    }
+    r = requests.post(
+        f"{SUPABASE_URL}/auth/v1/admin/invites",
+        headers=headers,
+        json={"email": email},
+        timeout=15,
+    )
+    if not r.ok:
+        raise HTTPException(r.status_code, f"Supabase invite failed: {r.text[:200]}")
+    return {"ok": True, "email": email, "message": f"Invitation envoyée à {email}"}
