@@ -6617,234 +6617,177 @@ input:focus, select:focus, textarea:focus {
 
 
 <script>
-// v67+v68 patch -- alerts fix, cache, filters, tooltips, realtime
+/* v68 patch -- alerts, cache, filtres, tooltips, realtime */
 (function() {
-  'use strict';
-  var CACHE_KEY = 'bd_prj_v67';
+  "use strict";
+  var CACHE_KEY = "bd_prj_v68";
   var CACHE_TTL = 600000;
 
   function getCache() {
     try {
-      var r = localStorage.getItem(CACHE_KEY);
-      if (!r) return null;
-      var obj = JSON.parse(r);
+      var raw = localStorage.getItem(CACHE_KEY);
+      if (!raw) return null;
+      var obj = JSON.parse(raw);
       if (Date.now() - obj.ts > CACHE_TTL) { localStorage.removeItem(CACHE_KEY); return null; }
       return obj.data;
     } catch(e) { return null; }
   }
-  function setCache(data) {
-    try { localStorage.setItem(CACHE_KEY, JSON.stringify({data: data, ts: Date.now()})); } catch(e) {}
-  }
-  function badge(msg) {
-    var b = document.getElementById('bd-cache-badge');
-    if (!b) { b = document.createElement('div'); b.id = 'bd-cache-badge'; document.body.appendChild(b); }
-    b.textContent = msg; b.classList.add('show');
-    setTimeout(function(){ b.classList.remove('show'); }, 3000);
+
+  function setCache(d) {
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify({ts: Date.now(), data: d})); } catch(e) {}
   }
 
-  // Patch loadProjectsFromSupabase
+  function getSb() {
+    return window.sb || window.supabaseClient || null;
+  }
+
   function patchLoad() {
     var orig = window.loadProjectsFromSupabase;
-    if (!orig || window._v67lp) return;
-    window._v67lp = true;
+    if (typeof orig !== "function") return;
     window.loadProjectsFromSupabase = function() {
       var cached = getCache();
-      if (cached && cached.length > 0) {
-        badge('Cache: ' + cached.length + ' projets');
-        var legacy = (window.buildings || []).filter(function(b){ return b.source === 'Initial database'; });
-        window.buildings = legacy.concat(cached);
-        try { if (typeof renderMap === 'function') renderMap(); } catch(e) {}
-        setTimeout(function(){
-          orig.call(window).then(function(){
-            var fresh = (window.buildings || []).filter(function(b){ return b.source !== 'Initial database'; });
-            if (fresh.length > 0) setCache(fresh);
-          }).catch(function(e){ console.warn('bg refresh', e); });
-        }, 800);
-        return Promise.resolve();
+      if (cached) {
+        if (typeof window.renderProjects === "function") window.renderProjects(cached);
+        if (typeof window.renderMap === "function") window.renderMap(cached);
+        window._v67lp = "cache";
+        updateBadge();
+        return;
       }
-      return orig.call(window).then(function(){
-        var fresh = (window.buildings || []).filter(function(b){ return b.source !== 'Initial database'; });
-        if (fresh.length > 0) setCache(fresh);
-      }).catch(function(e){
-        if (typeof toast === 'function') toast('Erreur reseau - verifiez votre connexion');
-      });
+      window._v67lp = "fetch";
+      return orig.apply(this, arguments);
     };
   }
 
-  // Tooltips on markers
   function addTooltips() {
-    if (!window.mapObj || !window.L) return;
-    window.mapObj.eachLayer(function(layer) {
-      if (!layer._icon || layer._tooltip) return;
-      var ll = layer.getLatLng();
-      var b = (window.buildings || []).find(function(x) {
-        var la = x.lat || x.latitude || 0, ln = x.lng || x.longitude || 0;
-        return Math.abs(la - ll.lat) < 0.0003 && Math.abs(ln - ll.lng) < 0.0003;
-      });
-      if (b) {
-        var name = b.name || b.title || '';
-        if (name) layer.bindTooltip(name, {permanent: false, direction: 'top', className: 'bd-tooltip', offset: [0, -10]});
-      }
+    if (!window.buildings || !window.mapObj) return;
+    window.buildings.forEach(function(b) {
+      if (!b._marker) return;
+      try {
+        b._marker.bindTooltip(b.name || b.title || "Projet", {direction: "top", sticky: true, className: "bd-tooltip"});
+      } catch(e) {}
     });
   }
 
-  // Quick filter buttons
   function injectFilters() {
-    if (document.getElementById('bd-quick-filters')) return;
-    var mapEl = document.getElementById('map') || document.querySelector('.leaflet-container');
-    if (!mapEl) return;
-    var wrap = mapEl.parentElement;
-    if (!wrap) return;
-    if (getComputedStyle(wrap).position === 'static') wrap.style.position = 'relative';
-    var div = document.createElement('div');
-    div.id = 'bd-quick-filters';
-    div.innerHTML = '<button class="qf-btn active" onclick="applyQF(this,'all')">Tous</button>'
-      + '<button class="qf-btn" onclick="applyQF(this,'prospect')">Prospects</button>'
-      + '<button class="qf-btn" onclick="applyQF(this,'actif')">Actifs</button>'
-      + '<button class="qf-btn" onclick="applyQF(this,'energie')">Energie</button>'
-      + '<button class="qf-btn" onclick="applyQF(this,'infra')">Infra</button>';
+    if (document.getElementById("bd-quick-filters")) return;
+    var mapEl = document.getElementById("map");
+    if (!mapEl || !mapEl.parentNode) return;
+    var wrap = mapEl.parentNode;
+    wrap.style.position = "relative";
+    var div = document.createElement("div");
+    div.id = "bd-quick-filters";
+    var defs = [["Tous","all"],["Routes","road"],["Batiment","building"],["Eau","water"],["Energie","energy"]];
+    defs.forEach(function(pair) {
+      var btn = document.createElement("button");
+      btn.className = "qf-btn" + (pair[1] === "all" ? " qf-active" : "");
+      btn.textContent = pair[0];
+      btn.setAttribute("data-qf", pair[1]);
+      btn.addEventListener("click", function() { window.applyQF(btn, pair[1]); });
+      div.appendChild(btn);
+    });
     wrap.appendChild(div);
   }
 
   window.applyQF = function(btn, filter) {
-    document.querySelectorAll('.qf-btn').forEach(function(b){ b.classList.remove('active'); });
-    btn.classList.add('active');
-    if (!window.mapObj) return;
-    window.mapObj.eachLayer(function(layer) {
-      if (!layer._icon) return;
-      var ll = layer.getLatLng();
-      var b = (window.buildings || []).find(function(x) {
-        var la = x.lat || x.latitude || 0, ln = x.lng || x.longitude || 0;
-        return Math.abs(la - ll.lat) < 0.0003 && Math.abs(ln - ll.lng) < 0.0003;
-      });
-      if (!b) return;
-      var val = ((b.status || '') + ' ' + (b.sector || b.type || '')).toLowerCase();
-      var show = filter === 'all'
-        || val.indexOf(filter) > -1
-        || (filter === 'energie' && (val.match(/energ|electr|power|solar/) !== null))
-        || (filter === 'infra' && (val.match(/infra|route|bridge|water|pont/) !== null));
-      layer._icon.style.opacity = show ? '1' : '0.18';
-      layer._icon.style.pointerEvents = show ? '' : 'none';
-      if (layer._shadow) layer._shadow.style.opacity = show ? '1' : '0.18';
+    document.querySelectorAll(".qf-btn").forEach(function(b) { b.classList.remove("qf-active"); });
+    if (btn) btn.classList.add("qf-active");
+    if (!window.buildings) return;
+    window.buildings.forEach(function(b) {
+      if (!b._marker || !b._marker._icon) return;
+      if (filter === "all") { b._marker._icon.style.opacity = "1"; return; }
+      var sector = (b.sector || b.type || "").toLowerCase();
+      b._marker._icon.style.opacity = (sector.indexOf(filter) !== -1) ? "1" : "0.2";
     });
   };
 
-  // Fix alerts panel -- show recent Supabase projects
   function fixAlertsPanel() {
-    var origToggle = window.toggleNotif;
-    if (!origToggle || window._v67notif) return;
-    window._v67notif = true;
+    if (typeof window.toggleNotif !== "function") { setTimeout(fixAlertsPanel, 300); return; }
+    if (window._v67notif) return;
+    var orig = window.toggleNotif;
     window.toggleNotif = function() {
-      origToggle.apply(window, arguments);
-      var panel = document.getElementById('notif-items');
-      if (!panel) return;
-      // If panel has real content, leave it
-      if (panel.querySelectorAll('.ni-item').length > 0) return;
-      // Load recent projects from Supabase
-      panel.innerHTML = '<div style="padding:12px 16px;color:#6b7280;font-size:12px">Chargement...</div>';
-      var sevenDays = new Date(Date.now() - 7 * 24 * 3600000).toISOString();
-      window.sb.from('projects')
-        .select('id,title,city,sector,source_url,created_at,source')
-        .gte('created_at', sevenDays)
-        .order('created_at', {ascending: false})
-        .limit(15)
-        .then(function(res) {
-          if (res.error || !res.data || res.data.length === 0) {
-            panel.innerHTML = '<div style="padding:20px 16px;text-align:center;color:#9ca3af;font-size:12px">'
-              + '<div style="font-size:24px;margin-bottom:8px">&#128276;</div>'
-              + 'Aucun nouveau projet cette semaine.<br><span style="color:#2563eb">Ajoutez des regles de veille dans l'onglet Suivi.</span></div>';
-            return;
-          }
-          var html = '<div style="padding:8px 12px 4px;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px">'
-            + res.data.length + ' projet(s) cette semaine</div>';
-          res.data.forEach(function(p) {
-            var date = p.created_at ? new Date(p.created_at).toLocaleDateString('fr-FR') : '';
-            var link = p.source_url ? '<a href="' + p.source_url + '" target="_blank" class="ni-m" style="display:block;margin-top:5px;padding:3px 8px;border-radius:5px;background:rgba(124,58,237,.08);color:#7c3aed;font-weight:600;text-decoration:none;font-size:11px">Voir la source</a>' : '';
-            html += '<div class="ni-item" style="padding:10px 14px;border-bottom:1px solid #f3f4f6;cursor:default">'
-              + '<div class="ni-title" style="font-size:12px;font-weight:600;color:#111827">' + (p.title || 'Projet #' + p.id) + '</div>'
-              + '<div class="ni-m" style="font-size:11px;color:#6b7280;margin-top:2px">'
-              + (p.city || '') + (p.sector ? ' — ' + p.sector : '') + (date ? ' • ' + date : '')
-              + '</div>' + link + '</div>';
+      orig.apply(this, arguments);
+      setTimeout(function() {
+        var panel = document.getElementById("notif-panel");
+        if (!panel || panel.style.display === "none") return;
+        var list = document.querySelector(".ni-list") || document.querySelector("#notif-list") || panel.querySelector("ul,ol,.list");
+        if (!list) { list = document.createElement("div"); panel.appendChild(list); }
+        list.innerHTML = "<div style=\"padding:16px;text-align:center;color:#6b7280\">Chargement...</div>";
+        var c = getSb();
+        if (!c) { list.innerHTML = "<div style=\"padding:16px;color:#ef4444\">Client Supabase non disponible</div>"; return; }
+        var d7 = new Date(Date.now() - 7*24*3600000).toISOString();
+        c.from("projects").select("id,title,city,sector,source_url,created_at").gte("created_at", d7).order("created_at",{ascending:false}).limit(20)
+          .then(function(res) {
+            if (res.error || !res.data || !res.data.length) {
+              list.innerHTML = "<div style=\"padding:20px;text-align:center;color:#6b7280\"><div style=\"font-size:24px\">&#10003;</div><p>Aucun nouveau projet ces 7 jours.</p></div>";
+              return;
+            }
+            var rows = res.data.map(function(p) {
+              var ago = "";
+              try { ago = Math.round((Date.now() - new Date(p.created_at).getTime()) / 3600000) + "h"; } catch(e) {}
+              return "<div class=\"ni-item\" style=\"padding:12px 16px;border-bottom:1px solid #f3f4f6\">" +
+                "<div style=\"display:flex;justify-content:space-between\">" +
+                "<strong style=\"font-size:13px;color:#111\">" + (p.title || "Sans titre") + "</strong>" +
+                "<span style=\"font-size:11px;color:#9ca3af\">" + ago + "</span></div>" +
+                "<div style=\"font-size:12px;color:#6b7280;margin-top:2px\">" + (p.city || "") + (p.sector ? " · " + p.sector : "") + "</div>" +
+                (p.source_url ? "<a href=\"" + p.source_url + "\" target=\"_blank\" style=\"font-size:11px;color:#2563eb\">Voir la source &#8594;</a>" : "") +
+                "</div>";
+            }).join("");
+            list.innerHTML = "<div style=\"padding:8px 16px;font-size:12px;color:#6b7280;border-bottom:1px solid #e5e7eb\">" + res.data.length + " projet(s) ces 7 jours</div>" + rows;
           });
-          panel.innerHTML = html;
-        }).catch(function() {
-          panel.innerHTML = '<div style="padding:12px 16px;color:#dc2626;font-size:12px">Erreur de chargement</div>';
-        });
+      }, 100);
     };
+    window._v67notif = true;
   }
 
-  // Update notif badge count
   function updateBadge() {
-    var sevenDays = new Date(Date.now() - 7 * 24 * 3600000).toISOString();
-    window.sb.from('projects').select('id', {count: 'exact', head: true}).gte('created_at', sevenDays)
+    var btn = document.querySelector("#notif-btn") || document.querySelector(".notif-btn");
+    if (!btn) return;
+    var c = getSb();
+    if (!c) return;
+    var d7 = new Date(Date.now() - 7*24*3600000).toISOString();
+    c.from("projects").select("id", {count:"exact", head:true}).gte("created_at", d7)
       .then(function(res) {
-        if (res.count > 0) {
-          var btn = document.getElementById('notif-btn');
-          if (btn && !btn.querySelector('.qf-badge')) {
-            var badge = document.createElement('span');
-            badge.className = 'qf-badge';
-            badge.style.cssText = 'position:absolute;top:-4px;right:-4px;background:#dc2626;color:#fff;border-radius:99px;font-size:9px;font-weight:700;padding:1px 5px;min-width:16px;text-align:center';
-            badge.textContent = res.count > 9 ? '9+' : res.count;
-            btn.style.position = 'relative';
-            btn.appendChild(badge);
-          }
+        var n = res.count || 0;
+        var badge = document.getElementById("v67-badge");
+        if (!badge) {
+          badge = document.createElement("span");
+          badge.id = "v67-badge";
+          badge.style.cssText = "position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;font-size:10px;width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;";
+          btn.style.position = "relative";
+          btn.appendChild(badge);
         }
-      }).catch(function(){});
+        badge.textContent = n > 99 ? "99+" : String(n);
+        badge.style.display = n > 0 ? "flex" : "none";
+      });
   }
 
-  // Realtime new projects
   function setupRealtime() {
-    if (!window.sb || window._v67rt) return;
-    window._v67rt = true;
+    var c = getSb();
+    if (!c || !c.channel) return;
     try {
-      window.sb.channel('bd-rt-v67')
-        .on('postgres_changes', {event: 'INSERT', schema: 'public', table: 'projects'}, function(payload) {
-          var p = payload.new;
-          if (!p) return;
-          var lat = p.latitude || p.lat, lng = p.longitude || p.lng;
-          if (!lat || !lng) return;
-          if ((window.buildings || []).find(function(b){ return b.id === p.id; })) return;
-          window.buildings = (window.buildings || []);
-          window.buildings.push(Object.assign({}, p, {lat: lat, lng: lng}));
-          if (window.mapObj && window.L) {
-            var m = window.L.marker([lat, lng]).addTo(window.mapObj);
-            var name = p.title || p.name || '';
-            if (name) m.bindTooltip(name, {direction: 'top', className: 'bd-tooltip'});
-          }
-          if (typeof toast === 'function') toast('Nouveau projet : ' + (p.title || p.name || ''));
-        })
-        .subscribe();
-    } catch(e) { console.warn('Realtime', e); }
-  }
-
-  function patchRender() {
-    var orig = window.renderMap;
-    if (!orig || window._v67rm) return;
-    window._v67rm = true;
-    window.renderMap = function() {
-      var r = orig.apply(this, arguments);
-      setTimeout(addTooltips, 500);
-      return r;
-    };
+      c.channel("bd-rt-v68").on("postgres_changes", {event:"INSERT", schema:"public", table:"projects"}, function() {
+        localStorage.removeItem(CACHE_KEY);
+        if (typeof window.loadProjectsFromSupabase === "function") window.loadProjectsFromSupabase();
+        updateBadge();
+      }).subscribe();
+      window._v67rt = true;
+    } catch(e) { window._v67rt = "err:" + e.message; }
   }
 
   function init() {
     patchLoad();
-    patchRender();
     fixAlertsPanel();
-    updateBadge();
     setTimeout(function() {
       addTooltips();
       injectFilters();
       setupRealtime();
-    }, 2000);
+      updateBadge();
+    }, 2500);
+    window._v67init = true;
   }
 
-  if (document.readyState === 'complete') {
-    init();
-  } else {
-    window.addEventListener('load', init);
-  }
+  if (document.readyState === "complete") { init(); }
+  else { window.addEventListener("load", init); }
 }());
 </script>
 </body>
