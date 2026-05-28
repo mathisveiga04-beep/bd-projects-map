@@ -2,7 +2,7 @@ from __future__ import annotations
 from datetime import datetime
 import os
 import requests
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from .database import Base, engine, get_db
@@ -188,6 +188,35 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", SUPABASE_KEY).strip()
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip() or SUPABASE_KEY
+
+
+@app.post("/import/csv")
+async def import_csv(
+    request: Request,
+    token: dict = Depends(verify_supabase_jwt)
+):
+    from .auth import get_user_role, require_admin_token
+    require_admin_token(token)
+    import csv, io
+    body = await request.body()
+    if not body:
+        raise HTTPException(400, "No CSV data provided")
+    try:
+        content = body.decode("utf-8-sig")
+        reader = csv.DictReader(io.StringIO(content))
+        inserted = 0
+        errors = []
+        for i, row in enumerate(reader):
+            data = {k.strip(): v.strip() for k, v in row.items() if k and v.strip()}
+            if not data.get("title"):
+                continue
+            if insert_to_supabase(data):
+                inserted += 1
+            else:
+                errors.append(i)
+        return {"ok": True, "inserted": inserted, "errors": len(errors)}
+    except Exception as e:
+        raise HTTPException(400, f"CSV parse error: {str(e)}")
 
 
 @app.get("/admin/users")
