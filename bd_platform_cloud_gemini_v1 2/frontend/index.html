@@ -6019,6 +6019,125 @@ async function loadProjectsFromSupabase(){try{if(typeof sb==='undefined'||!sb)re
     };
   }
 })();
+</script>
+<script>
+/* PATCH v65 — FR/EN finalisation : admin section, settings, IA label, Chantier */
+(function(){
+  function lang(){
+    try{
+      if(typeof window.currentLang==='function') return window.currentLang();
+      return (window.currentLanguage||'fr')==='en'?'en':'fr';
+    }catch(e){return 'fr';}
+  }
+
+  function translateAdmin(){
+    var l = lang();
+    // Settings modal - admin section labels
+    document.querySelectorAll('button, h3, h4, p, span, div').forEach(function(el){
+      if(el.children.length > 0) return;
+      var t = el.textContent.trim();
+      var map = {
+        // Admin user management
+        'Gestion des utilisateurs': 'User management',
+        'Charger les utilisateurs': 'Load users',
+        'Quitter le mode administrateur': 'Exit administrator mode',
+        'Mode administrateur': 'Administrator mode',
+        // AI labels
+        'IA Gemini backend': 'AI Gemini backend',
+        'Analyser avec IA': 'Analyze with AI',
+        'Analyse IA': 'AI Analysis',
+        'Score IA': 'AI Score',
+        'Recommandation IA': 'AI Recommendation',
+        'R\u00e9sum\u00e9 IA': 'AI Summary',
+        // Settings sections
+        'Synchroniser': 'Synchronize',
+        'Pousser local': 'Push local',
+        'Lancer le scraper': 'Run scraper',
+        'T\u00e9l\u00e9verser CSV': 'Upload CSV',
+        'Importer CSV': 'Import CSV',
+        'Supprimer les actifs': 'Delete assets',
+        'Supprimer les actions': 'Delete actions',
+        'Supprimer les opportunit\u00e9s': 'Delete opportunities',
+        'Supprimer les alertes': 'Delete watch items',
+        'Restaurer les donn\u00e9es initiales': 'Restore initial data',
+        'Effacer toutes les donn\u00e9es locales': 'Delete all local data',
+        // Project types
+        'Chantier Identifi\u00e9': 'Construction Site',
+        'Chantier identifi\u00e9': 'Construction Site',
+        // Status
+        'Identifi\u00e9': 'Identified',
+        'En cours': 'In progress',
+        'Propos\u00e9': 'Proposed',
+        'Qualifi\u00e9': 'Qualified',
+        'Gagn\u00e9': 'Won',
+        'Perdu': 'Lost',
+        // Tenders
+        'Appel d\u2019offres': 'Tender call',
+        'Date limite': 'Deadline',
+        'Bailleur': 'Funder',
+        // Watch/Veille
+        'P\u00e9rim\u00e8tres Artelia suivis': 'Monitored Artelia scopes',
+        'Veille automatique': 'Automated watch',
+        // Actions tab
+        'Cr\u00e9er une action': 'Create action',
+        'Mes actions': 'My actions'
+      };
+      if(l === 'en' && map[t]) {
+        el.textContent = map[t];
+      } else if(l === 'fr') {
+        // Reverse map for FR
+        var revMap = {};
+        Object.keys(map).forEach(function(fr){ revMap[map[fr]] = fr; });
+        if(revMap[t]) el.textContent = revMap[t];
+      }
+    });
+
+    // Fix emoji-prefixed admin items (text node after emoji)
+    document.querySelectorAll('[class*="admin"], #admin-section, .admin-section, .settings-admin').forEach(function(sec){
+      sec.querySelectorAll('button, div, span').forEach(function(el){
+        if(el.children.length === 0) {
+          var t = el.textContent.trim();
+          if(l==='en' && t.includes('Gestion des utilisateurs'))
+            el.textContent = el.textContent.replace('Gestion des utilisateurs','User management');
+          if(l==='en' && t.includes('Charger les utilisateurs'))
+            el.textContent = el.textContent.replace('Charger les utilisateurs','Load users');
+          if(l==='fr' && t.includes('User management'))
+            el.textContent = el.textContent.replace('User management','Gestion des utilisateurs');
+          if(l==='fr' && t.includes('Load users'))
+            el.textContent = el.textContent.replace('Load users','Charger les utilisateurs');
+        }
+      });
+    });
+  }
+
+  window.translateAdmin = translateAdmin;
+
+  // Hook setLang
+  var _sl = window.setLang;
+  if(typeof _sl === 'function'){
+    window.setLang = function(l, btn){
+      var r = _sl.apply(this, arguments);
+      setTimeout(translateAdmin, 100);
+      setTimeout(translateAdmin, 600);
+      return r;
+    };
+  }
+
+  // Hook settings open
+  var _os = window.openSettings;
+  if(typeof _os === 'function'){
+    window.openSettings = function(){
+      var r = _os.apply(this, arguments);
+      setTimeout(translateAdmin, 200);
+      return r;
+    };
+  }
+
+  // Run at startup
+  setTimeout(translateAdmin, 1000);
+  setTimeout(translateAdmin, 2500);
+  window.addEventListener('load', function(){ setTimeout(translateAdmin, 800); });
+})();
 </script></body>
 
 </html>
