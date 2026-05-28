@@ -539,6 +539,27 @@ textarea.fi{min-height:70px;resize:vertical}
 .hdr-lang .lang-btn.active{background:#fff;color:var(--navy);border-color:#fff}
 .lc-footer{margin-top:22px;padding-top:16px;border-top:1px solid #E2E8F0;font-size:10px;color:#94A3B8;font-family:'Calibri','Segoe UI',Arial,sans-serif;letter-spacing:.04em}
 </style>
+<script>
+/* PATCH v66 — Neutralise les appels Render /projects + /tenders (double chargement inutile)
+   Placé dans <head> pour intercepter AVANT tout autre script.
+   Ces appels causent 50 s de délai sur cold start Render free tier.
+   Toutes les données viennent désormais de Supabase via loadProjectsFromSupabase(). */
+(function(){
+  var _origFetch = window.fetch;
+  window.fetch = function(url, opts) {
+    var u = (typeof url === 'string') ? url : ((url && url.url) ? url.url : String(url));
+    if (u.indexOf('onrender.com/projects') !== -1 || u.indexOf('onrender.com/tenders') !== -1) {
+      console.info('[PATCH v66] Render call intercepted:', u);
+      return Promise.resolve(new Response('[]', {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      }));
+    }
+    return _origFetch.apply(this, arguments);
+  };
+  console.info('[PATCH v66] Fetch interceptor active — Render /projects + /tenders neutralisés');
+})();
+</script>
 </head>
 <body>
 
@@ -6790,27 +6811,6 @@ input:focus, select:focus, textarea:focus {
   if (document.readyState === "complete") { init(); }
   else { window.addEventListener("load", init); }
 }());
-</script>
-
-<script>
-/* PATCH v66 — Neutralise les appels Render /projects + /tenders (double chargement inutile)
-   Ces appels causent 50 s de délai sur cold start Render free tier.
-   Toutes les données viennent désormais de Supabase via loadProjectsFromSupabase(). */
-(function(){
-  const _origFetch = window.fetch;
-  window.fetch = function(url, opts) {
-    const u = (typeof url === 'string') ? url : ((url && url.url) ? url.url : String(url));
-    if (u.indexOf('onrender.com/projects') !== -1 || u.indexOf('onrender.com/tenders') !== -1) {
-      console.info('[PATCH v66] Render call intercepted and short-circuited:', u);
-      return Promise.resolve(new Response('[]', {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-      }));
-    }
-    return _origFetch.apply(this, arguments);
-  };
-  console.info('[PATCH v66] Render /projects + /tenders fetch interceptor active');
-})();
 </script>
 </body>
 
