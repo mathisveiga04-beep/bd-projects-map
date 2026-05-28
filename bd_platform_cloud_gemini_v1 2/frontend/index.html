@@ -6913,56 +6913,53 @@ input:focus, select:focus, textarea:focus {
 })();
 </script>
 
-<script>
-/* PATCH v69 — Invitation email + UI panel admin restauré */
+<<script>
+/* PATCH v69 — Invitation email + UI panel admin (fixed) */
 (function(){
-  var _bu=(document.getElementById('backend-url')||{value:'https://bd-projects-map-akh.onrender.com'}).value;
+  var _bu=(document.getElementById("backend-url")||{value:"https://bd-projects-map-akh.onrender.com"}).value;
 
   window.inviteUserByEmail=async function(){
-    var emailEl=document.getElementById('invite-email-input');
-    var email=emailEl&&emailEl.value.trim()||'';
-    if(!email||!email.includes('@')){alert('Email invalide');return;}
-    var tok=localStorage.getItem('artelia_app_token')||'';
-    if(!tok){alert('Connectez-vous en tant qu'admin avant d'inviter.');return;}
+    var emailEl=document.getElementById("invite-email-input");
+    var email=emailEl&&emailEl.value.trim()||"";
+    if(!email||!email.includes("@")){alert("Email invalide");return;}
+    var tok=localStorage.getItem("artelia_app_token")||"";
+    if(!tok){alert("Connectez-vous en tant qu'admin d'abord.");return;}
     try{
-      var r=await fetch(_bu+'/admin/invite',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},
+      var r=await fetch(_bu+"/admin/invite",{
+        method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":"Bearer "+tok},
         body:JSON.stringify({email:email})
       });
       var d=await r.json();
-      if(r.ok){if(typeof toast==='function')toast('✅ Invitation envoyée à '+email);if(emailEl)emailEl.value='';}
-      else{alert('Erreur: '+(d.detail||r.status));}
-    }catch(e){alert('Erreur réseau: '+e.message);}
+      if(r.ok){if(typeof toast==="function")toast("✅ Invitation envoyée à "+email);if(emailEl)emailEl.value="";}
+      else{alert("Erreur: "+(d.detail||r.status));}
+    }catch(e){alert("Erreur réseau: "+e.message);}
   };
 
   function injectInviteUI(){
-    var panel=document.getElementById('admin-users-section')||document.getElementById('admin-panel')||document.querySelector('.admin-section');
+    var panel=document.getElementById("admin-users-section")||document.getElementById("admin-panel")||document.querySelector(".admin-section,.settings-tab-content");
     if(!panel)return;
-    if(panel.querySelector('.p69-invite'))return;
-    panel.insertAdjacentHTML('beforeend',
-      '<div class="p69-invite" style="margin-top:16px;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px;border:1px solid rgba(255,255,255,0.1)">'
-      +'<div style="font-size:12px;font-weight:600;color:#ccc;margin-bottom:8px">✉️ Inviter un utilisateur</div>'
-      +'<div style="display:flex;gap:8px">'
-      +'<input id="invite-email-input" type="email" placeholder="prenom.nom@artelia.fr" style="flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:6px 10px;color:#fff;font-size:12px"/>'
-      +'<button onclick="inviteUserByEmail()" style="background:#2563eb;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;white-space:nowrap">Envoyer l'invite</button>'
-      +'</div>'
-      +'<div style="font-size:10px;color:#666;margin-top:5px">Un email de création de compte Supabase sera envoyé automatiquement.</div>'
-      +'</div>'
+    if(panel.querySelector(".p69-invite"))return;
+    panel.insertAdjacentHTML("beforeend",
+      "<div class=\"p69-invite\" style=\"margin-top:16px;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px;border:1px solid rgba(255,255,255,0.1)\">"
+      +"<div style=\"font-size:12px;font-weight:600;color:#ccc;margin-bottom:8px\">✉️ Inviter un utilisateur</div>"
+      +"<div style=\"display:flex;gap:8px\">"
+      +"<input id=\"invite-email-input\" type=\"email\" placeholder=\"prenom.nom@artelia.fr\" style=\"flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:6px 10px;color:#fff;font-size:12px\"/>"
+      +"<button onclick=\"inviteUserByEmail()\" style=\"background:#2563eb;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer\">Envoyer invite</button>"
+      +"</div>"
+      +"<div style=\"font-size:10px;color:#666;margin-top:5px\">Un email Supabase sera envoyé pour créer le compte.</div>"
+      +"</div>"
     );
   }
 
   var _origUAUI=window.updateAdminUI;
   window.updateAdminUI=function(){if(_origUAUI)_origUAUI.apply(this,arguments);setTimeout(injectInviteUI,120);};
-
   var _origLAU=window.loadAdminUsers;
   window.loadAdminUsers=function(){if(_origLAU)_origLAU.apply(this,arguments);setTimeout(injectInviteUI,500);};
-
   setTimeout(injectInviteUI,1200);
 
-  console.info('[PATCH v69] inviteUserByEmail() prêt. UI invitation injectée dans panel admin.');
+  console.info("[PATCH v69 fixed] inviteUserByEmail() prêt.");
 })();
-</script>
-</body>
+</script></body>
 
 </html>
