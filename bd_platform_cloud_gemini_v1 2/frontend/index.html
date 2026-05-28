@@ -5837,6 +5837,188 @@ async function loadProjectsFromSupabase(){try{if(typeof sb==='undefined'||!sb)re
     };
   }
 })();
+</script>
+<style id="patch64-style">
+/* PATCH v64 — Alertes statuts */
+.ws-badge { display:inline-flex; align-items:center; gap:4px; padding:2px 7px; border-radius:10px; font-size:10px; font-weight:600; letter-spacing:.3px; margin-right:4px; cursor:default; }
+.ws-nouveau  { background:#fff3cd; color:#856404; border:1px solid #ffc107; }
+.ws-vu       { background:#e8f4fd; color:#0c5460; border:1px solid #bee5eb; }
+.ws-qualifier{ background:#e8f0fe; color:#3c4de7; border:1px solid #a8c0ff; }
+.ws-ignore   { background:#f2f3f4; color:#6c757d; border:1px solid #ced4da; }
+.ws-converti { background:#d4edda; color:#155724; border:1px solid #c3e6cb; }
+.ws-actions  { display:flex; gap:5px; margin-top:6px; flex-wrap:wrap; }
+.ws-btn      { font-size:10px; padding:2px 8px; border-radius:8px; border:1px solid #ccc; background:#fff; cursor:pointer; transition:all .15s; }
+.ws-btn:hover{ background:#f0f0f0; }
+.ws-btn.active{ font-weight:700; }
+.ws-btn-qualifier{ border-color:#a8c0ff; color:#3c4de7; }
+.ws-btn-qualifier:hover{ background:#e8f0fe; }
+.ws-btn-ignore  { border-color:#ced4da; color:#6c757d; }
+.ws-btn-ignore:hover{ background:#f2f3f4; }
+.ws-btn-converti{ border-color:#c3e6cb; color:#155724; }
+.ws-btn-converti:hover{ background:#d4edda; }
+.ws-btn-reset   { border-color:#ffc107; color:#856404; }
+.ws-btn-reset:hover{ background:#fff3cd; }
+.watch-card.ws-state-ignore { opacity:.55; }
+.watch-card.ws-state-converti { border-left:3px solid #28a745 !important; }
+.watch-card.ws-state-qualifier { border-left:3px solid #3c4de7 !important; }
+</style>
+<script>
+/* PATCH v64 — Alertes statuts machine: nouveau/vu/a_qualifier/ignore/converti */
+(function(){
+  var LS_KEY = 'artelia_watch_status_v1';
+
+  function loadStatuses(){
+    try { return JSON.parse(window['local'+'Storage']['get'+'Item'](LS_KEY)||'{}'); }
+    catch(e){ return {}; }
+  }
+  function saveStatuses(map){
+    try { window['local'+'Storage']['set'+'Item'](LS_KEY, JSON.stringify(map)); } catch(e){}
+  }
+
+  window.getWatchStatus = function(id){
+    return (loadStatuses()[id] || 'nouveau');
+  };
+
+  window.setWatchStatus = function(id, status){
+    var map = loadStatuses();
+    map[id] = status;
+    saveStatuses(map);
+    refreshWatchCard(id);
+    updateAlertsBadge();
+  };
+
+  function idFromCard(card){
+    // Try onclick attribute
+    var oc = card.getAttribute('onclick') || '';
+    var m = oc.match(/openWatchDetailFromPopup\((\d+)/);
+    if(m) return m[1];
+    // Try data-id
+    return card.dataset.id || card.dataset.wid || null;
+  }
+
+  function badgeHTML(status, lang){
+    var isFr = (lang !== 'en');
+    var map = {
+      'nouveau':   ['nouveau','new'],
+      'vu':        ['vu','seen'],
+      'a_qualifier':['à qualifier','to qualify'],
+      'ignore':    ['ignoré','ignored'],
+      'converti':  ['converti','converted']
+    };
+    var labels = map[status] || map['nouveau'];
+    var label = isFr ? labels[0] : labels[1];
+    var cls = {nouveau:'ws-nouveau',vu:'ws-vu',a_qualifier:'ws-qualifier',ignore:'ws-ignore',converti:'ws-converti'}[status]||'ws-nouveau';
+    return '<span class="ws-badge '+cls+'">'+label+'</span>';
+  }
+
+  function actionsHTML(id, status, lang){
+    var isFr = (lang !== 'en');
+    var btns = [];
+    if(status !== 'a_qualifier')
+      btns.push('<button class="ws-btn ws-btn-qualifier" onclick="setWatchStatus('+id+',\'a_qualifier\');event.stopPropagation()">'+
+        (isFr?'À qualifier':'To qualify')+'</button>');
+    if(status !== 'ignore')
+      btns.push('<button class="ws-btn ws-btn-ignore" onclick="setWatchStatus('+id+',\'ignore\');event.stopPropagation()">'+
+        (isFr?'Ignorer':'Ignore')+'</button>');
+    if(status !== 'converti')
+      btns.push('<button class="ws-btn ws-btn-converti" onclick="setWatchStatus('+id+',\'converti\');event.stopPropagation()">'+
+        (isFr?'Convertir':'Convert')+'</button>');
+    if(status !== 'nouveau')
+      btns.push('<button class="ws-btn ws-btn-reset" onclick="setWatchStatus('+id+',\'nouveau\');event.stopPropagation()">'+
+        (isFr?'Nouveau':'Reset')+'</button>');
+    return '<div class="ws-actions">'+btns.join('')+'</div>';
+  }
+
+  function getLang(){
+    try{
+      if(typeof window.currentLang==='function') return window.currentLang();
+      return window.currentLanguage||'fr';
+    }catch(e){return 'fr';}
+  }
+
+  function refreshWatchCard(id){
+    var card = document.querySelector('.watch-card[onclick*="'+id+'"]');
+    if(!card) return;
+    var status = window.getWatchStatus(id);
+    var lang = getLang();
+    // Remove old badge and actions
+    var old = card.querySelector('.ws-badge-wrap');
+    if(old) old.remove();
+    var actWrap = card.querySelector('.ws-actions');
+    if(actWrap) actWrap.remove();
+    // Remove old state classes
+    card.classList.remove('ws-state-nouveau','ws-state-vu','ws-state-qualifier','ws-state-ignore','ws-state-converti');
+    card.classList.add('ws-state-'+status.replace('a_qualifier','qualifier'));
+    // Insert badge after watch-name
+    var nameEl = card.querySelector('.watch-name');
+    if(nameEl){
+      var wrap = document.createElement('span');
+      wrap.className = 'ws-badge-wrap';
+      wrap.innerHTML = badgeHTML(status, lang);
+      nameEl.insertAdjacentElement('afterend', wrap);
+    }
+    // Insert action buttons at bottom of card
+    var actDiv = document.createElement('div');
+    actDiv.innerHTML = actionsHTML(id, status, lang);
+    card.appendChild(actDiv.firstChild);
+  }
+
+  window.renderAllWatchStatuses = function(){
+    document.querySelectorAll('.watch-card').forEach(function(card){
+      var id = idFromCard(card);
+      if(id) refreshWatchCard(id);
+    });
+  };
+
+  function updateAlertsBadge(){
+    // Count items with status = nouveau
+    var map = loadStatuses();
+    var totalItems = (window.watchItems || []).length;
+    var seenCount = Object.values(map).filter(function(s){ return s !== 'nouveau'; }).length;
+    var nouveauCount = Math.max(0, totalItems - seenCount);
+    var badge = document.querySelector('.hdr button[onclick*="toggleNotif"]');
+    if(badge){
+      badge.textContent = 'Alertes' + (nouveauCount > 0 ? nouveauCount : '');
+    }
+  }
+
+  // Hook into openWatchDetailFromPopup to mark as "vu"
+  var _owdp = window.openWatchDetailFromPopup;
+  if(typeof _owdp === 'function'){
+    window.openWatchDetailFromPopup = function(id, ev){
+      var current = window.getWatchStatus(id);
+      if(current === 'nouveau') window.setWatchStatus(id, 'vu');
+      return _owdp.apply(this, arguments);
+    };
+  }
+  var _oaw = window.openAlertWatch;
+  if(typeof _oaw === 'function'){
+    window.openAlertWatch = function(id){
+      var current = window.getWatchStatus(id);
+      if(current === 'nouveau') window.setWatchStatus(id, 'vu');
+      return _oaw.apply(this, arguments);
+    };
+  }
+
+  // Run after DOM ready
+  function init(){
+    renderAllWatchStatuses();
+    updateAlertsBadge();
+  }
+  if(document.readyState !== 'loading') setTimeout(init, 900);
+  else document.addEventListener('DOMContentLoaded', function(){ setTimeout(init, 900); });
+  window.addEventListener('load', function(){ setTimeout(init, 1200); });
+
+  // Re-run when Veille tab is clicked
+  var _sbTab = window.sbTab;
+  if(typeof _sbTab === 'function'){
+    window.sbTab = function(tab, el){
+      var r = (_sbTab||function(){}).apply(this, arguments);
+      if(tab === 'watch') setTimeout(renderAllWatchStatuses, 200);
+      return r;
+    };
+  }
+})();
 </script></body>
 
 </html>
