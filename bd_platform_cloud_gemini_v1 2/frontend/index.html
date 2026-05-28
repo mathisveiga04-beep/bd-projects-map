@@ -287,6 +287,19 @@ textarea.fi{min-height:70px;resize:vertical}
   .pipe-col{width:86vw;min-width:86vw;max-width:86vw}
 }
 
+/* Sidebar Suivi: vertical, readable cards */
+.pipe-wrap{
+  flex-direction:column;
+  overflow-y:auto;
+  overflow-x:hidden;
+  align-items:stretch;
+}
+.pipe-col{
+  width:100%;
+  min-width:0;
+  max-width:none;
+}
+
 /* ══ DASHBOARD ══ */
 .dboard{padding:10px;overflow-y:auto;height:100%}
 .db-kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
