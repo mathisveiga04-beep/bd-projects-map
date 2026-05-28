@@ -2470,7 +2470,7 @@ async function aiAnalyze(item) {
   modal.style.display = 'flex';
   var body = document.getElementById('ai-analyze-body');
   var title = item.title || item.name || '';
-  var text = item.description || item.summary || item.content || title;
+  var text = item.description || item.summary || item.content || item.notes || item.services || item.source_title || title;
   var sourceUrl = item.source_url || item.url || '';
   body.innerHTML = '<div style="text-align:center;padding:32px;color:#94a3b8">⏳ Analyse en cours avec Gemini...</div>';
   try {
@@ -2478,6 +2478,7 @@ async function aiAnalyze(item) {
       method:'POST',
       body: JSON.stringify({title:title, text:text.slice(0,4000), source_url:sourceUrl})
     });
+    if (!d || d.detail) { bodyEl.innerHTML = '<div style="color:#ef4444;padding:16px">Analyse non disponible (clé API Gemini non configurée)</div>'; return; }
     var score = d.score || 0;
     var scoreColor = score >= 8 ? '#22c55e' : score >= 6 ? '#f59e0b' : score >= 4 ? '#f97316' : '#ef4444';
     var scoreBar = Array.from({length:10}, function(_,i) {
