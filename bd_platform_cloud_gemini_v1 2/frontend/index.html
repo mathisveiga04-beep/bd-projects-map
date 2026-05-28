@@ -5801,12 +5801,7 @@ async function loadProjectsFromSupabase(){try{if(typeof sb==='undefined'||!sb)re
       var n = parseInt(pcc.textContent, 10);
       if(!isNaN(n)) total += n;
     });
-    // Also count actual project cards (any child of pipe-col that is NOT pipe-ch)
-    document.querySelectorAll('#sbt-pipe .pipe-col').forEach(function(col){
-      Array.from(col.children).forEach(function(child){
-        if(!child.classList.contains('pipe-ch')) total++;
-      });
-    });
+    // Only sum .pcc badge values (do not count empty state divs)
     el.textContent = total;
   }
 
