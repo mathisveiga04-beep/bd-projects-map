@@ -5,6 +5,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>B&D Projects Map — Artelia Cambodia</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗺</text></svg>">
+<meta name="description" content="Veille projets construction, infrastructure et énergie — Artelia Cambodia B&D">
+<meta property="og:title" content="B&D Projects Map — Artelia Cambodia">
+<meta property="og:description" content="Plateforme de veille projets et appels d'offres — Artelia Cambodia">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://bd-projects-map.vercel.app/">
+<meta name="theme-color" content="#2563eb">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
 :root{
@@ -6296,6 +6303,39 @@ input:focus, select:focus, textarea:focus {
 .notif-panel { animation: fadeUp .2s ease both; }
 .proj-card { animation: fadeUp .22s ease both; }
 
+
+/* PATCH v67 — Quick filters + Tooltips + Cache indicator */
+#bd-quick-filters {
+  position:absolute; z-index:1000; top:12px; left:50%; transform:translateX(-50%);
+  display:flex; gap:5px; padding:5px 8px;
+  background:rgba(255,255,255,.96); backdrop-filter:blur(10px);
+  border-radius:99px; box-shadow:0 2px 14px rgba(0,0,0,.14);
+  border:1px solid var(--c-gray-200,#e5e7eb); pointer-events:all;
+}
+.qf-btn {
+  padding:4px 13px; border-radius:99px; border:none; cursor:pointer;
+  font-size:11.5px; font-weight:600; background:transparent;
+  color:var(--c-gray-700,#374151); transition:.15s ease; white-space:nowrap;
+}
+.qf-btn:hover { background:var(--c-blue-light,#eff6ff); color:var(--c-blue,#2563eb); }
+.qf-btn.active { background:var(--c-blue,#2563eb); color:#fff; box-shadow:0 2px 6px rgba(37,99,235,.35); }
+.bd-tooltip.leaflet-tooltip {
+  background:rgba(17,24,39,.88) !important; color:#fff !important;
+  border:none !important; border-radius:6px !important;
+  font-size:11px !important; font-weight:600 !important;
+  padding:3px 9px !important; white-space:nowrap !important;
+  box-shadow:0 2px 10px rgba(0,0,0,.22) !important;
+}
+.bd-tooltip.leaflet-tooltip::before { border-top-color:rgba(17,24,39,.88) !important; }
+#bd-cache-badge {
+  position:fixed; bottom:14px; right:14px; z-index:2000;
+  font-size:10px; padding:3px 10px; border-radius:99px;
+  background:var(--c-green-light,#f0fdf4); color:var(--c-green,#16a34a);
+  border:1px solid #bbf7d0; font-weight:600; pointer-events:none;
+  opacity:0; transition:opacity .4s;
+}
+#bd-cache-badge.show { opacity:1; }
+
 </style>
 <script>
 /* PATCH v64 — Alertes statuts machine: nouveau/vu/a_qualifier/ignore/converti */
@@ -6573,6 +6613,168 @@ input:focus, select:focus, textarea:focus {
   setTimeout(translateAdmin, 2500);
   window.addEventListener('load', function(){ setTimeout(translateAdmin, 800); });
 })();
-</script></body>
+</script>
+
+<script>
+/* PATCH v67 — Cache localStorage + Tooltips + Filtres rapides + Realtime + Error toast */
+(function(){
+  const CACHE_KEY='bd_projects_v67';
+  const CACHE_TTL=10*60*1000;
+
+  // Cache helpers
+  function getCached(){
+    try{const r=localStorage.getItem(CACHE_KEY);if(!r)return null;
+      const{data,ts}=JSON.parse(r);if(Date.now()-ts>CACHE_TTL){localStorage.removeItem(CACHE_KEY);return null;}
+      return data;}catch(e){return null;}
+  }
+  function setCache(data){
+    try{localStorage.setItem(CACHE_KEY,JSON.stringify({data,ts:Date.now()}));}catch(e){}
+  }
+  function showCacheBadge(msg){
+    let b=document.getElementById('bd-cache-badge');
+    if(!b){b=document.createElement('div');b.id='bd-cache-badge';document.body.appendChild(b);}
+    b.textContent=msg; b.classList.add('show');
+    setTimeout(()=>b.classList.remove('show'),3000);
+  }
+
+  // Patch loadProjectsFromSupabase with cache + error handling
+  function patchLoadProjects(){
+    const orig=window.loadProjectsFromSupabase;
+    if(!orig||window._v67LoadPatched)return;
+    window._v67LoadPatched=true;
+    window.loadProjectsFromSupabase=async function(){
+      const cached=getCached();
+      if(cached&&cached.length>0){
+        showCacheBadge('⚡ Cache — ' + cached.length + ' projets');
+        const legacy=(window.buildings||[]).filter(b=>b.source==='Initial database');
+        window.buildings=[...legacy,...cached];
+        try{if(typeof renderMap==='function')renderMap();}catch(e){}
+        // Background refresh
+        setTimeout(async()=>{
+          try{
+            await orig.call(this);
+            const fresh=(window.buildings||[]).filter(b=>b.source!=='Initial database');
+            if(fresh.length>0)setCache(fresh);
+          }catch(e){console.warn('BG refresh failed',e);}
+        },800);
+        return;
+      }
+      try{
+        await orig.call(this);
+        const fresh=(window.buildings||[]).filter(b=>b.source!=='Initial database');
+        if(fresh.length>0)setCache(fresh);
+      }catch(e){
+        if(typeof toast==='function')toast('⚠️ Erreur réseau — vérifiez votre connexion');
+        console.error('loadProjects error',e);
+      }
+    };
+  }
+
+  // Tooltips on all map markers
+  function addTooltips(){
+    if(!window.mapObj||!window.L)return;
+    window.mapObj.eachLayer(function(layer){
+      if(!layer._icon||layer._tooltip)return;
+      const ll=layer.getLatLng();
+      const b=(window.buildings||[]).find(x=>{
+        const la=x.lat||x.latitude||0, ln=x.lng||x.longitude||0;
+        return Math.abs(la-ll.lat)<0.0002&&Math.abs(ln-ll.lng)<0.0002;
+      });
+      if(b){
+        const name=b.name||b.title||'';
+        if(name)layer.bindTooltip(name,{permanent:false,direction:'top',className:'bd-tooltip',offset:[0,-10]});
+      }
+    });
+  }
+
+  // Quick filter buttons
+  function injectFilters(){
+    if(document.getElementById('bd-quick-filters'))return;
+    const mapEl=document.getElementById('map')||document.querySelector('.leaflet-container');
+    if(!mapEl)return;
+    const wrap=mapEl.closest('[style*="position"]')||mapEl.parentElement;
+    if(!wrap)return;
+    if(getComputedStyle(wrap).position==='static')wrap.style.position='relative';
+    const div=document.createElement('div');
+    div.id='bd-quick-filters';
+    div.innerHTML=
+      '<button class="qf-btn active" onclick="applyQF(this,'all')">Tous</button>'+
+      '<button class="qf-btn" onclick="applyQF(this,'prospect')">Prospects</button>'+
+      '<button class="qf-btn" onclick="applyQF(this,'actif')">Actifs</button>'+
+      '<button class="qf-btn" onclick="applyQF(this,'energie')">Énergie</button>'+
+      '<button class="qf-btn" onclick="applyQF(this,'infra')">Infra</button>';
+    wrap.appendChild(div);
+  }
+
+  window.applyQF=function(btn,filter){
+    document.querySelectorAll('.qf-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    if(!window.mapObj)return;
+    window.mapObj.eachLayer(function(layer){
+      if(!layer._icon)return;
+      const ll=layer.getLatLng();
+      const b=(window.buildings||[]).find(x=>{
+        const la=x.lat||x.latitude||0,ln=x.lng||x.longitude||0;
+        return Math.abs(la-ll.lat)<0.0002&&Math.abs(ln-ll.lng)<0.0002;
+      });
+      if(!b)return;
+      const val=((b.status||'')+(b.sector||b.type||'')).toLowerCase();
+      const show=filter==='all'||val.includes(filter)||
+        (filter==='energie'&&val.match(/energ|electr|power|solar/i))||
+        (filter==='infra'&&val.match(/infra|route|bridge|water|pont/i));
+      layer._icon.style.opacity=show?'1':'0.15';
+      layer._icon.style.pointerEvents=show?'':'none';
+      if(layer._shadow){layer._shadow.style.opacity=show?'1':'0.15';}
+    });
+  };
+
+  // Supabase Realtime
+  function setupRealtime(){
+    if(!window.sb||window._v67RT)return;
+    window._v67RT=true;
+    try{
+      window.sb.channel('bd-projects-rt')
+        .on('postgres_changes',{event:'INSERT',schema:'public',table:'projects'},function(payload){
+          const p=payload.new;
+          if(!p)return;
+          const lat=p.latitude||p.lat,lng=p.longitude||p.lng;
+          if(!lat||!lng)return;
+          if((window.buildings||[]).find(b=>b.id===p.id))return;
+          window.buildings=window.buildings||[];
+          window.buildings.push({...p,lat,lng});
+          if(window.mapObj&&window.L){
+            const m=window.L.marker([lat,lng]).addTo(window.mapObj);
+            const name=p.title||p.name||'';
+            if(name)m.bindTooltip(name,{direction:'top',className:'bd-tooltip'});
+          }
+          if(typeof toast==='function')toast('🌟 Nouveau projet : '+(p.title||p.name||''));
+        })
+        .subscribe();
+    }catch(e){console.warn('Realtime',e);}
+  }
+
+  // Patch renderMap to re-apply tooltips after each render
+  function patchRenderMap(){
+    const orig=window.renderMap;
+    if(!orig||window._v67RMPatched)return;
+    window._v67RMPatched=true;
+    window.renderMap=function(){
+      const r=orig.apply(this,arguments);
+      setTimeout(addTooltips,400);
+      return r;
+    };
+  }
+
+  function init(){
+    patchLoadProjects();
+    patchRenderMap();
+    setTimeout(function(){addTooltips();injectFilters();setupRealtime();},2500);
+  }
+
+  if(document.readyState==='complete'){init();}
+  else{window.addEventListener('load',init);}
+})();
+</script>
+</body>
 
 </html>
