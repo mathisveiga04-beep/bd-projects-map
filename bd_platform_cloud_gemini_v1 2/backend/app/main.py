@@ -71,6 +71,21 @@ def insert_to_supabase(data: dict) -> bool:
     except Exception:
         return False
 
+def insert_tender_to_supabase(data: dict) -> bool:
+    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
+        return False
+    try:
+        headers = _sb_headers()
+        headers["Prefer"] = "return=minimal"
+        r = requests.post(
+            f"{SUPABASE_URL}/rest/v1/tenders",
+            json=data, headers=headers, timeout=10,
+        )
+        return r.status_code in (200, 201)
+    except Exception:
+        return False
+
+
 # Auth helpers
 
 def verify_app_or_jwt(authorization: str | None = Header(default=None), x_app_token: str | None = Header(default=None)) -> dict:
@@ -290,6 +305,35 @@ def scraper_run(
                 except Exception:
                     db.rollback()
 
+            # --- Router aussi vers la table tenders si appel d'offres ---
+            joined = f"{item.title} {item.text}".lower()
+            is_tender = any(k in joined for k in (
+                "eoi", "reoi", "rfp", "rfq", "expression of interest",
+                "request for proposal", "tender", "procurement",
+                "invitation to bid", "appel d'offres", "deadline",
+            )) or ("tender" in (ai.get("project_type", "") or "").lower())
+            if is_tender:
+                tender_data = {
+                    "title": item.title,
+                    "country": ai.get("country") or item.country or "Cambodia",
+                    "sector": ai.get("sector") or "",
+                    "funder": ai.get("funder") or item.funder or "",
+                    "stage": ai.get("project_type") or "EOI",
+                    "fit": ai.get("confidence") or "medium",
+                    "estimated_budget": ai.get("estimated_budget") or "unknown",
+                    "deadline": ai.get("deadline") or "",
+                    "source_url": item.source_url,
+                    "summary": ai.get("scope_summary") or item.text[:500],
+                    "ai_summary": ai.get("summary") or "",
+                    "ai_recommendation": ai.get("recommendation") or "watch",
+                }
+                if not insert_tender_to_supabase(tender_data):
+                    try:
+                        db.add(models.Tender(**tender_data))
+                        db.commit()
+                    except Exception:
+                        db.rollback()
+
     run.status = "finished"
     run.items_found = len(opportunities)
     run.items_saved = saved
@@ -382,3 +426,44 @@ async def admin_invite_user(request: Request, token: dict = Depends(verify_app_o
     if not r.ok:
         raise HTTPException(r.status_code, f"Supabase invite failed: {r.text[:200]}")
     return {"ok": True, "email": email, "message": f"Invitation envoyée à {email}"}
+
+
+@app.post("/notify/weekly")
+def notify_weekly(db: Session = Depends(get_db), token: dict = Depends(verify_app_or_jwt)):
+    """Envoie un email hebdomadaire des nouveaux projets via Resend."""
+    require_admin_token(token)
+    resend_key = os.getenv("RESEND_API_KEY", "").strip()
+    to_addr = os.getenv("NOTIFY_TO", "").strip()
+    from_addr = os.getenv("NOTIFY_FROM", "onboarding@resend.dev").strip()
+    if not resend_key or not to_addr:
+        raise HTTPException(503, "RESEND_API_KEY ou NOTIFY_TO manquant")
+    from datetime import timedelta
+    since = datetime.utcnow() - timedelta(days=7)
+    recent = [p for p in crud.list_projects(db) if p.created_at and p.created_at >= since]
+    if not recent:
+        return {"ok": True, "sent": False, "message": "Aucun nouveau projet cette semaine"}
+    rows = "".join(
+        f"<tr><td style='border:1px solid #ddd;padding:6px'>{p.title}</td>"
+        f"<td style='border:1px solid #ddd;padding:6px'>{p.sector or ''}</td>"
+        f"<td style='border:1px solid #ddd;padding:6px'>{p.city or ''}</td>"
+        f"<td style='border:1px solid #ddd;padding:6px'>{p.funder or ''}</td></tr>"
+        for p in recent
+    )
+    html = (
+        f"<h2 style='color:#0B1F3A'>Veille BD Artelia Cambodia &mdash; {len(recent)} nouveaux projets</h2>"
+        f"<table style='border-collapse:collapse;font-family:Arial;font-size:13px'>"
+        f"<tr><th style='background:#174EA6;color:#fff;padding:6px'>Titre</th>"
+        f"<th style='background:#174EA6;color:#fff;padding:6px'>Secteur</th>"
+        f"<th style='background:#174EA6;color:#fff;padding:6px'>Ville</th>"
+        f"<th style='background:#174EA6;color:#fff;padding:6px'>Bailleur</th></tr>{rows}</table>"
+    )
+    r = requests.post(
+        "https://api.resend.com/emails",
+        headers={"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"},
+        json={"from": from_addr, "to": [to_addr],
+              "subject": f"[Artelia BD] {len(recent)} nouveaux projets cette semaine", "html": html},
+        timeout=15,
+    )
+    if not r.ok:
+        raise HTTPException(r.status_code, f"Resend error: {r.text[:200]}")
+    return {"ok": True, "sent": True, "count": len(recent)}
