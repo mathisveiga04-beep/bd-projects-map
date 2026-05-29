@@ -7381,6 +7381,82 @@ console.info('[PATCH v70 COMPLETE] Settings lock, Brief Intelligence, AI Fix, Pi
 })();
 </script>
 
+<script>
+/* ===== PATCH BD-INTELLIGENCE (additif, non destructif) ===== */
+(function(){
+  function ready(fn){ if(document.readyState!=='loading'){setTimeout(fn,2000);} else {document.addEventListener('DOMContentLoaded',function(){setTimeout(fn,2000);});} }
+  ready(function(){
+    try{
+      if(typeof keepAliveRender==='function' && !window.__keepAliveTimer){
+        window.__keepAliveTimer = setInterval(function(){ try{ keepAliveRender(); }catch(e){} }, 14*60*1000);
+        try{ keepAliveRender(); }catch(e){}
+        console.info('[PATCH] keep-alive activé (14 min)');
+      }
+    }catch(e){ console.warn('[PATCH] keep-alive non activé', e); }
+  });
+  window.exportPingsPDF = function(){
+    try{
+      var rows = (window.filteredPings || window.allPings || window.buildings || []);
+      var esc = function(s){ return String(s==null?'':s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}); };
+      var sc = function(p){ try{ return (typeof calcScore==='function')?calcScore(p):(p.score||''); }catch(e){ return p.score||''; } };
+      var body = rows.map(function(p){
+        return '<tr><td>'+esc(p.title||p.name)+'</td><td>'+esc(p.sector)+'</td><td>'+esc(p.city)
+             + '</td><td>'+esc(p.funder)+'</td><td>'+esc(p.status)+'</td><td>'+esc(p.priority)+'</td><td>'+esc(sc(p))+'</td></tr>';
+      }).join('');
+      var html = '<html><head><meta charset="utf-8"><title>Projets Artelia Cambodia</title><style>'
+        + 'body{font-family:Calibri,Arial,sans-serif;padding:24px;color:#172033}'
+        + 'h1{color:#0B1F3A;font-size:18px}.sub{color:#526174;font-size:12px;margin-bottom:14px}'
+        + 'table{border-collapse:collapse;width:100%;font-size:11px}'
+        + 'th,td{border:1px solid #D7DEE8;padding:6px 8px;text-align:left}th{background:#174EA6;color:#fff}'
+        + 'tr:nth-child(even){background:#F6F8FB}</style></head><body>'
+        + '<h1>Projets ciblés — Artelia Cambodia</h1>'
+        + '<div class="sub">'+new Date().toLocaleDateString('fr-FR')+' · '+rows.length+' projets</div>'
+        + '<table><tr><th>Titre</th><th>Secteur</th><th>Ville</th><th>Bailleur</th><th>Statut</th><th>Priorité</th><th>Score</th></tr>'
+        + body + '</table></body></html>';
+      var w = window.open('','_blank');
+      if(!w){ alert('Autorisez les pop-ups pour générer le PDF.'); return; }
+      w.document.write(html); w.document.close(); w.focus();
+      setTimeout(function(){ try{ w.print(); }catch(e){} }, 400);
+    }catch(e){ console.error('[PATCH] exportPingsPDF', e); alert('Export PDF: '+e.message); }
+  };
+  window.advancedFilter = function(opts){
+    opts = opts || {};
+    var rows = (window.allPings || window.buildings || []);
+    return rows.filter(function(p){
+      if(opts.sector && (p.sector||'').toLowerCase().indexOf(opts.sector.toLowerCase())<0) return false;
+      if(opts.status && (p.status||'')!==opts.status) return false;
+      if(opts.source && (p.source||'')!==opts.source) return false;
+      if(opts.priority && (p.priority||'')!==opts.priority) return false;
+      if(opts.minScore){ var s=(typeof calcScore==='function')?calcScore(p):(p.score||0); if(s<opts.minScore) return false; }
+      if(opts.since){ var d=new Date(p.created_at||0); if(isFinite(d) && d < new Date(opts.since)) return false; }
+      return true;
+    });
+  };
+  window.generateBriefArtelia = function(){
+    if(typeof callGemini!=='function'){ alert('Module IA indisponible'); return; }
+    var rows = (window.allPings || window.buildings || []);
+    var since = new Date(); since.setDate(since.getDate()-7);
+    var recent = rows.filter(function(p){ var d=new Date(p.created_at||0); return isFinite(d) && d>=since; });
+    var list = (recent.length?recent:rows).slice(0,30).map(function(p){
+      return { titre:p.title||p.name, secteur:p.sector, ville:p.city, bailleur:p.funder,
+               statut:p.status, score:(typeof calcScore==='function'?calcScore(p):p.score) };
+    });
+    var prompt =
+      "Tu es l'analyste Business Development d'Artelia Cambodia. Redige le brief hebdomadaire EN FRANCAIS, "
+      + "concis et actionnable (max 400 mots), STRICTEMENT structure en 3 sections :\n"
+      + "1) NOUVEAUX PROJETS DETECTES — 3 a 5 opportunites les plus pertinentes pour Artelia (eau, drainage, "
+      + "infrastructure, batiment, environnement, energie, urbanisme). Pour chacune: titre, secteur, bailleur, ville, score.\n"
+      + "2) SECTEURS PORTEURS — 2-3 tendances/secteurs en croissance cette semaine, avec justification.\n"
+      + "3) RECOMMANDATIONS D'APPROCHE COMMERCIALE — pour chaque opportunite prioritaire: angle d'approche concret "
+      + "pour Artelia Cambodia (interlocuteur a viser, differenciateur Artelia, prochaine etape).\n"
+      + "Reste factuel, n'invente aucune donnee absente.\n\nDONNEES DE LA SEMAINE:\n" + JSON.stringify(list);
+    return callGemini(prompt, 800, 'brief');
+  };
+  console.info('[PATCH BD-INTELLIGENCE] keep-alive #4, exportPDF #12, advancedFilter #9, generateBriefArtelia #7 charges.');
+})();
+</script>
+
+
 </body>
 
 </html>
