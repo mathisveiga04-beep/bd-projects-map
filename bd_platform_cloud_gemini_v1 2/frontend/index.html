@@ -6960,6 +6960,427 @@ input:focus, select:focus, textarea:focus {
 
   console.info("[PATCH v69 fixed] inviteUserByEmail() prêt.");
 })();
-</script></body>
+</script>
+
+<script>
+/* PATCH v70 — Settings Lock + Brief Hebdo + AI Fix + Project Detail + All Features */
+(function(){
+'use strict';
+
+// 1. VERROU REGLAGES avec mot de passe MVE_AKH
+var _origOpenSettings = window.openSettings;
+window.openSettings = function() {
+  var pwd = prompt('\u{1F512} Mot de passe requis pour acceder aux Reglages :');
+  if (pwd === null) return;
+  if (pwd.trim() === 'MVE_AKH') {
+    if (_origOpenSettings) _origOpenSettings();
+    else { if(typeof openMo==='function') openMo('mo-settings'); if(typeof refreshAdminState==='function') refreshAdminState(); }
+  } else {
+    alert('\u274C Mot de passe incorrect.');
+  }
+};
+console.info('[PATCH v70] Settings locked with password.');
+
+// 2. BRIEF HEBDO — Axe projets sortis & axes d'investigation
+window.generateBrief = async function() {
+  var btn = document.getElementById('brief-btn') || document.querySelector('[onclick*="generateBrief"]');
+  if (btn) btn.disabled = true;
+  var out = document.getElementById('brief-out') || document.getElementById('brief-output') || document.getElementById('brief-content');
+  if (out) out.innerHTML = '<div style="text-align:center;padding:20px;color:#94a3b8">\u23F3 Generation du brief intelligence projets...</div>';
+  var projs = (window.buildings || []).filter(function(b){ return b && b.name; });
+  var recentProjs = projs.slice(-30);
+  var projList = recentProjs.map(function(p,i){
+    return (i+1)+'. ['+(p.type||p.sector||'ND')+'] '+(p.name||'')+(p.zone?' - '+p.zone:'')+(p.status?' ('+p.status+')':'')+(p.source_url?' | Source: '+p.source_url.substring(0,60):'');
+  }).join('\\n');
+  var now = new Date();
+  var dateStr = now.toLocaleDateString('fr-FR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  var prompt = 'Tu es analyste senior Business Development pour Artelia Cambodia, specialise en infrastructure, construction et energie au Cambodge et en Asie du Sud-Est. ' +
+    'Date du jour : '+dateStr+'. ' +
+    'Voici les '+recentProjs.length+' derniers projets/opportunites identifies dans la base de veille :\\n' + projList + '\\n\\n' +
+    'Genere un BRIEF HEBDO INTELLIGENCE PROJETS structure, en francais, avec les sections suivantes :\\n' +
+    '1. **PROJETS SORTIS CETTE SEMAINE** - Synthese des nouvelles opportunites identifiees, par secteur (infrastructure, energie, eau, transport, batiment). Pour chaque projet : nom, zone geographique, portee estimee, source de detection.\\n' +
+    '2. **AXES STRATEGIQUES A INVESTIGUER** - 3 a 5 axes prioritaires a creuser cette semaine : quels segments de marche, quels bailleurs de fonds actifs, quels appels d offres a venir.\\n' +
+    '3. **ANALYSE DES FINANCEURS** - Quels bailleurs (ADB, Banque Mondiale, AFD, JICA, etc.) sont actifs sur les projets detectes. Qui cibler en priorite.\\n' +
+    '4. **ALERTES CONCURRENTIELLES** - Projets sur lesquels des concurrents pourraient se positionner. Points de vigilance.\\n' +
+    '5. **RECOMMANDATIONS GO/NO-GO** - Pour les 3 projets les plus prometteurs : recommandation argumentee de positionnement Artelia.\\n' +
+    '6. **ACTIONS IMMEDIATES** - Liste courte (5 max) d actions concretes a mener cette semaine.\\n' +
+    'Style : professionnel, dense, actionnable. Utilise des emojis pour structurer visuellement.';
+  try {
+    var txt = await callGemini(prompt);
+    window._briefTxt = txt;
+    if (out) {
+      var lines = txt.split('\\n');
+      var html = lines.map(function(l){
+        if (!l.trim()) return '<br>';
+        if (l.startsWith('**') && l.endsWith('**')) return '<h4 style="color:#174EA6;margin:12px 0 4px">'+l.replace(/\*\*/g,'')+'</h4>';
+        if (l.match(/^\d+\.\s+\*\*/)) return '<p style="margin:4px 0"><b style="color:#174EA6">'+l.replace(/\*\*/g,'')+'</b></p>';
+        if (l.match(/^[\-\u2022]/)) return '<li style="margin:2px 0 2px 16px">'+l.slice(1).trim()+'</li>';
+        return '<p style="margin:3px 0">'+l+'</p>';
+      }).join('');
+      out.innerHTML = '<div style="font-size:12px;line-height:1.6;padding:4px">'+html+'</div>';
+    }
+  } catch(e){ if (out) out.innerHTML = '<div style="color:red;padding:12px">Erreur: '+e.message+'</div>'; }
+  finally { if (btn) btn.disabled = false; }
+};
+console.info('[PATCH v70] Brief hebdo intelligence projets configure.');
+
+// 3. FIX ANALYSE IA DES PROJETS
+window.aiAnalyze = async function(item) {
+  if (!item) item = window._currentSel || window._selBuilding || window._currentProject;
+  if (!item) {
+    var dpName = document.querySelector('#dp-name, .dp-name');
+    if (dpName && dpName.textContent) item = {name: dpName.textContent, type:'project'};
+  }
+  var modal = document.getElementById('ai-analyze-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'ai-analyze-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+    modal.innerHTML = '<div style="background:#fff;border-radius:12px;max-width:640px;width:100%;max-height:80vh;overflow-y:auto;padding:0">' +
+      '<div style="background:#0B1F3A;color:#fff;padding:14px 16px;border-radius:12px 12px 0 0;display:flex;align-items:center;justify-content:space-between">' +
+      '<span style="font-weight:700;font-size:14px">\u{1F916} Analyse IA - Artelia BD</span>' +
+      '<button onclick="document.getElementById(\'ai-analyze-modal\').remove()" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:18px">&times;</button>' +
+      '</div><div id="ai-modal-body" style="padding:16px;font-size:12px;line-height:1.6;color:#172033"></div></div>';
+    document.body.appendChild(modal);
+    modal.addEventListener('click', function(e){ if(e.target===modal) modal.remove(); });
+  }
+  var body = document.getElementById('ai-modal-body');
+  body.innerHTML = '<div style="text-align:center;padding:32px;color:#94a3b8">\u23F3 Analyse en cours avec Gemini...</div>';
+  modal.style.display = 'flex';
+  try {
+    var title = item ? (item.name||item.title||item.project_name||'Projet inconnu') : 'Projet inconnu';
+    var text = item ? (item.description||item.content||item.text||item.source_url||'') : '';
+    var sector = item ? (item.type||item.sector||item.category||'') : '';
+    var zone = item ? (item.zone||item.location||item.country||'') : '';
+    var budget = item ? (item.budget||item.amount||'') : '';
+    var prompt = 'Tu es expert BD senior chez Artelia Cambodia. Analyse ce projet/opportunite pour notre equipe BD :\\n\\n' +
+      'PROJET : ' + title + '\\n' +
+      (sector ? 'SECTEUR : ' + sector + '\\n' : '') +
+      (zone ? 'ZONE : ' + zone + '\\n' : '') +
+      (budget ? 'BUDGET : ' + budget + '\\n' : '') +
+      (text ? 'DESCRIPTION : ' + text.substring(0,2000) + '\\n' : '') +
+      '\\nFournis une analyse structuree en francais :\\n' +
+      '**OPPORTUNITE POUR ARTELIA** - Est-ce dans nos domaines ? (eau, energie, transport, batiment, environnement)\\n' +
+      '**SCOPES D INTERVENTION POSSIBLES** - Quels services Artelia peut proposer (etudes, maitrise d oeuvre, supervision, etc.)\\n' +
+      '**BAILLEUR / FINANCEUR** - Qui finance ? Quelle procedure d appel d offres probable ?\\n' +
+      '**CONCURRENTS POTENTIELS** - Qui d autre pourrait se positionner ?\\n' +
+      '**RECOMMANDATION GO/NO-GO** - Avec justification courte\\n' +
+      '**PROCHAINES ETAPES** - Actions immediates recommandees';
+    var result = await callGemini(prompt);
+    var lines = result.split('\\n');
+    var html = lines.map(function(l){
+      if (!l.trim()) return '<br>';
+      if (l.startsWith('**') && l.endsWith('**')) return '<h4 style="color:#174EA6;margin:10px 0 3px">'+l.replace(/\*\*/g,'')+'</h4>';
+      if (l.match(/^\*\*/)) return '<p><b style="color:#174EA6">'+l.replace(/\*\*/g,'')+'</b></p>';
+      if (l.match(/^[\-\u2022]/)) return '<li style="margin:2px 0 2px 12px">'+l.slice(1).trim()+'</li>';
+      return '<p style="margin:3px 0">'+l+'</p>';
+    }).join('');
+    body.innerHTML = '<div style="margin-bottom:8px"><strong style="font-size:13px;color:#0B1F3A">'+title+'</strong></div>' + html +
+      '<div style="margin-top:12px;text-align:right"><button onclick="navigator.clipboard.writeText(window._lastAiResult||\'\')" style="background:#174EA6;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:11px;cursor:pointer">\u{1F4CB} Copier</button></div>';
+    window._lastAiResult = result;
+  } catch(e){ body.innerHTML = '<div style="color:red;padding:12px">\u274C Erreur: '+e.message+'</div>'; }
+};
+console.info('[PATCH v70] AI Analyze fix deployed.');
+
+// 4. EDITION & SUPPRESSION PING + DETAIL FIX
+window.editPing = function(id) {
+  var b = (window.buildings||[]).find(function(x){ return x && x.id == id; });
+  if (!b) return;
+  var isAdmin = localStorage.getItem('artelia_admin')==='1' || sessionStorage.getItem('artelia_admin')==='1';
+  var myEmail = localStorage.getItem('artelia_user_email') || '';
+  if (!isAdmin && b.owner_email && b.owner_email !== myEmail) { alert('\u274C Vous ne pouvez modifier que vos propres pings.'); return; }
+  var newName = prompt('Nouveau nom du ping :', b.name||''); if (newName===null) return;
+  var newType = prompt('Type (construction/infrastructure/energie/eau/transport/autre) :', b.type||''); if (newType===null) return;
+  var newNote = prompt('Note / description :', b.note||b.description||'');
+  if (typeof apiRequest === 'function') {
+    apiRequest('/buildings/'+id, {method:'PATCH', body:JSON.stringify({name:newName.trim(),type:newType.trim(),note:newNote||''})}).then(function(){
+      var idx=(window.buildings||[]).findIndex(function(x){return x&&x.id==id;});
+      if(idx>=0){window.buildings[idx].name=newName.trim();window.buildings[idx].type=newType.trim();window.buildings[idx].note=newNote||'';}
+      if(typeof renderWatchList==='function')renderWatchList();
+      if(typeof logChange==='function')logChange('Modification',id,newName.trim());
+      if(typeof toast==='function')toast('\u2705 Ping mis a jour');
+    }).catch(function(e){ alert('Erreur: '+e.message); });
+  } else { alert('API non disponible'); }
+};
+window.deletePing = function(id) {
+  var b = (window.buildings||[]).find(function(x){ return x && x.id == id; });
+  if (!b) return;
+  var isAdmin = localStorage.getItem('artelia_admin')==='1' || sessionStorage.getItem('artelia_admin')==='1';
+  var myEmail = localStorage.getItem('artelia_user_email') || '';
+  if (!isAdmin && b.owner_email && b.owner_email !== myEmail) { alert('\u274C Vous ne pouvez supprimer que vos propres pings.'); return; }
+  if (!confirm('Supprimer le ping "'+(b.name||'ce ping')+'" ?')) return;
+  if (typeof apiRequest === 'function') {
+    apiRequest('/buildings/'+id, {method:'DELETE'}).then(function(){
+      if(typeof logChange==='function')logChange('Suppression',id,b.name||'');
+      window.buildings=(window.buildings||[]).filter(function(x){return x&&x.id!=id;});
+      if(typeof renderWatchList==='function')renderWatchList();
+      if(typeof toast==='function')toast('\u{1F5D1} Ping supprime');
+    }).catch(function(e){ alert('Erreur: '+e.message); });
+  } else { alert('API non disponible'); }
+};
+// Detail fix + edit/delete buttons
+var _origOpenDP = window.openDP;
+window.openDP = function(b) {
+  if (_origOpenDP) _origOpenDP(b);
+  window._currentSel = b; window._currentProject = b;
+  setTimeout(function(){
+    if (!b) return;
+    var existing = document.getElementById('v70-ping-actions'); if (existing) existing.remove();
+    var dpBody = document.querySelector('.dp-body, #detail-panel .dp-body'); if (!dpBody) return;
+    var isAdmin = localStorage.getItem('artelia_admin')==='1' || sessionStorage.getItem('artelia_admin')==='1';
+    var myEmail = localStorage.getItem('artelia_user_email')||'';
+    var canEdit = isAdmin || !b.owner_email || b.owner_email===myEmail;
+    if (!canEdit) return;
+    var div = document.createElement('div'); div.id='v70-ping-actions';
+    div.style.cssText='margin-top:10px;padding:8px;background:#f8fafc;border-radius:6px;display:flex;gap:6px;border:1px solid #e2e8f0';
+    div.innerHTML='<button onclick="editPing('+b.id+')" style="flex:1;padding:5px;background:#2563eb;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">\u270F Modifier</button>'+
+      '<button onclick="deletePing('+b.id+')" style="flex:1;padding:5px;background:#dc2626;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">\u{1F5D1} Supprimer</button>';
+    dpBody.appendChild(div);
+  }, 150);
+};
+var _origODPP = window.openDPFromPopup;
+window.openDPFromPopup = function(id, ev) {
+  var b = null; var all = window.buildings || [];
+  for (var i=0;i<all.length;i++){ var it=all[i]; if(it && (it.id===id||it.id===parseInt(id)||String(it.id)===String(id))){ b=it; break; } }
+  window._currentSel = b; if (b) window._currentProject = b;
+  if (_origODPP) _origODPP(id, ev);
+};
+console.info('[PATCH v70] Ping edit/delete + detail fix ready.');
+
+// 5. RECHERCHE GLOBALE
+window.globalSearch = function(query) {
+  if (!query) query = (document.getElementById('global-search-input')||{}).value || '';
+  query = query.toLowerCase().trim();
+  var out = document.getElementById('global-search-results');
+  if (!out) {
+    out = document.createElement('div'); out.id='global-search-results';
+    out.style.cssText='position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:500;background:#fff;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.15);border:1px solid #e2e8f0;max-width:480px;width:90%;max-height:400px;overflow-y:auto;';
+    document.body.appendChild(out);
+  }
+  if (!query) { out.style.display='none'; return; }
+  var allItems = (window.buildings||[]).concat(window.watchItems||[]).concat(window.tenders||[]);
+  var results = allItems.filter(function(item){
+    if (!item) return false;
+    var s = ((item.name||'')+' '+(item.zone||'')+' '+(item.type||'')+' '+(item.description||'')+' '+(item.status||'')).toLowerCase();
+    return s.includes(query);
+  });
+  out.style.display='block';
+  if (!results.length){ out.innerHTML='<div style="padding:12px;color:#94a3b8;text-align:center">Aucun resultat pour "'+query+'"</div>'; return; }
+  out.innerHTML='<div style="padding:6px 10px;font-size:10px;color:#94a3b8;border-bottom:1px solid #e2e8f0">'+results.length+' resultat(s)</div>'+
+    results.slice(0,20).map(function(item){
+      var icon = item.type==='tender'?'\u{1F4CB}':(item.status==='construction'?'\u{1F3D7}':'\u{1F4CD}');
+      return '<div onclick="(window.openDP||window.openDPFromPopup)('+item.id+')" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid #f1f5f9">'+
+        '<div style="font-weight:600;font-size:12px;color:#172033">'+icon+' '+(item.name||item.title||'Sans nom')+'</div>'+
+        '<div style="font-size:10px;color:#94a3b8">'+(item.zone||'')+(item.type?' \u00B7 '+item.type:'')+(item.status?' \u00B7 '+item.status:'')+'</div></div>';
+    }).join('');
+};
+(function injectGlobalSearch(){
+  setTimeout(function(){
+    if (document.getElementById('global-search-input')) return;
+    var midEl = document.querySelector('.hdr-mid');
+    var searchDiv = document.createElement('div');
+    searchDiv.style.cssText='display:flex;align-items:center;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:20px;padding:4px 12px;gap:6px;';
+    searchDiv.innerHTML='<span style="color:rgba(255,255,255,.7);font-size:13px">\u{1F50D}</span>'+
+      '<input id="global-search-input" placeholder="Rechercher projets, zones..." style="background:transparent;border:none;color:#fff;font-size:11px;width:180px;outline:none" oninput="globalSearch(this.value)">';
+    if (midEl) midEl.insertBefore(searchDiv, midEl.firstChild);
+    else { var hdrEl=document.querySelector('.hdr'); if(hdrEl)hdrEl.appendChild(searchDiv); }
+  }, 1200);
+})();
+// 6. FILTRES DYNAMIQUES CARTE
+window.mapFilters = {type:null, zone:null, creator:null};
+window.applyMapFilters = function() {
+  var f = window.mapFilters; var items = window.buildings || [];
+  var filtered = items.filter(function(b){
+    if (!b) return false;
+    if (f.type && b.type!==f.type) return false;
+    if (f.zone && !(b.zone||'').toLowerCase().includes(f.zone.toLowerCase())) return false;
+    if (f.creator && (b.owner_email||b.created_by||'')!==f.creator) return false;
+    return true;
+  });
+  if (window._allMarkers) {
+    window._allMarkers.forEach(function(m){
+      var b = m._pingData;
+      var show = filtered.find(function(x){ return x && x.id===(b&&b.id); });
+      var map = window._map||window.map;
+      if (show) { if(map) m.addTo(map); } else if(m.remove) m.remove();
+    });
+  }
+  return filtered;
+};
+window.setMapFilter = function(key,val){
+  window.mapFilters[key] = (window.mapFilters[key]===val)?null:val;
+  window.applyMapFilters();
+};
+// 7. FEED ACTIVITE
+window.renderActivityFeed = function() {
+  var feed = document.getElementById('activity-feed'); if (!feed) return;
+  var items = (window.buildings||[]).slice().sort(function(a,b){ return new Date(b.created_at||0)-new Date(a.created_at||0); }).slice(0,15);
+  if (!items.length){ feed.innerHTML='<div style="padding:10px;color:#94a3b8;font-size:11px;text-align:center">Aucune activite recente</div>'; return; }
+  feed.innerHTML='<div style="padding:6px 10px;font-size:10px;font-weight:700;color:#526174;text-transform:uppercase;letter-spacing:.04em">\u{1F4E1} Activite recente</div>'+
+    items.map(function(item){
+      var d = item.created_at?new Date(item.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}):'Recent';
+      var icon = item.type==='energie'?'\u26A1':item.type==='eau'?'\u{1F4A7}':item.type==='transport'?'\u{1F697}':'\u{1F4CD}';
+      return '<div style="padding:7px 10px;border-bottom:1px solid #f1f5f9;cursor:pointer" onclick="(window.openDP||function(){})('+(typeof item.id==='number'?item.id:JSON.stringify(item))+')">'+
+        '<div style="font-size:11px;font-weight:600;color:#172033">'+icon+' '+(item.name||'Ping')+'</div>'+
+        '<div style="font-size:9px;color:#94a3b8">'+(item.zone||'')+(item.owner_email?' \u00B7 '+item.owner_email.split('@')[0]:'')+' \u00B7 '+d+'</div></div>';
+    }).join('');
+};
+console.info('[PATCH v70] Search + Filters + Feed ready.');
+
+// 8. CLUSTERING
+window.enableMarkerClustering = function() {
+  if (typeof L==='undefined') { alert('Carte non chargee'); return; }
+  if (!L.markerClusterGroup) {
+    var css=document.createElement('link');css.rel='stylesheet';css.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.min.css';document.head.appendChild(css);
+    var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js';
+    s.onload=function(){window._clusterGroup=L.markerClusterGroup();_applyCluster();};document.head.appendChild(s);
+  } else { window._clusterGroup=L.markerClusterGroup(); _applyCluster(); }
+};
+function _applyCluster(){
+  var m=window._map||window.map; if(!m||!window._clusterGroup)return;
+  if(window._allMarkers){ window._allMarkers.forEach(function(mk){m.removeLayer(mk);window._clusterGroup.addLayer(mk);}); m.addLayer(window._clusterGroup); }
+  if(typeof toast==='function')toast('\u{1F535} Clustering active');
+}
+// 9. EXPORT CSV/PDF
+window.exportPingsExcel = function() {
+  var items = window.applyMapFilters?window.applyMapFilters():(window.buildings||[]);
+  if(!items.length){alert('Aucun ping a exporter');return;}
+  var headers=['ID','Nom','Type','Zone','Statut','Createur','Date creation','Latitude','Longitude','Source URL'];
+  var rows=items.map(function(b){return [b.id||'',b.name||'',b.type||'',b.zone||'',b.status||'',b.owner_email||'',b.created_at||'',b.latitude||'',b.longitude||'',b.source_url||''];});
+  var csv=[headers].concat(rows).map(function(row){return row.map(function(c){return '"'+(c+'').replace(/"/g,'""')+'"';}).join(',');}).join('\\n');
+  var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='pings_export_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+  if(typeof toast==='function')toast('\u{1F4CA} Export CSV telecharge');
+};
+window.exportPingsPDF = function() {
+  var items = window.applyMapFilters?window.applyMapFilters():(window.buildings||[]);
+  if(!items.length){alert('Aucun ping a exporter');return;}
+  var html='<html><head><title>Export Pings</title><style>body{font-family:Arial,sans-serif;font-size:11px}table{border-collapse:collapse;width:100%}th{background:#0B1F3A;color:#fff;padding:6px}td{border:1px solid #ddd;padding:4px}tr:nth-child(even){background:#f9f9f9}</style></head><body>';
+  html+='<h2>B&D Projects Map - Export Pings ('+new Date().toLocaleDateString('fr-FR')+')</h2>';
+  html+='<table><tr><th>Nom</th><th>Type</th><th>Zone</th><th>Statut</th><th>Createur</th><th>Date</th></tr>';
+  items.forEach(function(b){html+='<tr><td>'+(b.name||'')+'</td><td>'+(b.type||'')+'</td><td>'+(b.zone||'')+'</td><td>'+(b.status||'')+'</td><td>'+(b.owner_email||'')+'</td><td>'+(b.created_at?b.created_at.slice(0,10):'')+'</td></tr>';});
+  html+='</table></body></html>';
+  var w=window.open('','_blank');w.document.write(html);w.document.close();setTimeout(function(){w.print();},500);
+};
+// 10. HEATMAP
+window._heatmapLayer=null;
+window.toggleHeatmap = function() {
+  var m=window._map||window.map; if(!m)return;
+  if(window._heatmapLayer){m.removeLayer(window._heatmapLayer);window._heatmapLayer=null;if(typeof toast==='function')toast('\u{1F5FA} Heatmap desactivee');return;}
+  if(!L.heatLayer){var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js';s.onload=function(){_showHeatmap(m);};document.head.appendChild(s);}else{_showHeatmap(m);}
+};
+function _showHeatmap(m){
+  var pts=(window.buildings||[]).filter(function(b){return b&&b.latitude&&b.longitude;}).map(function(b){return [parseFloat(b.latitude),parseFloat(b.longitude),1];});
+  if(!pts.length){alert('Pas de donnees geolocalisees');return;}
+  window._heatmapLayer=L.heatLayer(pts,{radius:30,blur:15,maxZoom:14,gradient:{0.2:'blue',0.5:'lime',0.8:'red'}}).addTo(m);
+  if(typeof toast==='function')toast('\u{1F525} Heatmap active ('+pts.length+' points)');
+}
+console.info('[PATCH v70] Cluster + Export + Heatmap ready.');
+
+// 11. GESTION UTILISATEURS ADMIN
+window.loadAdminUsersV70 = async function() {
+  var container = document.getElementById('admin-users-v70'); if(!container)return;
+  container.innerHTML='<div style="padding:10px;color:#94a3b8;font-size:11px">\u23F3 Chargement...</div>';
+  var buUrl=(document.getElementById('backend-url')||{value:'https://bd-projects-map-akh.onrender.com'}).value;
+  var tok=localStorage.getItem('artelia_app_token')||'';
+  try {
+    var r=await fetch(buUrl+'/admin/users',{headers:{'Authorization':'Bearer '+tok}});
+    var users=await r.json();
+    if(!Array.isArray(users))throw new Error('Format invalide');
+    container.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:11px">'+
+      '<tr style="background:#0B1F3A;color:#fff"><th style="padding:5px;text-align:left">Email</th><th style="padding:5px">Role</th><th style="padding:5px">Actions</th></tr>'+
+      users.map(function(u){return '<tr style="border-bottom:1px solid #e2e8f0"><td style="padding:5px">'+(u.email||u.id||'?')+'</td>'+
+        '<td style="padding:5px;text-align:center"><span style="background:'+(u.role==='admin'?'#dc2626':'#2563eb')+';color:#fff;padding:2px 6px;border-radius:10px;font-size:9px">'+(u.role||'user')+'</span></td>'+
+        '<td style="padding:5px;text-align:center"><button onclick="setUserRoleV70(\''+u.id+'\',\''+(u.role==='admin'?'user':'admin')+'\')" style="background:'+(u.role==='admin'?'#94a3b8':'#dc2626')+';color:#fff;border:none;border-radius:4px;padding:2px 7px;cursor:pointer;font-size:9px">'+(u.role==='admin'?'\u2192 User':'\u2192 Admin')+'</button></td></tr>';}).join('')+'</table>';
+  } catch(e){ container.innerHTML='<div style="padding:8px;color:red;font-size:11px">Erreur: '+e.message+'</div>'; }
+};
+window.setUserRoleV70 = async function(userId,role) {
+  if(!confirm('Changer le role en "'+role+'" ?'))return;
+  var buUrl=(document.getElementById('backend-url')||{value:'https://bd-projects-map-akh.onrender.com'}).value;
+  var tok=localStorage.getItem('artelia_app_token')||'';
+  try { await fetch(buUrl+'/admin/users/'+userId+'/set-role',{method:'POST',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({role:role})});
+    if(typeof toast==='function')toast('\u2705 Role mis a jour: '+role); window.loadAdminUsersV70();
+  } catch(e){ alert('Erreur: '+e.message); }
+};
+// 12. KEEP-ALIVE BACKEND RENDER
+(function keepAliveRender(){
+  var buUrl=(document.getElementById('backend-url')||{value:'https://bd-projects-map-akh.onrender.com'}).value;
+  function ping(){ fetch(buUrl+'/health',{method:'GET',cache:'no-store'}).catch(function(){}); }
+  setInterval(ping, 10*60*1000); setTimeout(ping, 30000);
+  console.info('[PATCH v70] Keep-alive Render configure (10min)');
+})();
+// 13. REALTIME NOTIFICATIONS
+window.initRealtimeNotifications = function() {
+  if (typeof supabase!=='undefined' && supabase.channel) {
+    supabase.channel('db-changes-v70').on('postgres_changes',{event:'INSERT',schema:'public',table:'buildings'},function(payload){
+      var n=payload.new;
+      if(typeof toast==='function')toast('\u{1F514} Nouveau ping: '+(n.name||'Sans nom')+(n.zone?' - '+n.zone:''));
+      if(!window.buildings)window.buildings=[]; window.buildings.unshift(n);
+      if(typeof renderWatchList==='function')renderWatchList();
+      if(typeof renderActivityFeed==='function')renderActivityFeed();
+    }).subscribe();
+    console.info('[PATCH v70] Realtime notifications activees');
+  }
+};
+// 14. HISTORIQUE MODIFICATIONS
+window._changeLog = JSON.parse(localStorage.getItem('v70_changelog')||'[]');
+window.logChange = function(action,itemId,itemName,data) {
+  var entry={ts:new Date().toISOString(),user:localStorage.getItem('artelia_user_email')||'unknown',action:action,itemId:itemId,itemName:itemName,data:data};
+  window._changeLog.unshift(entry);
+  if(window._changeLog.length>200)window._changeLog=window._changeLog.slice(0,200);
+  localStorage.setItem('v70_changelog',JSON.stringify(window._changeLog));
+};
+window.showChangeLog = function() {
+  var log=window._changeLog;
+  var html='<div id="v70-changelog-modal" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center">'+
+    '<div style="background:#fff;border-radius:10px;max-width:640px;width:90%;max-height:70vh;overflow-y:auto">'+
+    '<div style="background:#0B1F3A;color:#fff;padding:12px 14px;border-radius:10px 10px 0 0;display:flex;align-items:center;justify-content:space-between">'+
+    '<span style="font-weight:700">\u{1F4CB} Historique des modifications</span>'+
+    '<button onclick="document.getElementById(\'v70-changelog-modal\').remove()" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:3px 8px;border-radius:4px;cursor:pointer">&times;</button></div>'+
+    (log.length?log.slice(0,50).map(function(e){return '<div style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-size:11px"><div style="font-weight:600">'+e.action+': '+e.itemName+'</div><div style="color:#94a3b8;font-size:9px">'+e.user+' \u00B7 '+new Date(e.ts).toLocaleString('fr-FR')+'</div></div>';}).join(''):'<div style="padding:16px;text-align:center;color:#94a3b8">Aucune modification enregistree</div>')+
+    '</div></div>';
+  document.body.insertAdjacentHTML('beforeend',html);
+};
+console.info('[PATCH v70] Admin users + Realtime + ChangeLog ready.');
+
+// 16. INJECT UI CONTROLS
+(function injectV70Controls(){
+  setTimeout(function(){
+    var adminPanel = document.getElementById('admin-panel') || document.querySelector('.settings-tab-content,[data-tab="admin"]');
+    if (adminPanel && !document.getElementById('admin-users-v70')) {
+      var div=document.createElement('div');
+      div.style.cssText='margin-top:14px;padding:12px;background:rgba(255,255,255,.05);border-radius:8px;border:1px solid rgba(255,255,255,.1)';
+      div.innerHTML='<div style="font-size:12px;font-weight:600;color:#ccc;margin-bottom:8px">\u{1F465} Gestion Utilisateurs</div>'+
+        '<div id="admin-users-v70"><div style="font-size:11px;color:#888">Cliquez pour charger...</div></div>'+
+        '<button onclick="loadAdminUsersV70()" style="margin-top:6px;background:#2563eb;color:#fff;border:none;border-radius:5px;padding:4px 10px;cursor:pointer;font-size:11px">\u{1F504} Charger les utilisateurs</button>';
+      adminPanel.appendChild(div);
+    }
+    var mapBtns = document.querySelector('.map-btns-br');
+    if (mapBtns && !document.getElementById('v70-map-btns')) {
+      var div2=document.createElement('div'); div2.id='v70-map-btns';
+      div2.style.cssText='display:flex;flex-direction:column;gap:4px;margin-top:4px';
+      div2.innerHTML='<button onclick="toggleHeatmap()" class="map-ctrl-btn" title="Heatmap">\u{1F525}</button>'+
+        '<button onclick="enableMarkerClustering()" class="map-ctrl-btn" title="Clustering">\u{1F535}</button>'+
+        '<button onclick="exportPingsExcel()" class="map-ctrl-btn" title="Export CSV">\u{1F4CA}</button>'+
+        '<button onclick="exportPingsPDF()" class="map-ctrl-btn" title="Export PDF">\u{1F4C4}</button>'+
+        '<button onclick="showChangeLog()" class="map-ctrl-btn" title="Historique">\u{1F4CB}</button>';
+      mapBtns.appendChild(div2);
+    }
+    var blist = document.getElementById('blist') || document.getElementById('bd-list');
+    if (blist && blist.parentElement && !document.getElementById('activity-feed')) {
+      var feedDiv=document.createElement('div'); feedDiv.id='activity-feed';
+      feedDiv.style.cssText='border-top:1px solid #e2e8f0;padding:4px 0;max-height:240px;overflow-y:auto';
+      blist.parentElement.insertBefore(feedDiv, blist);
+      if(typeof renderActivityFeed==='function')renderActivityFeed();
+    }
+    if(typeof initRealtimeNotifications==='function')initRealtimeNotifications();
+    console.info('[PATCH v70] All UI controls injected.');
+  }, 1800);
+})();
+console.info('[PATCH v70 COMPLETE] Settings lock, Brief Intelligence, AI Fix, Ping Edit/Delete, Search, Filters, Feed, Cluster, Export, Realtime, Heatmap, ChangeLog, Detail Fix - all deployed.');
+})();
+</script>
+
+</body>
 
 </html>
