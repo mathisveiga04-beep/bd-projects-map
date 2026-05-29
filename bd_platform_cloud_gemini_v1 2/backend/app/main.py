@@ -98,6 +98,77 @@ def ensure_project_access(project: models.Project | None, token: dict) -> None:
 def health():
     return {"status": "ok", "database": "connected", "version": "v1-cloud-gemini-production-ready"}
 
+@app.get("/keep-alive")
+def keep_alive():
+    # Lightweight endpoint to prevent Render cold start (called by frontend every 10min)
+    return {"status": "alive", "ts": datetime.utcnow().isoformat()}
+
+
+@app.patch("/buildings/{building_id}")
+def patch_building(building_id: str, payload: dict, token: dict = Depends(verify_app_or_jwt)):
+    # Proxy update to Supabase buildings table (owner or admin enforced via RLS)
+    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
+        raise HTTPException(500, "Supabase not configured")
+    is_admin = get_user_role(token) == "admin"
+    uid = get_user_id(token)
+    headers = _sb_headers()
+    headers["Prefer"] = "return=representation"
+    # Verify ownership unless admin
+    if not is_admin:
+        chk = requests.get(
+            f"{SUPABASE_URL}/rest/v1/buildings",
+            headers=_sb_headers(),
+            params={"id": f"eq.{building_id}", "select": "owner_id", "limit": "1"},
+            timeout=8,
+        )
+        rows = chk.json() if chk.status_code == 200 else []
+        if not rows:
+            raise HTTPException(404, "Building not found")
+        if rows[0].get("owner_id") and rows[0].get("owner_id") != uid:
+            raise HTTPException(403, "Building owner or admin access required")
+    allowed = {k: v for k, v in payload.items() if k in ("name", "type", "note", "zone", "status", "description", "latitude", "longitude")}
+    r = requests.patch(
+        f"{SUPABASE_URL}/rest/v1/buildings",
+        headers=headers,
+        params={"id": f"eq.{building_id}"},
+        json=allowed,
+        timeout=10,
+    )
+    if r.status_code not in (200, 201, 204):
+        raise HTTPException(r.status_code, f"Supabase error: {r.text[:200]}")
+    return {"status": "updated", "id": building_id}
+
+
+@app.delete("/buildings/{building_id}")
+def delete_building(building_id: str, token: dict = Depends(verify_app_or_jwt)):
+    # Proxy delete to Supabase buildings table (owner or admin enforced)
+    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
+        raise HTTPException(500, "Supabase not configured")
+    is_admin = get_user_role(token) == "admin"
+    uid = get_user_id(token)
+    if not is_admin:
+        chk = requests.get(
+            f"{SUPABASE_URL}/rest/v1/buildings",
+            headers=_sb_headers(),
+            params={"id": f"eq.{building_id}", "select": "owner_id", "limit": "1"},
+            timeout=8,
+        )
+        rows = chk.json() if chk.status_code == 200 else []
+        if not rows:
+            raise HTTPException(404, "Building not found")
+        if rows[0].get("owner_id") and rows[0].get("owner_id") != uid:
+            raise HTTPException(403, "Building owner or admin access required")
+    r = requests.delete(
+        f"{SUPABASE_URL}/rest/v1/buildings",
+        headers=_sb_headers(),
+        params={"id": f"eq.{building_id}"},
+        timeout=10,
+    )
+    if r.status_code not in (200, 204):
+        raise HTTPException(r.status_code, f"Supabase error: {r.text[:200]}")
+    return {"status": "deleted", "id": building_id}
+
+
 @app.get("/projects", response_model=list[schemas.ProjectOut])
 def get_projects(db: Session = Depends(get_db)):
     return crud.list_projects(db)
