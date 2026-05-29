@@ -1,0 +1,12 @@
+name: Keep Render backend warm
+on:
+  schedule:
+    - cron: "*/14 * * * *"
+  workflow_dispatch:
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping keep-alive endpoint
+        run: |
+          curl -fsS --max-time 30 "${{ secrets.RENDER_URL }}/keep-alive" || echo "ping failed (non-blocking)"
