@@ -1,0 +1,15 @@
+name: Weekly project notification
+on:
+  schedule:
+    - cron: "0 7 * * 1"
+  workflow_dispatch:
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger weekly email
+        run: |
+          curl -fsS --max-time 60 -X POST \
+            -H "X-App-Token: ${{ secrets.APP_SECRET }}" \
+            -H "Content-Type: application/json" \
+            "${{ secrets.RENDER_URL }}/notify/weekly" || echo "notify failed (non-blocking)"
