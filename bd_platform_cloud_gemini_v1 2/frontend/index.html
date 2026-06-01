@@ -4394,7 +4394,7 @@ document.querySelectorAll('.lang-btn').forEach(function(b){if(b.getAttribute('on
       m.bindPopup(
         '<div class="pp-hdr"><div class="pp-name">'+esc(b.name)+'</div><div class="pp-t">'+esc(b.type)+' · '+esc(b.zone)+'</div></div>'+
         '<div class="pp-body"><div class="pp-score"><span>'+esc(statusTxt)+'</span></div>'+
-        '<div class="pp-btns"><div class="pp-btn pr" onclick="return openDPFromPopup('+safeId(b.id)+',event)">'+detailTxt+'</div></div></div>',
+        '<div class="pp-btns"><div class="pp-btn pr" onclick="return openDPFromPopup('+safeId(b.id)+',event)">'+detailTxt+'</div>'+'<a class="pp-btn" style="text-decoration:none;display:inline-block" target="_blank" rel="noopener" href="https://www.google.com/search?q='+encodeURIComponent((b.name||'')+' '+(b.zone||'')+' Cambodge')+'">Google</a>'+'</div></div>',
         {maxWidth:230}
       );
       m.on('click',function(){ window.currentId=b.id; });
@@ -4505,7 +4505,7 @@ document.querySelectorAll('.lang-btn').forEach(function(b){if(b.getAttribute('on
       m.bindPopup(
         '<div class="pp-hdr"><div class="pp-name">'+_bdEsc(b.name)+'</div><div class="pp-t">'+_bdEsc(b.type)+' · '+_bdEsc(b.zone)+'</div></div>'+ 
         '<div class="pp-body"><div class="pp-score"><span>'+_bdEsc(statusTxt)+'</span></div>'+ 
-        '<div class="pp-btns"><div class="pp-btn pr" onclick="return openDPFromPopup('+_bdSafeId(b.id)+',event)">'+detailTxt+'</div></div></div>',
+        '<div class="pp-btns"><div class="pp-btn pr" onclick="return openDPFromPopup('+_bdSafeId(b.id)+',event)">'+detailTxt+'</div>'+'<a class="pp-btn" style="text-decoration:none;display:inline-block" target="_blank" rel="noopener" href="https://www.google.com/search?q='+encodeURIComponent((b.name||'')+' '+(b.zone||'')+' Cambodge')+'">Google</a>'+'</div></div>',
         {maxWidth:230}
       );
       m.on('click',function(){ try{ currentId=b.id; }catch(e){ window.currentId=b.id; } });
