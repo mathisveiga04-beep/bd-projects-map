@@ -73,7 +73,7 @@ html,body{height:100%;font-family:Calibri, 'Segoe UI', Arial, sans-serif;overflo
 
 /* ══ SIDEBAR ══ */
 .sb{width:290px;flex-shrink:0;display:flex;flex-direction:column;background:#fff;border-right:1px solid var(--border);overflow:hidden;transition:transform .25s;z-index:100}
-.sb-tabs{display:flex;border-bottom:1px solid var(--border);background:var(--bg);flex-shrink:0;overflow-x:auto}
+.sb-tabs{display:flex;flex-wrap:wrap;row-gap:4px;border-bottom:1px solid var(--border);background:var(--bg);flex-shrink:0;overflow-x:visible}
 .sb-tabs::-webkit-scrollbar{display:none}
 .sbt{padding:9px 10px;font-size:11px;font-weight:600;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;white-space:nowrap;transition:all .15s;flex-shrink:0}
 .sbt.on{color:var(--blue);border-bottom-color:var(--blue);background:#fff}
@@ -6329,7 +6329,7 @@ input:focus, select:focus, textarea:focus {
 
 /* PATCH v67 — Quick filters + Tooltips + Cache indicator */
 #bd-quick-filters {
-  position:absolute; z-index:1000; top:12px; left:50%; transform:translateX(-50%);
+  position:absolute; z-index:1000; top:46px; left:50%; transform:translateX(-50%);
   display:flex; gap:5px; padding:5px 8px;
   background:rgba(255,255,255,.96); backdrop-filter:blur(10px);
   border-radius:99px; box-shadow:0 2px 14px rgba(0,0,0,.14);
@@ -7408,12 +7408,7 @@ console.info('[PATCH v70 COMPLETE] Settings lock, Brief Intelligence, AI Fix, Pi
         + 'h1{color:#0B1F3A;font-size:18px}.sub{color:#526174;font-size:12px;margin-bottom:14px}'
         + 'table{border-collapse:collapse;width:100%;font-size:11px}'
         + 'th,td{border:1px solid #D7DEE8;padding:6px 8px;text-align:left}th{background:#174EA6;color:#fff}'
-        + 'tr:nth-child(even){background:#F6F8FB}
-/* v69 fix overlap */
-#bd-quick-filters{top:46px !important;}
-.sb-tabs{flex-wrap:wrap !important;height:auto !important;overflow:visible !important;row-gap:4px;}
-.sb-tabs .sbt{padding-left:10px;padding-right:10px;}
-</style></head><body>'
+        + 'tr:nth-child(even){background:#F6F8FB}</style></head><body>'
         + '<h1>Projets ciblés — Artelia Cambodia</h1>'
         + '<div class="sub">'+new Date().toLocaleDateString('fr-FR')+' · '+rows.length+' projets</div>'
         + '<table><tr><th>Titre</th><th>Secteur</th><th>Ville</th><th>Bailleur</th><th>Statut</th><th>Priorité</th><th>Score</th></tr>'
