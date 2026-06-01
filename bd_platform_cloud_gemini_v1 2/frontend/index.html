@@ -4441,7 +4441,7 @@ document.querySelectorAll('.lang-btn').forEach(function(b){if(b.getAttribute('on
     return window.mapObj;
   }
   function _bdFindProject(id){
-    var list=_bdBuildings();
+    var list=(_bdBuildings()||[]).concat(typeof presetProjects==='function'?presetProjects():[]);
     return list.find(function(x){return x.id===id;}) || list.find(function(x){return String(x.id)===String(id);});
   }
 
@@ -4495,7 +4495,7 @@ document.querySelectorAll('.lang-btn').forEach(function(b){if(b.getAttribute('on
     Object.values(ms).forEach(function(m){ try{ mp.removeLayer(m); }catch(e){} });
     try{ Object.keys(ms).forEach(function(k){ delete ms[k]; }); }catch(e){}
 
-    _bdBuildings().forEach(function(b){
+    (function(){try{if(mp&&window.L)mp.eachLayer(function(l){if(l instanceof L.Marker){try{mp.removeLayer(l);}catch(_){}}});}catch(e){}var _s=(typeof presetProjects==='function')?presetProjects():[];var _c=_bdBuildings()||[];var _seen={},_L=[];(_s||[]).concat(_c).forEach(function(x){if(x&&x.id!=null){if(_seen[x.id])return;_seen[x.id]=1;}_L.push(x);});return _L;})().forEach(function(b){
       if(!b.lat || !b.lng) return;
       var opt={};
       try{ if(typeof mkIcon==='function') opt.icon=mkIcon(b); }catch(e){}
