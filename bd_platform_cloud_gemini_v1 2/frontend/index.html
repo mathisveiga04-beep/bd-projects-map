@@ -7408,7 +7408,12 @@ console.info('[PATCH v70 COMPLETE] Settings lock, Brief Intelligence, AI Fix, Pi
         + 'h1{color:#0B1F3A;font-size:18px}.sub{color:#526174;font-size:12px;margin-bottom:14px}'
         + 'table{border-collapse:collapse;width:100%;font-size:11px}'
         + 'th,td{border:1px solid #D7DEE8;padding:6px 8px;text-align:left}th{background:#174EA6;color:#fff}'
-        + 'tr:nth-child(even){background:#F6F8FB}</style></head><body>'
+        + 'tr:nth-child(even){background:#F6F8FB}
+/* v69 fix overlap */
+#bd-quick-filters{top:46px !important;}
+.sb-tabs{flex-wrap:wrap !important;height:auto !important;overflow:visible !important;row-gap:4px;}
+.sb-tabs .sbt{padding-left:10px;padding-right:10px;}
+</style></head><body>'
         + '<h1>Projets ciblés — Artelia Cambodia</h1>'
         + '<div class="sub">'+new Date().toLocaleDateString('fr-FR')+' · '+rows.length+' projets</div>'
         + '<table><tr><th>Titre</th><th>Secteur</th><th>Ville</th><th>Bailleur</th><th>Statut</th><th>Priorité</th><th>Score</th></tr>'
