@@ -7027,6 +7027,7 @@ console.info('[PATCH v70] Brief hebdo intelligence projets configure.');
 // 3. FIX ANALYSE IA DES PROJETS
 window.aiAnalyze = async function(item) {
   if (!item) item = window._currentSel || window._selBuilding || window._currentProject;
+  if(item!=null && typeof item!=='object'){ var _aiId=item; var _aiAll=((typeof PRESETS!=='undefined'&&PRESETS)||[]).concat((typeof _bdBuildings==='function'?(_bdBuildings()||[]):[])); item=_aiAll.filter(function(_p){return _p&&String(_p.id)===String(_aiId);})[0]||null; }
   if (!item) {
     var dpName = document.querySelector('#dp-name, .dp-name');
     if (dpName && dpName.textContent) item = {name: dpName.textContent, type:'project'};
