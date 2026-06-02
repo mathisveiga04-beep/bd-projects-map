@@ -7498,3 +7498,24 @@ console.info('[PATCH v70 COMPLETE] Settings lock, Brief Intelligence, AI Fix, Pi
   window.enforceCuratedBuildings=enforceCuratedBuildings;
 })();
 </script>
+<script>
+/* PATCH v82 - purge legacy tender rows from cached map projects before app load */
+(function(){
+  try{
+    var key='artelia_bld_v2';
+    var raw=JSON.parse(localStorage.getItem(key)||'[]');
+    if(!Array.isArray(raw))return;
+    var curated=raw.filter(function(item){
+      var id=Number(item&&item.id);
+      return Number.isFinite(id)&&id>=1&&id<=45;
+    });
+    if(curated.length!==raw.length){
+      localStorage.setItem(key,JSON.stringify(curated));
+      if(!sessionStorage.getItem('artelia_cache_clean_v82')){
+        sessionStorage.setItem('artelia_cache_clean_v82','1');
+        location.reload();
+      }
+    }
+  }catch(e){console.warn('cache-clean-v82',e);}
+})();
+</script>
