@@ -7240,8 +7240,8 @@ window.enableMarkerClustering = function() {
   } else { window._clusterGroup=L.markerClusterGroup(); _applyCluster(); }
 };
 function _applyCluster(){
-  var m=window._map||window.map; if(!m||!window._clusterGroup)return;
-  if(window._allMarkers){ window._allMarkers.forEach(function(mk){m.removeLayer(mk);window._clusterGroup.addLayer(mk);}); m.addLayer(window._clusterGroup); }
+  var m=window.mapObj||window._map||window.map; if(!m||!window._clusterGroup)return;
+  var list=window._allMarkers||Object.values((typeof markers!=='undefined'&&markers)||window.markers||{}); list.forEach(function(mk){try{m.removeLayer(mk);window._clusterGroup.addLayer(mk);}catch(e){}}); if(list.length)m.addLayer(window._clusterGroup);
   if(typeof toast==='function')toast('\u{1F535} Clustering active');
 }
 // 9. EXPORT CSV/PDF
