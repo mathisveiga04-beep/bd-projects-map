@@ -1588,7 +1588,7 @@ async function loadProjectsFromSupabase(){
     return;
   }
 
-  data.forEach(p=>{
+  data.forEach(p=>{    if(!PRESETS.some(b=>String(b.id)===String(p.id)))return;
 
     const exists =
       buildings.some(b=>String(b.id)===String(p.id));
