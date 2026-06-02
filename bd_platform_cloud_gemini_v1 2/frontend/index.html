@@ -1931,6 +1931,7 @@ function priorityColorClass(priority){
 // 
 function renderDashboard(){
   const el=document.getElementById('dboard');if(!el)return;
+  const buildings=((typeof PRESETS!=='undefined'&&PRESETS)||[]).filter(function(x){return x && !/scraper error/i.test(x.name||'');});
   const total=buildings.length;
   const high=buildings.filter(x=>x.pot==='high').length;
   const active=buildings.filter(x=>['contacted','meeting','proposal','qualified'].includes(x.status)).length;
