@@ -1091,7 +1091,7 @@ async function triggerRemoteScraper(){
   setHybridWidget('◌ Lancement scraper...', 'off');
   try{
     var ctrl=new AbortController();
-    var tm=setTimeout(function(){ctrl.abort();},12000);
+    var tm=setTimeout(function(){ctrl.abort();},120000);
     var r=await fetch(base+'/scraper/run',{method:'POST',headers:await aiAuthHeaders(),body:JSON.stringify({source:null,dry_run:false}),signal:ctrl.signal});
     clearTimeout(tm);
     if(!r.ok)throw new Error('HTTP '+r.status);
