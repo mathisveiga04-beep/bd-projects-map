@@ -576,6 +576,8 @@ textarea.fi{min-height:70px;resize:vertical}
     ['Contact identifié','Identified contact'],
     ['Journal d\'activité','Activity log'],
     ['Aucune activité enregistrée.','No activity recorded.'],
+    ['projet(s) ces 7 jours','project(s) in the last 7 days'],
+    ['Voir la source','View source'],
     ['Analyse stratégique Artelia Cambodia','Artelia Cambodia strategic analysis'],
     ['Message personnalisé','Personalized message'],
     ['Priorité élevée','High priority'],
@@ -630,7 +632,7 @@ textarea.fi{min-height:70px;resize:vertical}
     '#dboard .bar-label',
     '#dboard .funnel-label',
     '#dboard .sbub',
-    '#notif-panel .np-hdr',
+    '#notif-panel',
     '#notif-items .ni-m',
     '#notif-items a',
     '#dp-type',
@@ -7806,7 +7808,4 @@ console.info('[PATCH v70 COMPLETE] Settings lock, Brief Intelligence, AI Fix, Pi
   setInterval(maintainQuickLabels,700);
   setTimeout(maintainQuickLabels,300);
 })();
-
-/* v97: auto-retranslate dynamic renders so EN labels apply after each panel render */
-(function(){var T=['renderDashboard','renderSuivi','renderTenders','renderBDActions','renderDPBody','renderActivity','renderWatchList','refreshAlertsPanel','refreshWatchCard','refreshAppViews','refreshVisiblePanel'];T.forEach(function(fn){if(typeof window[fn]==='function'&&!window[fn].__i18nWrapped){var orig=window[fn];var w=function(){var r=orig.apply(this,arguments);try{if(typeof translateInterface==='function'&&(localStorage.getItem('artelia_lang')||'fr')==='en'){translateInterface();}}catch(e){}return r;};w.__i18nWrapped=true;window[fn]=w;}});})();
 </script>
