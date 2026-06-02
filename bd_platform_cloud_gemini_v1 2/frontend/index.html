@@ -7639,3 +7639,13 @@ console.info('[PATCH v70 COMPLETE] Settings lock, Brief Intelligence, AI Fix, Pi
   setTimeout(syncQuickLabels,2500);
 })();
 </script>
+<script>
+/* PATCH v95 - keep delayed quick-filter labels aligned with selected language */
+(function(){
+  function maintainQuickLabels(){
+    if(typeof window.syncQuickLanguageLabels==='function')window.syncQuickLanguageLabels();
+  }
+  setInterval(maintainQuickLabels,700);
+  setTimeout(maintainQuickLabels,300);
+})();
+</script>
