@@ -7806,4 +7806,7 @@ console.info('[PATCH v70 COMPLETE] Settings lock, Brief Intelligence, AI Fix, Pi
   setInterval(maintainQuickLabels,700);
   setTimeout(maintainQuickLabels,300);
 })();
+
+/* v97: auto-retranslate dynamic renders so EN labels apply after each panel render */
+(function(){var T=['renderDashboard','renderSuivi','renderTenders','renderBDActions','renderDPBody','renderActivity','renderWatchList','refreshAlertsPanel','refreshWatchCard','refreshAppViews','refreshVisiblePanel'];T.forEach(function(fn){if(typeof window[fn]==='function'&&!window[fn].__i18nWrapped){var orig=window[fn];var w=function(){var r=orig.apply(this,arguments);try{if(typeof translateInterface==='function'&&(localStorage.getItem('artelia_lang')||'fr')==='en'){translateInterface();}}catch(e){}return r;};w.__i18nWrapped=true;window[fn]=w;}});})();
 </script>
