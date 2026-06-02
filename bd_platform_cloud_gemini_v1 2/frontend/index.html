@@ -1537,7 +1537,7 @@ function scLabel(v){return v>=70?t('score.high'):v>=45?t('score.med'):t('score.l
 function load(){
   const d=localStorage.getItem('artelia_bld_v2');
   if(d){
-    buildings=JSON.parse(d);
+    const cachedBuildings=JSON.parse(d);     const cachedById=new Map((Array.isArray(cachedBuildings)?cachedBuildings:[]).filter(function(b){return b&&!/scraper error/i.test(String(b.name||b.title||''));}).map(function(b){return [String(b.id),b];}));     buildings=PRESETS.map(function(p){const old=cachedById.get(String(p.id))||{};return {...old,...p,activity:Array.isArray(old.activity)?old.activity:[]};});     localStorage.setItem('artelia_bld_v2',JSON.stringify(buildings));
     // Merge: add new PRESETS buildings not yet in localStorage
     const existingIds=new Set(buildings.map(b=>b.id));
     const newFromPresets=PRESETS.filter(b=>!existingIds.has(b.id)).map(b=>({...b,activity:[],aiCache:'',liCache:'',email:'',phone:'',competitor:''}));
