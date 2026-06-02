@@ -3769,7 +3769,7 @@ document.querySelectorAll('.lang-btn').forEach(function(b){if(b.getAttribute('on
 })();
 
 
-/* ---------- USER REQUEST PATCH v14: non-localized opportunities are alerts, not map pings ---------- */var m=window.mapObj||window._map||window.map; if(!m)return;var m=window.mapObj||window._map||window.map; if(!m)return;var pts=(window.buildings||[]).map(function(b){var lat=b&&(b.lat!=null?b.lat:b.latitude),lng=b&&(b.lng!=null?b.lng:b.longitude);lat=parseFloat(lat);lng=parseFloat(lng);return Number.isFinite(lat)&&Number.isFinite(lng)?[lat,lng,1]:null;}).filter(Boolean);
+/* ---------- USER REQUEST PATCH v14: non-localized opportunities are alerts, not map pings ---------- */
 (function(){
   function hasCoords(x){
     return x && Number.isFinite(Number(x.lat)) && Number.isFinite(Number(x.lng));
@@ -7268,12 +7268,12 @@ window.exportPingsPDF = function() {
 // 10. HEATMAP
 window._heatmapLayer=null;
 window.toggleHeatmap = function() {
-  var m=window._map||window.map; if(!m)return;
+  var m=window.mapObj||window._map||window.map; if(!m)return;
   if(window._heatmapLayer){m.removeLayer(window._heatmapLayer);window._heatmapLayer=null;if(typeof toast==='function')toast('\u{1F5FA} Heatmap desactivee');return;}
   if(!L.heatLayer){var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js';s.onload=function(){_showHeatmap(m);};document.head.appendChild(s);}else{_showHeatmap(m);}
 };
 function _showHeatmap(m){
-  var pts=(window.buildings||[]).filter(function(b){return b&&b.latitude&&b.longitude;}).map(function(b){return [parseFloat(b.latitude),parseFloat(b.longitude),1];});
+  var pts=(window.buildings||[]).map(function(b){var lat=b&&(b.lat!=null?b.lat:b.latitude),lng=b&&(b.lng!=null?b.lng:b.longitude);lat=parseFloat(lat);lng=parseFloat(lng);return Number.isFinite(lat)&&Number.isFinite(lng)?[lat,lng,1]:null;}).filter(Boolean);
   if(!pts.length){alert('Pas de donnees geolocalisees');return;}
   window._heatmapLayer=L.heatLayer(pts,{radius:30,blur:15,maxZoom:14,gradient:{0.2:'blue',0.5:'lime',0.8:'red'}}).addTo(m);
   if(typeof toast==='function')toast('\u{1F525} Heatmap active ('+pts.length+' points)');
