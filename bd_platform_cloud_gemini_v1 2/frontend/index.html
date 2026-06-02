@@ -7217,7 +7217,7 @@ window.setMapFilter = function(key,val){
 // 7. FEED ACTIVITE
 window.renderActivityFeed = function() {
   var feed = document.getElementById('activity-feed'); if (!feed) return;
-  var items = (window.buildings||[]).slice().sort(function(a,b){ return new Date(b.created_at||0)-new Date(a.created_at||0); }).slice(0,15);
+  var items = (window.buildings||[]).filter(function(b){return b && !/scraper error/i.test(b.name||'');}).slice().sort(function(a,b){ return new Date(b.created_at||0)-new Date(a.created_at||0); }).slice(0,15);
   if (!items.length){ feed.innerHTML='<div style="padding:10px;color:#94a3b8;font-size:11px;text-align:center">Aucune activite recente</div>'; return; }
   feed.innerHTML='<div style="padding:6px 10px;font-size:10px;font-weight:700;color:#526174;text-transform:uppercase;letter-spacing:.04em">\u{1F4E1} Activite recente</div>'+
     items.map(function(item){
