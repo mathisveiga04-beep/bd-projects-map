@@ -7981,3 +7981,63 @@ window.exportPingsPDF=function(){
 };
 })();
 </script>
+
+          <script>
+/* PATCH v104 - export curated buildings before watch aggregates */
+(function(){
+window.exportPingsPDF=function(){
+  try{
+    var sources=[
+      window.filteredPings,
+      window.buildings,
+      (typeof buildings!=='undefined'?buildings:null),
+      window.PRESETS,
+      (typeof PRESETS!=='undefined'?PRESETS:null),
+      window.allPings
+    ];
+    var rows=[];
+    sources.some(function(source){
+      var candidate=source;
+      try{if(typeof candidate==='function')candidate=candidate();}catch(e){candidate=null;}
+      if(!candidate)return false;
+      if(!Array.isArray(candidate))candidate=Object.values(candidate);
+      if(!candidate.length)return false;
+      rows=candidate;
+      return true;
+    });
+    var esc=function(s){
+      return String(s==null?'':s).replace(/[&<>]/g,function(c){
+        return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];
+      });
+    };
+    var sc=function(p){
+      try{return typeof calcScore==='function'?calcScore(p):(p.score||'');}
+      catch(e){return p.score||'';}
+    };
+    var body=rows.map(function(p){
+      return '<tr><td>'+esc(p.title||p.name)+'</td><td>'+esc(p.sector)+'</td><td>'+esc(p.city)
+        +'</td><td>'+esc(p.funder)+'</td><td>'+esc(p.status)+'</td><td>'+esc(p.priority)+'</td><td>'+esc(sc(p))+'</td></tr>';
+    }).join('');
+    var html='<html><head><meta charset="utf-8"><title>Projets Artelia Cambodia</title><style>'
+      +'body{font-family:Calibri,Arial,sans-serif;padding:24px;color:#172033}'
+      +'h1{color:#0B1F3A;font-size:18px}.sub{color:#526174;font-size:12px;margin-bottom:14px}'
+      +'table{border-collapse:collapse;width:100%;font-size:11px}'
+      +'th,td{border:1px solid #D7DEE8;padding:6px 8px;text-align:left}th{background:#174EA6;color:#fff}'
+      +'tr:nth-child(even){background:#F6F8FB}</style></head><body>'
+      +'<h1>Projets cibles - Artelia Cambodia</h1>'
+      +'<div class="sub">'+new Date().toLocaleDateString('fr-FR')+' - '+rows.length+' projets</div>'
+      +'<table><tr><th>Titre</th><th>Secteur</th><th>Ville</th><th>Bailleur</th><th>Statut</th><th>Priorite</th><th>Score</th></tr>'
+      +body+'</table></body></html>';
+    var w=window.open('','_blank');
+    if(!w){alert('Autorisez les pop-ups pour generer le PDF.');return;}
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(function(){try{w.print();}catch(e){}},400);
+  }catch(e){
+    console.error('[PATCH v104] exportPingsPDF',e);
+    alert('Export PDF: '+e.message);
+  }
+};
+})();
+</script>
