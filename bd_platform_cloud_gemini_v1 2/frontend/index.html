@@ -626,8 +626,7 @@ textarea.fi{min-height:70px;resize:vertical}
     '#activity-feed > div > div:last-child',
     '#blist .ping-meta',
     '#blist .ping-tag',
-    '#pipe-view .pipe-ch',
-    '#pipe-view .pc-m',
+    '#pipe-view',
     '#dboard .bar-label',
     '#dboard .funnel-label',
     '#dboard .sbub',
@@ -678,6 +677,32 @@ textarea.fi{min-height:70px;resize:vertical}
       window.setLang=wrapped;
     }
   }
+  function bindRenderHooks(){
+    [
+      'filterList',
+      'renderSuivi',
+      'renderDashboard',
+      'renderActivityFeed',
+      'updateNotifs',
+      'renderDPBody',
+      'renderWatchList',
+      'renderTenders',
+      'openDP',
+      'sbTab',
+      'sbTab2'
+    ].forEach(function(name){
+      var previous=window[name];
+      if(typeof previous==='function'&&!previous.__dynamicLang96){
+        var wrapped=function(){
+          var result=previous.apply(this,arguments);
+          setTimeout(syncDynamicLabels,20);
+          return result;
+        };
+        wrapped.__dynamicLang96=true;
+        window[name]=wrapped;
+      }
+    });
+  }
   var timer=null;
   function schedule(){
     clearTimeout(timer);
@@ -685,10 +710,11 @@ textarea.fi{min-height:70px;resize:vertical}
   }
   document.addEventListener('DOMContentLoaded',function(){
     bindSetLang();
+    bindRenderHooks();
     setTimeout(syncDynamicLabels,1500);
     try{new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true,characterData:true});}catch(e){}
   });
-  window.addEventListener('load',function(){bindSetLang();setTimeout(syncDynamicLabels,1900);});
+  window.addEventListener('load',function(){bindSetLang();bindRenderHooks();setTimeout(syncDynamicLabels,1900);});
   setTimeout(syncDynamicLabels,2400);
 })();
 </script>
