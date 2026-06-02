@@ -705,16 +705,10 @@ textarea.fi{min-height:70px;resize:vertical}
       }
     });
   }
-  var timer=null;
-  function schedule(){
-    clearTimeout(timer);
-    timer=setTimeout(syncDynamicLabels,50);
-  }
   document.addEventListener('DOMContentLoaded',function(){
     bindSetLang();
     bindRenderHooks();
     setTimeout(syncDynamicLabels,1500);
-    try{new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true,characterData:true});}catch(e){}
   });
   window.addEventListener('load',function(){bindSetLang();bindRenderHooks();setTimeout(syncDynamicLabels,1900);});
   setTimeout(syncDynamicLabels,2400);
