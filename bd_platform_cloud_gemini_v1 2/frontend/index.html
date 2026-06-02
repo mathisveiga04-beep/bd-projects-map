@@ -1560,8 +1560,8 @@ function load(){
     buildings=PRESETS.map(b=>({...b,activity:[],aiCache:'',liCache:'',email:'',phone:'',competitor:''}));
   }
   const a=localStorage.getItem('artelia_bd_v2');bdActions=a?JSON.parse(a):[];
-  const t=localStorage.getItem('artelia_td_v2');tenders=t?JSON.parse(t):TENDER_PRESETS;
-  const w=localStorage.getItem('artelia_watch_v2');watchItems=w?JSON.parse(w):WATCH_PRESETS;
+  const t=localStorage.getItem('artelia_td_v2'),cachedTenders=t?JSON.parse(t):[];tenders=Array.isArray(cachedTenders)&&cachedTenders.length?cachedTenders:TENDER_PRESETS.map(x=>({...x}));
+  const w=localStorage.getItem('artelia_watch_v2'),cachedWatch=w?JSON.parse(w):[];watchItems=Array.isArray(cachedWatch)&&cachedWatch.length?cachedWatch:WATCH_PRESETS.map(x=>({...x}));
   const apiInput=document.getElementById('api-input');if(apiInput)apiInput.value='Gemini via Render';
   const tn=localStorage.getItem('artelia_team');if(tn)document.getElementById('team-name').value=tn;
   const bu=localStorage.getItem('bd_backend_url');if(bu&&document.getElementById('backend-url'))document.getElementById('backend-url').value=bu;
@@ -2144,7 +2144,7 @@ function alertActionRows(){
     return {...a, kind:'action', isOverdue, isToday};
   });
 }
-function updateNotifs(){
+function openAlertProject(kind,id){if(kind==='tender')openTender(id);else openWatchDetail(id);}function updateNotifs(){
   const leads=alertProjectRows();
   const actions=alertActionRows();
   const total=leads.length+actions.length;
@@ -2156,7 +2156,7 @@ function updateNotifs(){
   const leadHtml=leads.length?`
     <div style="padding:9px 14px 6px;font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-weight:700;border-bottom:1px solid var(--border)">Veille / appels d\'offres / projets non localisés</div>
     ${leads.map(l=>`
-      <div class="notif-item lead-alert" onclick="openWatchDetail(${l.id});document.getElementById('notif-panel').classList.remove('on')">
+      <div class="notif-item lead-alert" onclick="openAlertProject('${l.kind}',${l.id});document.getElementById('notif-panel').classList.remove('on')">
         <div class="ni-t">${l.isNew?'<span style="display:inline-block;margin-right:6px;padding:1px 6px;border-radius:999px;background:var(--red-l);color:var(--red);font-size:9px;font-weight:700">'+((typeof currentLang==='function'&&currentLang()==='en')?'NEW':'NOUVEAU')+'</span>':''}${l.title}</div>
         <div class="ni-m">${l.source} · ${l.zone} · ${l.priority==='high'?'Priorité élevée':l.priority==='med'?'Priorité moyenne':'Veille simple'}</div>
         <div class="ni-m" style="color:var(--blue)">${l.scope}</div>
