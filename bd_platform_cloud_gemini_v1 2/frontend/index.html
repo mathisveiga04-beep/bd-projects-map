@@ -7541,3 +7541,60 @@ console.info('[PATCH v70 COMPLETE] Settings lock, Brief Intelligence, AI Fix, Pi
   }catch(e){console.warn('cache-clean-v83',e);}
 })();
 </script>
+<script>
+/* PATCH v93 - normalize late-rendered FR/EN labels without touching map state */
+(function(){
+  function isEn(){
+    try{
+      return (typeof currentLang==='function' ? currentLang() : (localStorage.getItem('artelia_lang')||'fr'))==='en';
+    }catch(e){return false;}
+  }
+  function syncLateLabels(){
+    var en=isEn();
+    var search=document.getElementById('global-search-input');
+    if(search)search.placeholder=en?'Search projects, areas...':'Rechercher projets, zones...';
+    var labels={
+      all:['Tous','All'],
+      road:['Routes','Routes'],
+      building:['B\u00e2timent','Building'],
+      water:['Eau','Water'],
+      energy:['\u00c9nergie','Energy']
+    };
+    document.querySelectorAll('#bd-quick-filters [data-qf]').forEach(function(btn){
+      var pair=labels[btn.getAttribute('data-qf')];
+      if(pair)btn.textContent=en?pair[1]:pair[0];
+    });
+    var notif=document.getElementById('notif-btn');
+    if(notif){
+      var badge=document.getElementById('notif-cnt');
+      Array.from(notif.childNodes).forEach(function(node){
+        if(node.nodeType===3)node.nodeValue='';
+      });
+      var spans=notif.querySelectorAll('.notif-label');
+      var label=spans[0];
+      if(!label){
+        label=document.createElement('span');
+        label.className='notif-label';
+        notif.insertBefore(label,badge||null);
+      }
+      for(var i=1;i<spans.length;i++)spans[i].remove();
+      label.textContent=en?'Alerts':'Alertes';
+      notif.title=en?'Watch alerts':'Alertes de veille';
+    }
+  }
+  window.syncLateLanguageLabels=syncLateLabels;
+  var previous=window.setLang;
+  if(typeof previous==='function'){
+    window.setLang=function(){
+      var result=previous.apply(this,arguments);
+      setTimeout(syncLateLabels,20);
+      setTimeout(syncLateLabels,300);
+      setTimeout(syncLateLabels,1400);
+      return result;
+    };
+  }
+  document.addEventListener('DOMContentLoaded',function(){setTimeout(syncLateLabels,1500);});
+  window.addEventListener('load',function(){setTimeout(syncLateLabels,1800);});
+  setTimeout(syncLateLabels,2200);
+})();
+</script>
