@@ -6885,6 +6885,11 @@ input:focus, select:focus, textarea:focus {
     });
   };
 
+  function alertTr(fr,en) {
+    try { return (typeof currentLang === "function" && currentLang() === "en") ? en : fr; }
+    catch(e) { return fr; }
+  }
+
   function fixAlertsPanel() {
     if (typeof window.toggleNotif !== "function") { setTimeout(fixAlertsPanel, 300); return; }
     if (window._v67notif) return;
@@ -6896,14 +6901,14 @@ input:focus, select:focus, textarea:focus {
         if (!panel || panel.style.display === "none") return;
         var list = document.querySelector(".ni-list") || document.querySelector("#notif-list") || panel.querySelector("ul,ol,.list");
         if (!list) { list = document.createElement("div"); panel.appendChild(list); }
-        list.innerHTML = "<div style=\"padding:16px;text-align:center;color:#6b7280\">Chargement...</div>";
+        list.innerHTML = "<div style=\"padding:16px;text-align:center;color:#6b7280\">" + alertTr("Chargement...","Loading...") + "</div>";
         var c = getSb();
-        if (!c) { list.innerHTML = "<div style=\"padding:16px;color:#ef4444\">Client Supabase non disponible</div>"; return; }
+        if (!c) { list.innerHTML = "<div style=\"padding:16px;color:#ef4444\">" + alertTr("Client Supabase non disponible","Supabase client unavailable") + "</div>"; return; }
         var d7 = new Date(Date.now() - 7*24*3600000).toISOString();
         c.from("projects").select("id,title,city,sector,source_url,created_at").gte("created_at", d7).order("created_at",{ascending:false}).limit(20)
           .then(function(res) {
             if (res.error || !res.data || !res.data.length) {
-              list.innerHTML = "<div style=\"padding:20px;text-align:center;color:#6b7280\"><div style=\"font-size:24px\">&#10003;</div><p>Aucun nouveau projet ces 7 jours.</p></div>";
+              list.innerHTML = "<div style=\"padding:20px;text-align:center;color:#6b7280\"><div style=\"font-size:24px\">&#10003;</div><p>" + alertTr("Aucun nouveau projet ces 7 jours.","No new projects in the last 7 days.") + "</p></div>";
               return;
             }
             var rows = res.data.map(function(p) {
@@ -6911,13 +6916,13 @@ input:focus, select:focus, textarea:focus {
               try { ago = Math.round((Date.now() - new Date(p.created_at).getTime()) / 3600000) + "h"; } catch(e) {}
               return "<div class=\"ni-item\" style=\"padding:12px 16px;border-bottom:1px solid #f3f4f6\">" +
                 "<div style=\"display:flex;justify-content:space-between\">" +
-                "<strong style=\"font-size:13px;color:#111\">" + (p.title || "Sans titre") + "</strong>" +
+                "<strong style=\"font-size:13px;color:#111\">" + (p.title || alertTr("Sans titre","Untitled")) + "</strong>" +
                 "<span style=\"font-size:11px;color:#9ca3af\">" + ago + "</span></div>" +
                 "<div style=\"font-size:12px;color:#6b7280;margin-top:2px\">" + (p.city || "") + (p.sector ? " · " + p.sector : "") + "</div>" +
-                (p.source_url ? "<a href=\"" + p.source_url + "\" target=\"_blank\" style=\"font-size:11px;color:#2563eb\">Voir la source &#8594;</a>" : "") +
+                (p.source_url ? "<a href=\"" + p.source_url + "\" target=\"_blank\" style=\"font-size:11px;color:#2563eb\">" + alertTr("Voir la source","View source") + " &#8594;</a>" : "") +
                 "</div>";
             }).join("");
-            list.innerHTML = "<div style=\"padding:8px 16px;font-size:12px;color:#6b7280;border-bottom:1px solid #e5e7eb\">" + res.data.length + " projet(s) ces 7 jours</div>" + rows;
+            list.innerHTML = "<div style=\"padding:8px 16px;font-size:12px;color:#6b7280;border-bottom:1px solid #e5e7eb\">" + res.data.length + " " + alertTr("projet(s) ces 7 jours","project(s) in the last 7 days") + "</div>" + rows;
           });
       }, 100);
     };
