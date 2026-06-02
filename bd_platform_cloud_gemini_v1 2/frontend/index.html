@@ -3769,7 +3769,7 @@ document.querySelectorAll('.lang-btn').forEach(function(b){if(b.getAttribute('on
 })();
 
 
-/* ---------- USER REQUEST PATCH v14: non-localized opportunities are alerts, not map pings ---------- */
+/* ---------- USER REQUEST PATCH v14: non-localized opportunities are alerts, not map pings ---------- */var m=window.mapObj||window._map||window.map; if(!m)return;var m=window.mapObj||window._map||window.map; if(!m)return;var pts=(window.buildings||[]).map(function(b){var lat=b&&(b.lat!=null?b.lat:b.latitude),lng=b&&(b.lng!=null?b.lng:b.longitude);lat=parseFloat(lat);lng=parseFloat(lng);return Number.isFinite(lat)&&Number.isFinite(lng)?[lat,lng,1]:null;}).filter(Boolean);
 (function(){
   function hasCoords(x){
     return x && Number.isFinite(Number(x.lat)) && Number.isFinite(Number(x.lng));
