@@ -7598,3 +7598,44 @@ console.info('[PATCH v70 COMPLETE] Settings lock, Brief Intelligence, AI Fix, Pi
   setTimeout(syncLateLabels,2200);
 })();
 </script>
+<script>
+/* PATCH v94 - normalize delayed quick-filter labels and history tooltip */
+(function(){
+  function isEn(){
+    try{
+      return (typeof currentLang==='function' ? currentLang() : (localStorage.getItem('artelia_lang')||'fr'))==='en';
+    }catch(e){return false;}
+  }
+  function syncQuickLabels(){
+    var en=isEn();
+    var labels={
+      all:['Tous','All'],
+      road:['Routes','Routes'],
+      building:['B\u00e2timent','Building'],
+      water:['Eau','Water'],
+      energy:['\u00c9nergie','Energy']
+    };
+    document.querySelectorAll('.qf-btn').forEach(function(btn){
+      var pair=labels[btn.getAttribute('data-qf')];
+      if(pair)btn.textContent=en?pair[1]:pair[0];
+    });
+    document.querySelectorAll('.map-ctrl-btn').forEach(function(btn){
+      if(btn.textContent.trim()==='\u{1F4CB}')btn.title=en?'History':'Historique';
+    });
+  }
+  window.syncQuickLanguageLabels=syncQuickLabels;
+  var previous=window.setLang;
+  if(typeof previous==='function'){
+    window.setLang=function(){
+      var result=previous.apply(this,arguments);
+      setTimeout(syncQuickLabels,30);
+      setTimeout(syncQuickLabels,350);
+      setTimeout(syncQuickLabels,1600);
+      return result;
+    };
+  }
+  document.addEventListener('DOMContentLoaded',function(){setTimeout(syncQuickLabels,1700);});
+  window.addEventListener('load',function(){setTimeout(syncQuickLabels,2100);});
+  setTimeout(syncQuickLabels,2500);
+})();
+</script>
