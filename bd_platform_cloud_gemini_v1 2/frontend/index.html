@@ -560,6 +560,138 @@ textarea.fi{min-height:70px;resize:vertical}
   console.info('[PATCH v66] Fetch interceptor active — Render /projects + /tenders neutralisés');
 })();
 </script>
+<script>
+/* PATCH v96 - translate dynamic display fragments without mutating project data */
+(function(){
+  function isEn(){
+    try{
+      return (typeof currentLang==='function' ? currentLang() : (localStorage.getItem('artelia_lang')||'fr'))==='en';
+    }catch(e){return false;}
+  }
+  var pairs=[
+    ['ACTIVITÉ RÉCENTE','RECENT ACTIVITY'],
+    ['Activité récente','Recent activity'],
+    ['Chantier Identifié','Identified construction site'],
+    ['Chantier identifié','Identified construction site'],
+    ['Contact identifié','Identified contact'],
+    ['Journal d\'activité','Activity log'],
+    ['Aucune activité enregistrée.','No activity recorded.'],
+    ['Analyse stratégique Artelia Cambodia','Artelia Cambodia strategic analysis'],
+    ['Message personnalisé','Personalized message'],
+    ['Priorité élevée','High priority'],
+    ['Priorité moyenne','Medium priority'],
+    ['Priorité faible','Low priority'],
+    ['Note transmise','Proposal sent'],
+    ['À identifier','To identify'],
+    ['À qualifier','To qualify'],
+    ['Institutionnel','Institutional'],
+    ['Résidentiel','Residential'],
+    ['Rénovation','Renovation'],
+    ['Industriel','Industrial'],
+    ['Confirmé','Confirmed'],
+    ['Estimé','Estimated'],
+    ['Contacté','Contacted'],
+    ['Qualifié','Qualified'],
+    ['Récent','Recent'],
+    ['Hôtel','Hotel'],
+    ['Bureau','Office'],
+    ['Mixte','Mixed'],
+    ['Veille','Watch'],
+    ['Actif','Asset'],
+    ['Année','Year'],
+    ['Étages','Floors'],
+    ['Priorité','Priority'],
+    ['Gagné','Won'],
+    ['Perdu','Lost'],
+    ['Neuf','New build'],
+    ['Vide','Empty'],
+    ['Copier','Copy'],
+    ['entrées','entries'],
+    ['entrée','entry']
+  ];
+  var fe={},ef={};
+  pairs.forEach(function(pair){fe[pair[0]]=pair[1];ef[pair[1]]=pair[0];});
+  function esc(value){return value.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
+  function translate(value){
+    var text=String(value||'');
+    var map=isEn()?fe:ef;
+    Object.keys(map).sort(function(a,b){return b.length-a.length;}).forEach(function(key){
+      var re=new RegExp('(^|[\\s·—:/()])'+esc(key)+'(?=$|[\\s·—:/()])','g');
+      text=text.replace(re,function(match,prefix){return prefix+map[key];});
+    });
+    return text;
+  }
+  var selectors=[
+    '#activity-feed > div:first-child',
+    '#activity-feed > div > div:last-child',
+    '#blist .ping-meta',
+    '#blist .ping-tag',
+    '#pipe-view .pipe-ch',
+    '#pipe-view .pc-m',
+    '#dboard .bar-label',
+    '#dboard .funnel-label',
+    '#dboard .sbub',
+    '#notif-panel .np-hdr',
+    '#notif-items .ni-m',
+    '#notif-items a',
+    '#dp-type',
+    '#dp-zone',
+    '#dp-body .dp-k',
+    '#dp-body .dp-st',
+    '#dp-body .qs-btn',
+    '#dp-body .li-lbl',
+    '#dp-body .li-copy',
+    '#watch-list .watch-tag',
+    '#watch-list .ws-badge'
+  ];
+  var busy=false;
+  function translateElement(el){
+    if(!el)return;
+    var walker=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);
+    var node;
+    while((node=walker.nextNode())){
+      var next=translate(node.nodeValue);
+      if(next!==node.nodeValue)node.nodeValue=next;
+    }
+  }
+  function syncDynamicLabels(){
+    if(busy||!document.body)return;
+    busy=true;
+    try{
+      selectors.forEach(function(selector){
+        document.querySelectorAll(selector).forEach(translateElement);
+      });
+    }finally{busy=false;}
+  }
+  window.syncDynamicLanguageLabels=syncDynamicLabels;
+  function bindSetLang(){
+    var previous=window.setLang;
+    if(typeof previous==='function'&&!previous.__dynamicLang96){
+      var wrapped=function(){
+        var result=previous.apply(this,arguments);
+        setTimeout(syncDynamicLabels,20);
+        setTimeout(syncDynamicLabels,250);
+        setTimeout(syncDynamicLabels,1200);
+        return result;
+      };
+      wrapped.__dynamicLang96=true;
+      window.setLang=wrapped;
+    }
+  }
+  var timer=null;
+  function schedule(){
+    clearTimeout(timer);
+    timer=setTimeout(syncDynamicLabels,50);
+  }
+  document.addEventListener('DOMContentLoaded',function(){
+    bindSetLang();
+    setTimeout(syncDynamicLabels,1500);
+    try{new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true,characterData:true});}catch(e){}
+  });
+  window.addEventListener('load',function(){bindSetLang();setTimeout(syncDynamicLabels,1900);});
+  setTimeout(syncDynamicLabels,2400);
+})();
+</script>
 </head>
 <body>
 
