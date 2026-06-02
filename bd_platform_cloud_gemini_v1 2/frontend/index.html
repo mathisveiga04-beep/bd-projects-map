@@ -7519,3 +7519,25 @@ console.info('[PATCH v70 COMPLETE] Settings lock, Brief Intelligence, AI Fix, Pi
   }catch(e){console.warn('cache-clean-v82',e);}
 })();
 </script>
+<script>
+/* PATCH v83 - remove tender-shaped rows from the legacy map cache */
+(function(){
+  try{
+    var key='artelia_bld_v2';
+    var raw=JSON.parse(localStorage.getItem(key)||'[]');
+    if(!Array.isArray(raw))return;
+    var curated=raw.filter(function(item){
+      var label=String((item&&(item.name||item.title))||'');
+      var type=String((item&&item.type)||'').toLowerCase();
+      return type!=='projet'&&!/scraper error/i.test(label);
+    });
+    if(curated.length!==raw.length){
+      localStorage.setItem(key,JSON.stringify(curated));
+      if(!sessionStorage.getItem('artelia_cache_clean_v83')){
+        sessionStorage.setItem('artelia_cache_clean_v83','1');
+        location.reload();
+      }
+    }
+  }catch(e){console.warn('cache-clean-v83',e);}
+})();
+</script>
