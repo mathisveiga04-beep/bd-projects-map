@@ -4914,7 +4914,7 @@ document.querySelectorAll('.lang-btn').forEach(function(b){if(b.getAttribute('on
   };
 
   window.allPings=function(){
-    const assetPings=(buildings||[]).map(b=>({source:'asset',id:b.id,name:b.name,meta:(b.type||'Actif')+' · '+(b.zone||'Zone non précisée'),kind:b.kind||'renovation',status:b.status||'not_visited',statusLabel:statusText(b.status),priority:b.pot||'med',score:typeof calcScore==='function'?calcScore(b):0,lat:b.lat,lng:b.lng,sourceText:b.source||'',services:b.services||'',notes:b.notes||'',contact:b.contact||'',confidence:b.confidence||'med',oppSize:b.oppSize||'unknown'}));
+    const assetPings=(buildings||[]).filter(function(b){return b && !/scraper error/i.test(b.name||'');}).map(b=>({source:'asset',id:b.id,name:b.name,meta:(b.type||'Actif')+' · '+(b.zone||'Zone non précisée'),kind:b.kind||'renovation',status:b.status||'not_visited',statusLabel:statusText(b.status),priority:b.pot||'med',score:typeof calcScore==='function'?calcScore(b):0,lat:b.lat,lng:b.lng,sourceText:b.source||'',services:b.services||'',notes:b.notes||'',contact:b.contact||'',confidence:b.confidence||'med',oppSize:b.oppSize||'unknown'}));
     const watchPings=(typeof watchItems!=='undefined'?watchItems:[]).map(w=>({source:'watch',id:w.id,name:w.title,meta:(w.source||'Veille')+' · '+(w.zone||'Zone non précisée'),kind:w.kind||'mixed',status:typeof watchStatusFromFit==='function'?watchStatusFromFit(w.fit):'not_visited',statusLabel:w.fit==='high'?'À qualifier':w.fit==='med'?'À identifier':'Archivé',priority:w.fit||'med',score:w.fit==='high'?80:w.fit==='med'?50:25,lat:w.lat,lng:w.lng,sourceText:w.source||'',services:w.scope||'',notes:w.notes||'',contact:'',confidence:w.confidence||'med',oppSize:w.oppSize||'unknown'}));
     return assetPings.concat(watchPings);
   };
