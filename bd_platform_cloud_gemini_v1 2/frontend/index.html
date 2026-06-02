@@ -7808,3 +7808,70 @@ console.info('[PATCH v70 COMPLETE] Settings lock, Brief Intelligence, AI Fix, Pi
   setTimeout(maintainQuickLabels,300);
 })();
 </script>
+
+<script>
+/* PATCH v101 - toggle marker clustering without losing base markers */
+(function(){
+function clusterMap(){
+  return window.mapObj||window._map||window.map;
+}
+function clusterMarkers(){
+  var list=window._allMarkers||Object.values((typeof markers!=='undefined'&&markers)||window.markers||{});
+  return list.filter(function(marker,index,items){return marker&&items.indexOf(marker)===index;});
+}
+function restoreIndividualMarkers(map){
+  var group=window._clusterGroup;
+  if(group&&map.hasLayer(group))map.removeLayer(group);
+  clusterMarkers().forEach(function(marker){
+    try{
+      if(group)group.removeLayer(marker);
+      if(!map.hasLayer(marker))map.addLayer(marker);
+    }catch(e){}
+  });
+  window._clusterGroup=null;
+  if(typeof toast==='function')toast('\u{1F535} Clustering desactive');
+}
+function applyCluster(){
+  var map=clusterMap();
+  if(!map||!window._clusterGroup)return;
+  var list=clusterMarkers();
+  list.forEach(function(marker){
+    try{
+      map.removeLayer(marker);
+      window._clusterGroup.addLayer(marker);
+    }catch(e){}
+  });
+  if(list.length)map.addLayer(window._clusterGroup);
+  if(typeof toast==='function')toast('\u{1F535} Clustering active');
+}
+window.enableMarkerClustering=function(){
+  if(typeof L==='undefined'){alert('Carte non chargee');return;}
+  var map=clusterMap();
+  if(!map)return;
+  if(window._clusterGroup&&map.hasLayer(window._clusterGroup)){
+    restoreIndividualMarkers(map);
+    return;
+  }
+  if(window._clusterLoading)return;
+  if(!L.markerClusterGroup){
+    window._clusterLoading=true;
+    var css=document.createElement('link');
+    css.rel='stylesheet';
+    css.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.min.css';
+    document.head.appendChild(css);
+    var script=document.createElement('script');
+    script.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js';
+    script.onload=function(){
+      window._clusterLoading=false;
+      window._clusterGroup=L.markerClusterGroup();
+      applyCluster();
+    };
+    script.onerror=function(){window._clusterLoading=false;};
+    document.head.appendChild(script);
+  }else{
+    window._clusterGroup=L.markerClusterGroup();
+    applyCluster();
+  }
+};
+})();
+</script>
