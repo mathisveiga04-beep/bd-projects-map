@@ -1931,10 +1931,10 @@ function priorityColorClass(priority){
 // 
 function renderDashboard(){
   const el=document.getElementById('dboard');if(!el)return;
-  const buildings=((typeof PRESETS!=='undefined'&&PRESETS)||[]).filter(function(x){return x && !/scraper error/i.test(x.name||'');});
+  const statsBuildings=buildings;
   const total=buildings.length;
   const high=buildings.filter(x=>x.pot==='high').length;
-  const active=buildings.filter(x=>['contacted','meeting','proposal','qualified'].includes(x.status)).length;
+  const active=buildings.filter(x=>['prospect','contacted','meeting','proposal','qualified'].includes(x.status)).length;
   const qualified=buildings.filter(x=>x.status==='qualified').length;
   const avgSc=Math.round(buildings.reduce((s,b)=>s+calcScore(b),0)/(total||1));
   const totalBudget=buildings.filter(b=>b.status!=='lost').reduce((s,b)=>s+(parseInt(b.budget)||0),0);
@@ -2852,10 +2852,10 @@ function clearWatchData(){
 }
 
 function updateStats(){
-  const buildings=((typeof PRESETS!=='undefined'&&PRESETS)||[]).filter(function(x){return x && !/scraper error/i.test(x.name||'');});
+  const statsBuildings=buildings;
   document.getElementById('hs-total').textContent=buildings.length;
   document.getElementById('hs-hot').textContent=buildings.filter(x=>x.pot==='high').length;
-  document.getElementById('hs-pipe').textContent=buildings.filter(x=>['contacted','meeting','proposal','qualified','won'].includes(x.status)).length;
+  document.getElementById('hs-pipe').textContent=buildings.filter(x=>['prospect','contacted','meeting','proposal','qualified','won'].includes(x.status)).length;
   const v=buildings.filter(x=>x.status!=='lost').reduce((s,x)=>s+(parseInt(x.budget)||0),0);
   document.getElementById('hs-val').textContent=v?'$'+Math.round(v/1000)+'k':'$0';
   const activeB=buildings.filter(x=>x.status!=='lost');
