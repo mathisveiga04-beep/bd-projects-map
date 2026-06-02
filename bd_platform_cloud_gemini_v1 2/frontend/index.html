@@ -7463,3 +7463,38 @@ console.info('[PATCH v70 COMPLETE] Settings lock, Brief Intelligence, AI Fix, Pi
 </body>
 
 </html>
+
+
+<script>
+/* PATCH v81 — keep curated buildings only and purge stale cache pollution */
+(function(){
+  function curatedBuildingsOnly(){
+    if(typeof PRESETS==='undefined'||!Array.isArray(PRESETS)) return null;
+    var previous={};
+    try{(Array.isArray(buildings)?buildings:[]).forEach(function(b){previous[String(b.id)]=b;});}catch(e){}
+    return PRESETS.map(function(p){
+      var old=previous[String(p.id)]||{};
+      return Object.assign({activity:[],aiCache:'',liCache:'',email:'',phone:'',competitor:''},old,p,{activity:Array.isArray(old.activity)?old.activity:[]});
+    });
+  }
+  function enforceCuratedBuildings(){
+    var curated=curatedBuildingsOnly();
+    if(!curated)return;
+    try{buildings=curated;}catch(e){}
+    window.buildings=curated;
+    try{localStorage.setItem('artelia_bld_v2',JSON.stringify(curated));}catch(e){}
+    try{if(typeof filterList==='function')filterList();}catch(e){}
+    try{if(typeof renderMarkers==='function')renderMarkers();}catch(e){}
+    try{if(typeof updateStats==='function')updateStats();}catch(e){}
+    try{if(typeof renderDashboard==='function')renderDashboard();}catch(e){}
+  }
+  var previousLoad=window.load;
+  if(typeof previousLoad==='function'){
+    window.load=function(){var result=previousLoad.apply(this,arguments);enforceCuratedBuildings();return result;};
+  }
+  document.addEventListener('DOMContentLoaded',function(){setTimeout(enforceCuratedBuildings,250);});
+  window.addEventListener('load',function(){setTimeout(enforceCuratedBuildings,800);});
+  setTimeout(enforceCuratedBuildings,1200);
+  window.enforceCuratedBuildings=enforceCuratedBuildings;
+})();
+</script>
