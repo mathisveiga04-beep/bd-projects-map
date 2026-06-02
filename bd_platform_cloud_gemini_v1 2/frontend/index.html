@@ -1829,7 +1829,7 @@ function kindLabelFromValue(kind){
   return 'Mixte';
 }
 function allPings(){
-  const assetPings=(buildings||[]).map(b=>({
+  const assetPings=(buildings||[]).filter(function(b){return b && !/scraper error/i.test(b.name||'');}).map(b=>({
     source:'asset',
     id:b.id,
     name:b.name,
@@ -2852,6 +2852,7 @@ function clearWatchData(){
 }
 
 function updateStats(){
+  const buildings=((typeof PRESETS!=='undefined'&&PRESETS)||[]).filter(function(x){return x && !/scraper error/i.test(x.name||'');});
   document.getElementById('hs-total').textContent=buildings.length;
   document.getElementById('hs-hot').textContent=buildings.filter(x=>x.pot==='high').length;
   document.getElementById('hs-pipe').textContent=buildings.filter(x=>['contacted','meeting','proposal','qualified','won'].includes(x.status)).length;
