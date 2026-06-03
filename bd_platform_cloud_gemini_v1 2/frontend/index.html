@@ -8420,52 +8420,54 @@ window.exportPingsPDF=function(){
 
 
 <script>
-/* PATCH v107 - visible UI language wins over stale hidden language buttons */
+/* PATCH v108 - light FR/EN cleanup without global click tree-walk */
 (function(){
   'use strict';
-  function visibleLang(){
+  function uiLang(){
     var text = '';
     try{ text = document.body ? document.body.innerText || '' : ''; }catch(e){}
     if(/\bACTIFS\b|Réglages|Rechercher un actif|Rechercher projets|Mode admin/i.test(text)) return 'fr';
     if(/\bASSETS\b|Settings|Search an asset|Search projects|Admin mode/i.test(text)) return 'en';
-    try{
-      if(typeof currentLang === 'function') return currentLang() === 'en' ? 'en' : 'fr';
-    }catch(e){}
+    try{ if(typeof currentLang === 'function') return currentLang() === 'en' ? 'en' : 'fr'; }catch(e){}
     try{ return localStorage.getItem('artelia_lang') === 'en' ? 'en' : 'fr'; }catch(e){}
     return 'fr';
   }
-  function forceVisibleLanguage(){
-    if(!document.body) return;
-    var en = visibleLang() === 'en';
-    function swap(value){
-      var out = String(value || '');
-      if(en){
-        out = out.split('📡 ACTIVITÉ RÉCENTE').join('📡 RECENT ACTIVITY');
-        out = out.split('ACTIVITÉ RÉCENTE').join('RECENT ACTIVITY');
-        out = out.replace(/·\s*Récent/g, '· Recent');
-        out = out.split('Brief BD hebdomadaire - IA').join('Weekly BD brief - AI');
-        out = out.split('Générer le brief').join('Generate brief');
-      }else{
-        out = out.split('📡 RECENT ACTIVITY').join('📡 ACTIVITÉ RÉCENTE');
-        out = out.split('RECENT ACTIVITY').join('ACTIVITÉ RÉCENTE');
-        out = out.replace(/·\s*Recent/g, '· Récent');
-        out = out.split('Weekly BD brief - AI').join('Brief BD hebdomadaire - IA');
-        out = out.split('Generate brief').join('Générer le brief');
-        out = out.split('Generer le brief').join('Générer le brief');
-      }
-      return out;
+  function fixTextNode(node, en){
+    if(!node || !node.nodeValue) return;
+    var out = node.nodeValue;
+    if(en){
+      out = out.split('📡 ACTIVITÉ RÉCENTE').join('📡 RECENT ACTIVITY');
+      out = out.split('ACTIVITÉ RÉCENTE').join('RECENT ACTIVITY');
+      out = out.replace(/·\s*Récent/g, '· Recent');
+    }else{
+      out = out.split('📡 RECENT ACTIVITY').join('📡 ACTIVITÉ RÉCENTE');
+      out = out.split('RECENT ACTIVITY').join('ACTIVITÉ RÉCENTE');
+      out = out.replace(/·\s*Recent/g, '· Récent');
     }
+    if(out !== node.nodeValue) node.nodeValue = out;
+  }
+  function fixArea(root, en){
+    if(!root) return;
+    try{
+      var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+        acceptNode:function(node){
+          var value = node.nodeValue || '';
+          if(/ACTIVITÉ RÉCENTE|RECENT ACTIVITY|·\s*(Recent|Récent)/.test(value)) return NodeFilter.FILTER_ACCEPT;
+          return NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes = [], node;
+      while((node = walker.nextNode())) nodes.push(node);
+      nodes.forEach(function(n){ fixTextNode(n,en); });
+    }catch(e){}
+  }
+  function syncLightLanguage(){
+    var en = uiLang() === 'en';
     try{
       document.querySelectorAll('input').forEach(function(input){
         var ph = input.getAttribute('placeholder') || '';
         if(/Rechercher projets|Search projects|zones/i.test(ph)) input.setAttribute('placeholder', en ? 'Search projects, areas...' : 'Rechercher projets, zones...');
         if(/Rechercher un actif|Search an asset/i.test(ph)) input.setAttribute('placeholder', en ? 'Search an asset...' : 'Rechercher un actif...');
-      });
-      document.querySelectorAll('[title],[aria-label]').forEach(function(el){
-        ['title','aria-label'].forEach(function(attr){
-          var val = el.getAttribute(attr), next = swap(val);
-          if(next !== val) el.setAttribute(attr,next);
-        });
       });
       var title = document.querySelector('#mo-brief .mo-title');
       if(title) title.textContent = en ? 'Weekly BD brief - AI' : 'Brief BD hebdomadaire - IA';
@@ -8475,52 +8477,38 @@ window.exportPingsPDF=function(){
       }
       var briefBtn = document.getElementById('brief-btn');
       if(briefBtn && !briefBtn.disabled && !briefBtn.querySelector('.spin')) briefBtn.textContent = en ? 'Generate brief' : 'Générer le brief';
-      var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
-        acceptNode:function(node){
-          var p = node.parentElement;
-          if(!p || /^(SCRIPT|STYLE|TEXTAREA|INPUT|OPTION|CODE|PRE)$/i.test(p.tagName)) return NodeFilter.FILTER_REJECT;
-          if(!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
-          return NodeFilter.FILTER_ACCEPT;
-        }
-      });
-      var nodes = [], node;
-      while((node = walker.nextNode())) nodes.push(node);
-      nodes.forEach(function(n){
-        var next = swap(n.nodeValue);
-        if(next !== n.nodeValue) n.nodeValue = next;
-      });
+      fixArea(document.querySelector('#sbt-map') || document.body, en);
     }catch(e){
-      console.warn('[PATCH v107] visible language sync', e);
+      console.warn('[PATCH v108] light language sync', e);
     }
   }
   function schedule(){
-    [0,60,200,600,1400].forEach(function(ms){ setTimeout(forceVisibleLanguage, ms); });
+    [0,80,300,900].forEach(function(ms){ setTimeout(syncLightLanguage, ms); });
   }
-  window.forceVisibleLanguage = forceVisibleLanguage;
-  var prev = window.setLang;
-  if(typeof prev === 'function'){
+  window.syncLightLanguage = syncLightLanguage;
+  var previousSetLang = window.setLang;
+  if(typeof previousSetLang === 'function'){
     window.setLang = function(){
-      var result = prev.apply(this, arguments);
+      var result = previousSetLang.apply(this, arguments);
       schedule();
       return result;
     };
   }
   ['openMo','generateBrief','toggleNotif','sbTab','sbTab2','filterList'].forEach(function(name){
     var fn = window[name];
-    if(typeof fn === 'function' && !fn.__v107Lang){
+    if(typeof fn === 'function' && !fn.__v108Lang){
       var wrapped = function(){
         var result = fn.apply(this, arguments);
         schedule();
         return result;
       };
-      wrapped.__v107Lang = true;
+      wrapped.__v108Lang = true;
       window[name] = wrapped;
     }
   });
-  document.addEventListener('click', schedule, true);
   document.addEventListener('DOMContentLoaded', schedule);
   window.addEventListener('load', schedule);
-  setTimeout(schedule, 1800);
+  setTimeout(schedule, 1600);
 })();
 </script>
 
