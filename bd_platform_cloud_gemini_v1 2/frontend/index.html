@@ -8697,3 +8697,44 @@ window.exportPingsPDF=function(){
   injectAlertStyle();
 })();
 </script>
+
+<script>
+/* PATCH v114 - visual polish for Settings/Admin modal only */
+(function(){
+  'use strict';
+  var css = [
+    '#mo-settings .mo-box{width:min(760px,calc(100vw - 28px))!important;border-radius:14px;overflow:hidden;border:1px solid #D8E2EF;}',
+    '#mo-settings .mo-hdr{padding:16px 18px;background:linear-gradient(180deg,#F8FAFC 0%,#EEF4FA 100%);border-bottom:1px solid #D8E2EF;}',
+    '#mo-settings .mo-title{font-size:15px;font-weight:800;color:#0B1F3A;letter-spacing:.01em;}',
+    '#mo-settings .mo-body{padding:0;background:#F6F8FB;}',
+    '#mo-settings .stabs{display:flex;gap:6px;margin:0;padding:10px 12px;border-bottom:1px solid #D8E2EF;background:#fff;overflow-x:auto;}',
+    '#mo-settings .stab2{display:inline-flex;align-items:center;justify-content:center;min-height:30px;padding:7px 12px;margin:0;border:1px solid #D8E2EF;border-radius:999px;background:#F8FAFC;color:#526174;font-size:11px;font-weight:800;white-space:nowrap;cursor:pointer;}',
+    '#mo-settings .stab2.on{background:#174EA6;border-color:#174EA6;color:#fff;box-shadow:0 6px 14px rgba(23,78,166,.18);}',
+    '#mo-settings .stab2-panel{padding:16px 18px;max-height:58vh;overflow-y:auto;background:#F6F8FB;}',
+    '#mo-settings .fi,#mo-settings .fi-hint{border-color:#D8E2EF;border-radius:8px;}',
+    '#mo-settings .hybrid-note,#mo-settings .api-sync-box,#mo-settings .admin-status,#mo-settings .drop-zone{border-radius:10px;border:1px solid #D8E2EF;background:#fff;box-shadow:0 1px 2px rgba(15,31,58,.04);}',
+    '#mo-settings .hybrid-note{color:#0B5563;background:#EAF9FC;}',
+    '#mo-settings .api-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:10px;}',
+    '#mo-settings .api-actions .btn{width:100%;justify-content:center;text-align:center;}',
+    '#mo-settings #backend-status,#mo-settings #api-status-widget{margin-top:8px;}',
+    '#mo-settings #admin-login-box,#mo-settings #admin-panel-box{padding:0;}',
+    '#mo-settings #admin-panel-box>div[style*=\"border-top\"]{border-top:1px solid #D8E2EF!important;background:#fff;border-radius:10px;padding:12px!important;margin-top:12px!important;}',
+    '#mo-settings #admin-panel-box h4{color:#0B1F3A!important;font-size:13px!important;}',
+    '#mo-settings #admin-users-list{color:#526174!important;background:#F8FAFC;border:1px solid #D8E2EF;border-radius:8px;padding:8px;}',
+    '#mo-settings .admin-danger-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}',
+    '#mo-settings .mo-ft{background:#fff;border-top:1px solid #D8E2EF;}',
+    '@media(max-width:760px){#mo-settings .mo-box{width:calc(100vw - 18px)!important;max-height:92vh;}#mo-settings .stab2-panel{max-height:62vh;padding:12px;}#mo-settings .api-actions,#mo-settings .admin-danger-grid{grid-template-columns:1fr;}}'
+  ].join('\n');
+  function injectSettingsStyle(){
+    if(document.getElementById('settings-admin-polish-v114')) return;
+    var style = document.createElement('style');
+    style.id = 'settings-admin-polish-v114';
+    style.textContent = css;
+    document.head.appendChild(style);
+  }
+  document.addEventListener('DOMContentLoaded', injectSettingsStyle);
+  window.addEventListener('load', injectSettingsStyle);
+  injectSettingsStyle();
+})();
+</script>
+
