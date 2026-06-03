@@ -8512,3 +8512,97 @@ window.exportPingsPDF=function(){
 })();
 </script>
 
+
+<script>
+/* PATCH v109 - keep AI brief modal in the selected language after async Gemini render */
+(function(){
+  'use strict';
+  function lang(){
+    try{
+      var text = document.body ? document.body.innerText || '' : '';
+      if(/\bACTIFS\b|Réglages|Rechercher un actif|Mode admin actif/i.test(text)) return 'fr';
+      if(/\bASSETS\b|Settings|Search an asset|Admin mode active/i.test(text)) return 'en';
+      if(typeof currentLang === 'function') return currentLang() === 'en' ? 'en' : 'fr';
+      return localStorage.getItem('artelia_lang') === 'en' ? 'en' : 'fr';
+    }catch(e){ return 'fr'; }
+  }
+  function normalizeBrief(){
+    var en = lang() === 'en';
+    var title = document.querySelector('#mo-brief .mo-title');
+    var btn = document.getElementById('brief-btn');
+    var content = document.getElementById('brief-content') || document.getElementById('brief-output') || document.getElementById('brief-out');
+    if(title) title.textContent = en ? 'Weekly BD brief - AI' : 'Brief BD hebdomadaire - IA';
+    if(btn && !btn.disabled && !btn.querySelector('.spin')) btn.textContent = en ? 'Generate brief' : 'Générer le brief';
+    if(content){
+      var html = content.innerHTML || '';
+      if(en){
+        html = html.replace(/Genere avec Gemini via le backend\./g, 'Generated with Gemini backend.');
+        html = html.replace(/Généré avec Gemini via le backend\./g, 'Generated with Gemini backend.');
+        html = html.replace(/Secours local utilise car Gemini n a pas repondu a temps\./g, 'Local fallback used because Gemini did not answer in time.');
+        html = html.replace(/Secours local utilisé car Gemini n’a pas répondu à temps\./g, 'Local fallback used because Gemini did not answer in time.');
+        html = html.replace(/Cliquez sur Générer pour obtenir votre brief\./g, 'Click Generate to get your brief.');
+      }else{
+        html = html.replace(/Generated with Gemini backend\./g, 'Généré avec Gemini via le backend.');
+        html = html.replace(/Local fallback used because Gemini did not answer in time\./g, 'Secours local utilisé car Gemini n’a pas répondu à temps.');
+        html = html.replace(/Click Generate to get your brief\./g, 'Cliquez sur Générer pour obtenir votre brief.');
+      }
+      if(html !== content.innerHTML) content.innerHTML = html;
+    }
+  }
+  function normalizeActivity(){
+    var en = lang() === 'en';
+    var root = document.querySelector('#sbt-map') || document.querySelector('.sidebar') || document.body;
+    if(!root || !document.createTreeWalker) return;
+    try{
+      var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+        acceptNode:function(node){
+          var value = node.nodeValue || '';
+          return /ACTIVITÉ RÉCENTE|RECENT ACTIVITY|·\s*(Recent|Récent)/.test(value) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes = [], node;
+      while((node = walker.nextNode())) nodes.push(node);
+      nodes.forEach(function(n){
+        var out = n.nodeValue || '';
+        if(en){
+          out = out.split('📡 ACTIVITÉ RÉCENTE').join('📡 RECENT ACTIVITY');
+          out = out.split('ACTIVITÉ RÉCENTE').join('RECENT ACTIVITY');
+          out = out.replace(/·\s*Récent/g, '· Recent');
+        }else{
+          out = out.split('📡 RECENT ACTIVITY').join('📡 ACTIVITÉ RÉCENTE');
+          out = out.split('RECENT ACTIVITY').join('ACTIVITÉ RÉCENTE');
+          out = out.replace(/·\s*Recent/g, '· Récent');
+        }
+        if(out !== n.nodeValue) n.nodeValue = out;
+      });
+    }catch(e){}
+  }
+  function sync(){ normalizeBrief(); normalizeActivity(); }
+  function schedule(){ [0,80,300,900,1800].forEach(function(ms){ setTimeout(sync, ms); }); }
+  var oldGenerate = window.generateBrief;
+  if(typeof oldGenerate === 'function' && !oldGenerate.__v109Lang){
+    window.generateBrief = async function(){
+      var result = await oldGenerate.apply(this, arguments);
+      schedule();
+      return result;
+    };
+    window.generateBrief.__v109Lang = true;
+  }
+  var oldOpen = window.openMo;
+  if(typeof oldOpen === 'function' && !oldOpen.__v109Lang){
+    window.openMo = function(){
+      var result = oldOpen.apply(this, arguments);
+      schedule();
+      return result;
+    };
+    window.openMo.__v109Lang = true;
+  }
+  var brief = document.getElementById('mo-brief');
+  if(brief && window.MutationObserver){
+    new MutationObserver(schedule).observe(brief, { childList:true, subtree:true, characterData:true });
+  }
+  document.addEventListener('DOMContentLoaded', schedule);
+  window.addEventListener('load', schedule);
+  setTimeout(schedule, 1800);
+})();
+</script>
