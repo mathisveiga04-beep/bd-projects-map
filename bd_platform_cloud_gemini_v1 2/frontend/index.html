@@ -8313,3 +8313,108 @@ window.exportPingsPDF=function(){
 })();
 </script>
 
+
+<script>
+/* PATCH v106 - force selected language for residual recent/activity labels */
+(function(){
+  'use strict';
+  function selectedLang(){
+    try{
+      var active = document.querySelector('.lang-btn.active[data-lang], .lang-btn.active');
+      if(active){
+        var value = (active.getAttribute('data-lang') || active.textContent || '').trim().toLowerCase();
+        if(value === 'en' || value === 'fr') return value;
+      }
+    }catch(e){}
+    try{
+      if(typeof currentLang === 'function') return currentLang() === 'en' ? 'en' : 'fr';
+    }catch(e){}
+    try{ return localStorage.getItem('artelia_lang') === 'en' ? 'en' : 'fr'; }catch(e){}
+    return 'fr';
+  }
+  function replaceAllText(value, en){
+    var out = String(value || '');
+    if(en){
+      out = out.split('📡 ACTIVITÉ RÉCENTE').join('📡 RECENT ACTIVITY');
+      out = out.split('ACTIVITÉ RÉCENTE').join('RECENT ACTIVITY');
+      out = out.replace(/·\s*Récent/g, '· Recent');
+      out = out.split('Mode administrateur actif').join('Administrator mode active');
+      out = out.split('Mode admin actif').join('Admin mode active');
+      out = out.split('Brief BD hebdomadaire - IA').join('Weekly BD brief - AI');
+      out = out.split('Générer le brief').join('Generate brief');
+      out = out.split('Generer le brief').join('Generate brief');
+    }else{
+      out = out.split('📡 RECENT ACTIVITY').join('📡 ACTIVITÉ RÉCENTE');
+      out = out.split('RECENT ACTIVITY').join('ACTIVITÉ RÉCENTE');
+      out = out.replace(/·\s*Recent/g, '· Récent');
+      out = out.split('Administrator mode active').join('Mode administrateur actif');
+      out = out.split('Admin mode active').join('Mode admin actif');
+      out = out.split('Weekly BD brief - AI').join('Brief BD hebdomadaire - IA');
+      out = out.split('Generate brief').join('Générer le brief');
+      out = out.split('Generer le brief').join('Générer le brief');
+    }
+    return out;
+  }
+  function syncSelectedLanguage(){
+    if(!document.body) return;
+    var en = selectedLang() === 'en';
+    try{
+      document.querySelectorAll('input').forEach(function(input){
+        var ph = input.getAttribute('placeholder') || '';
+        if(/Rechercher projets|Search projects|zones/i.test(ph)){
+          input.setAttribute('placeholder', en ? 'Search projects, areas...' : 'Rechercher projets, zones...');
+        }
+        if(/Rechercher un actif|Search an asset/i.test(ph)){
+          input.setAttribute('placeholder', en ? 'Search an asset...' : 'Rechercher un actif...');
+        }
+      });
+      document.querySelectorAll('[title],[aria-label]').forEach(function(el){
+        ['title','aria-label'].forEach(function(attr){
+          var val = el.getAttribute(attr);
+          var next = replaceAllText(val, en);
+          if(next !== val) el.setAttribute(attr, next);
+        });
+      });
+      var title = document.querySelector('#mo-brief .mo-title');
+      if(title) title.textContent = en ? 'Weekly BD brief - AI' : 'Brief BD hebdomadaire - IA';
+      var btn = document.getElementById('brief-btn');
+      if(btn && !btn.disabled && !btn.querySelector('.spin')) btn.textContent = en ? 'Generate brief' : 'Générer le brief';
+      var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+        acceptNode:function(node){
+          var p = node.parentElement;
+          if(!p || /^(SCRIPT|STYLE|TEXTAREA|INPUT|OPTION|CODE|PRE)$/i.test(p.tagName)) return NodeFilter.FILTER_REJECT;
+          if(!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      });
+      var nodes = [], node;
+      while((node = walker.nextNode())) nodes.push(node);
+      nodes.forEach(function(n){
+        var next = replaceAllText(n.nodeValue, en);
+        if(next !== n.nodeValue) n.nodeValue = next;
+      });
+    }catch(e){
+      console.warn('[PATCH v106] language recent sync', e);
+    }
+  }
+  function schedule(){
+    [0,50,180,500,1200].forEach(function(ms){ setTimeout(syncSelectedLanguage, ms); });
+  }
+  window.syncSelectedLanguage = syncSelectedLanguage;
+  var previousSetLang = window.setLang;
+  if(typeof previousSetLang === 'function'){
+    window.setLang = function(){
+      var result = previousSetLang.apply(this, arguments);
+      schedule();
+      return result;
+    };
+  }
+  document.addEventListener('click', function(event){
+    if(event.target && event.target.closest && event.target.closest('.lang-btn')) schedule();
+  }, true);
+  document.addEventListener('DOMContentLoaded', schedule);
+  window.addEventListener('load', schedule);
+  setTimeout(schedule, 1800);
+})();
+</script>
+
