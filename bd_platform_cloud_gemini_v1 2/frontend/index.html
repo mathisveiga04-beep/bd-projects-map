@@ -8512,4 +8512,112 @@ window.exportPingsPDF=function(){
 })();
 </script>
 
+<script>
+/* PATCH v111 - safe FR/EN sync for weekly AI brief only */
+(function(){
+  'use strict';
+  function textOf(el){ return (el && (el.textContent || el.value || '') || '').trim(); }
+  function isActive(el){
+    if(!el) return false;
+    var cls = el.className || '';
+    return /\b(on|active|selected)\b/i.test(String(cls)) || el.getAttribute('aria-pressed') === 'true';
+  }
+  function selectedBriefLang(){
+    try{
+      var buttons = Array.prototype.slice.call(document.querySelectorAll('button,.lang-btn,[data-lang]'));
+      var fr = buttons.find(function(b){ return (b.getAttribute('data-lang') || textOf(b)).toLowerCase() === 'fr'; });
+      var en = buttons.find(function(b){ return (b.getAttribute('data-lang') || textOf(b)).toLowerCase() === 'en'; });
+      if(fr && isActive(fr)) return 'fr';
+      if(en && isActive(en)) return 'en';
+    }catch(e){}
+    try{
+      var body = document.body ? document.body.innerText || '' : '';
+      if(/\bACTIFS\b|Réglages|Rechercher projets|Mode admin actif|Veille projets/i.test(body)) return 'fr';
+      if(/\bASSETS\b|Settings|Search projects|Admin mode active|Project watch/i.test(body)) return 'en';
+    }catch(e){}
+    try{ return localStorage.getItem('artelia_lang') === 'en' ? 'en' : 'fr'; }catch(e){}
+    return 'fr';
+  }
+  function replaceStatus(html, en){
+    if(!html) return html;
+    var out = String(html);
+    if(en){
+      out = out.replace(/Généré avec Gemini via le backend\.|Genere avec Gemini via le backend\./g, 'Generated with Gemini backend.');
+      out = out.replace(/Secours local utilisé car Gemini n’a pas répondu à temps\.|Secours local utilise car Gemini n a pas repondu a temps\./g, 'Local fallback used because Gemini did not answer in time.');
+      out = out.replace(/Cliquez sur Générer pour obtenir votre brief\.|Cliquez sur Generer pour obtenir votre brief\./g, 'Click Generate to get your brief.');
+    }else{
+      out = out.replace(/Weekly BD brief - AI/g, 'Brief BD hebdomadaire - IA');
+      out = out.replace(/Generated with Gemini backend\.|Genere avec Gemini via le backend\./g, 'Généré avec Gemini via le backend.');
+      out = out.replace(/Local fallback used because Gemini did not answer in time\.|Secours local utilise car Gemini n a pas repondu a temps\./g, 'Secours local utilisé car Gemini n’a pas répondu à temps.');
+      out = out.replace(/Click Generate to get your brief\./g, 'Cliquez sur Générer pour obtenir votre brief.');
+    }
+    return out;
+  }
+  function normalizeBriefOnly(){
+    var en = selectedBriefLang() === 'en';
+    var modal = document.getElementById('mo-brief');
+    if(!modal) return;
+    var title = modal.querySelector('.mo-title');
+    if(title) title.textContent = en ? 'Weekly BD brief - AI' : 'Brief BD hebdomadaire - IA';
+    modal.querySelectorAll('button').forEach(function(btn){
+      var value = textOf(btn);
+      if(/^(Fermer|Close)$/i.test(value)) btn.textContent = en ? 'Close' : 'Fermer';
+      if(/^(Copier|Copy)$/i.test(value)) btn.textContent = en ? 'Copy' : 'Copier';
+    });
+    var btn = document.getElementById('brief-btn');
+    if(btn){
+      if(btn.disabled || btn.querySelector('.spin')){
+        btn.innerHTML = '<span class="spin"></span> ' + (en ? 'Generating...' : 'Génération...');
+      }else{
+        btn.textContent = en ? 'Generate brief' : 'Générer le brief';
+      }
+    }
+    var out = document.getElementById('brief-content') || document.getElementById('brief-output') || document.getElementById('brief-out');
+    if(out){
+      var html = replaceStatus(out.innerHTML, en);
+      if(html !== out.innerHTML) out.innerHTML = html;
+    }
+  }
+  function scheduleBriefSync(){
+    [0,80,250,700].forEach(function(ms){ setTimeout(normalizeBriefOnly, ms); });
+  }
+  window.syncBriefLanguageV111 = normalizeBriefOnly;
+  var oldOpen = window.openMo;
+  if(typeof oldOpen === 'function' && !oldOpen.__v111BriefLang){
+    window.openMo = function(id){
+      var result = oldOpen.apply(this, arguments);
+      if(id === 'mo-brief') scheduleBriefSync();
+      return result;
+    };
+    window.openMo.__v111BriefLang = true;
+  }
+  var oldGenerate = window.generateBrief;
+  if(typeof oldGenerate === 'function' && !oldGenerate.__v111BriefLang){
+    window.generateBrief = async function(){
+      scheduleBriefSync();
+      var result = await oldGenerate.apply(this, arguments);
+      scheduleBriefSync();
+      return result;
+    };
+    window.generateBrief.__v111BriefLang = true;
+  }
+  var oldSetLang = window.setLang;
+  if(typeof oldSetLang === 'function' && !oldSetLang.__v111BriefLang){
+    window.setLang = function(){
+      var result = oldSetLang.apply(this, arguments);
+      scheduleBriefSync();
+      return result;
+    };
+    window.setLang.__v111BriefLang = true;
+  }
+  document.addEventListener('click', function(ev){
+    var t = ev.target;
+    if(!t) return;
+    var label = textOf(t).toLowerCase();
+    if(label === 'fr' || label === 'en') scheduleBriefSync();
+  }, true);
+  document.addEventListener('DOMContentLoaded', scheduleBriefSync);
+  window.addEventListener('load', scheduleBriefSync);
+})();
+</script>
 
