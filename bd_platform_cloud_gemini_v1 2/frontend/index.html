@@ -8621,3 +8621,48 @@ window.exportPingsPDF=function(){
 })();
 </script>
 
+
+<script>
+/* PATCH v112 - visual polish for Suivi pipeline only */
+(function(){
+  'use strict';
+  var css = [
+    '#sbt-pipe{background:#F4F7FB;}',
+    '#sbt-pipe .pipe-wrap{padding:12px;gap:10px;background:linear-gradient(180deg,#F8FAFC 0%,#EEF3F8 100%);}',
+    '#sbt-pipe .pipe-col{position:relative;width:100%;min-width:0;max-width:none;padding:9px;background:rgba(255,255,255,.94);border:1px solid #DCE5F0;border-radius:12px;box-shadow:0 8px 22px rgba(15,31,58,.07);overflow:hidden;}',
+    '#sbt-pipe .pipe-col:before{content:"";position:absolute;inset:0 0 auto 0;height:3px;background:#94A3B8;}',
+    '#sbt-pipe .pipe-col:nth-child(1):before{background:#2563EB;}',
+    '#sbt-pipe .pipe-col:nth-child(2):before{background:#0EA5E9;}',
+    '#sbt-pipe .pipe-col:nth-child(3):before{background:#8B5CF6;}',
+    '#sbt-pipe .pipe-col:nth-child(4):before{background:#F59E0B;}',
+    '#sbt-pipe .pipe-col:nth-child(5):before{background:#10B981;}',
+    '#sbt-pipe .pipe-col:nth-child(6):before{background:#15803D;}',
+    '#sbt-pipe .pipe-ch{margin:0 0 7px 0;padding:8px 8px 7px;background:transparent;color:#0F1F35;border-radius:8px;font-size:10px;font-weight:800;letter-spacing:.055em;text-transform:uppercase;line-height:1;display:flex;align-items:center;justify-content:space-between;}',
+    '#sbt-pipe .pipe-ch .pcc{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:21px;margin-left:8px;padding:0 7px;border-radius:999px;background:#0B1F3A;color:#fff;font-size:10px;font-weight:800;box-shadow:0 2px 7px rgba(11,31,58,.16);}',
+    '#sbt-pipe .pc{position:relative;margin:0 0 7px 0;padding:10px 10px 10px 12px;background:#fff;border:1px solid #DDE6F1;border-radius:10px;box-shadow:0 1px 2px rgba(15,31,58,.05);transition:transform .14s ease,border-color .14s ease,box-shadow .14s ease;}',
+    '#sbt-pipe .pc:before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:999px;background:#2563EB;opacity:.42;}',
+    '#sbt-pipe .pipe-col:nth-child(1) .pc:before{background:#2563EB;}',
+    '#sbt-pipe .pipe-col:nth-child(2) .pc:before{background:#0EA5E9;}',
+    '#sbt-pipe .pipe-col:nth-child(3) .pc:before{background:#8B5CF6;}',
+    '#sbt-pipe .pipe-col:nth-child(4) .pc:before{background:#F59E0B;}',
+    '#sbt-pipe .pipe-col:nth-child(5) .pc:before{background:#10B981;}',
+    '#sbt-pipe .pipe-col:nth-child(6) .pc:before{background:#15803D;}',
+    '#sbt-pipe .pc:hover{transform:translateY(-1px);border-color:#A9BFDC;box-shadow:0 10px 22px rgba(15,31,58,.12);}',
+    '#sbt-pipe .pc-name{font-size:12px;font-weight:800;line-height:1.25;color:#13213A;margin-bottom:4px;}',
+    '#sbt-pipe .pc-m{font-size:10px;line-height:1.35;color:#607086;}',
+    '#sbt-pipe .pipe-col>div[style*="Vide"]{margin:0;padding:13px 10px!important;border:1px dashed #C8D4E3;border-radius:10px;background:#F8FAFC;color:#8A98AA!important;text-align:center;font-size:11px;font-weight:600;}',
+    '#sbt-pipe .pipe-col>div[style*="Vide"]:before{content:"Aucun projet";display:block;margin-bottom:2px;color:#64748B;font-weight:800;}',
+    'html[lang="en"] #sbt-pipe .pipe-col>div[style*="Vide"]:before{content:"No project";}'
+  ].join('\n');
+  function injectSuiviStyle(){
+    if(document.getElementById('suivi-pipeline-polish-v112')) return;
+    var style = document.createElement('style');
+    style.id = 'suivi-pipeline-polish-v112';
+    style.textContent = css;
+    document.head.appendChild(style);
+  }
+  document.addEventListener('DOMContentLoaded', injectSuiviStyle);
+  window.addEventListener('load', injectSuiviStyle);
+  injectSuiviStyle();
+})();
+</script>
