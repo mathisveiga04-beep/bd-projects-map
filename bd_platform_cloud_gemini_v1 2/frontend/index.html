@@ -8041,3 +8041,276 @@ window.exportPingsPDF=function(){
 };
 })();
 </script>
+
+          
+<script>
+/* PATCH v105 - stable weekly brief fallback and final FR/EN dynamic sync */
+(function(){
+  'use strict';
+
+  function lang(){
+    try{
+      if(typeof currentLang === 'function') return currentLang() === 'en' ? 'en' : 'fr';
+    }catch(e){}
+    try{
+      return localStorage.getItem('artelia_lang') === 'en' ? 'en' : 'fr';
+    }catch(e){}
+    return 'fr';
+  }
+  function escapeHtml(value){
+    return String(value == null ? '' : value).replace(/[&<>]/g,function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];
+    });
+  }
+  function readArray(getter){
+    try{
+      var value = getter();
+      if(typeof value === 'function') value = value();
+      if(!value) return [];
+      return Array.isArray(value) ? value : Object.values(value);
+    }catch(e){
+      return [];
+    }
+  }
+  function projectRows(){
+    var rows = readArray(function(){ return window.buildings; });
+    if(!rows.length) rows = readArray(function(){ return buildings; });
+    if(!rows.length) rows = readArray(function(){ return window.PRESETS; });
+    if(!rows.length) rows = readArray(function(){ return PRESETS; });
+    return rows.filter(function(p){ return p && (p.name || p.title); });
+  }
+  function tenderRows(){
+    var rows = readArray(function(){ return window.tenders; });
+    if(!rows.length) rows = readArray(function(){ return tenders; });
+    return rows.filter(function(t){ return t && (t.name || t.title); });
+  }
+  function actionRows(){
+    var rows = readArray(function(){ return window.bdActions; });
+    if(!rows.length) rows = readArray(function(){ return bdActions; });
+    return rows.filter(function(a){ return a && a.desc; });
+  }
+  function scoreOf(item){
+    try{ return typeof calcScore === 'function' ? calcScore(item) : Number(item.score || 0); }
+    catch(e){ return Number(item.score || 0); }
+  }
+  function priorityText(item){
+    var p = String(item.pot || item.priority || item.fit || '').toLowerCase();
+    if(p === 'high' || p === 'critical') return lang() === 'en' ? 'high priority' : 'priorite haute';
+    if(p === 'low' || p === 'watch') return lang() === 'en' ? 'watch priority' : 'veille simple';
+    return lang() === 'en' ? 'medium priority' : 'priorite moyenne';
+  }
+  function buildContext(){
+    var projects = projectRows();
+    var tenders = tenderRows();
+    var actions = actionRows();
+    var top = projects.slice().sort(function(a,b){ return scoreOf(b)-scoreOf(a); }).slice(0,5);
+    var active = projects.filter(function(p){
+      return ['contacted','meeting','proposal','qualified','prospect'].indexOf(String(p.status || '')) > -1;
+    }).slice(0,8);
+    var hot = projects.filter(function(p){
+      var pot = String(p.pot || p.priority || '').toLowerCase();
+      return pot === 'high' || pot === 'critical';
+    }).slice(0,8);
+    var highTenders = tenders.filter(function(t){
+      return String(t.fit || t.priority || '').toLowerCase() === 'high';
+    }).slice(0,6);
+    var late = actions.filter(function(a){
+      return a.date && new Date(a.date) < new Date();
+    }).slice(0,6);
+    return {projects:projects,tenders:tenders,actions:actions,top:top,active:active,hot:hot,highTenders:highTenders,late:late};
+  }
+  function lineList(rows, formatter, emptyText){
+    if(!rows.length) return '- ' + emptyText;
+    return rows.map(function(row){ return '- ' + formatter(row); }).join('\n');
+  }
+  function localBrief(ctx){
+    if(lang() === 'en'){
+      return [
+        'Weekly BD brief - local fallback',
+        '',
+        '1. Priority actions this week',
+        lineList(ctx.hot.slice(0,3), function(p){ return (p.name || p.title) + ' - ' + (p.zone || p.city || 'Cambodia') + ' - ' + priorityText(p); }, 'No high-priority asset detected.'),
+        '',
+        '2. Pipeline reading',
+        '- ' + ctx.projects.length + ' mapped assets, ' + ctx.active.length + ' active follow-up items, ' + ctx.tenders.length + ' tender/watch opportunities.',
+        '- Best current targets: ' + (ctx.top.slice(0,5).map(function(p){ return p.name || p.title; }).join(', ') || 'to qualify.'),
+        '',
+        '3. Tenders and institutional opportunities',
+        lineList(ctx.highTenders.slice(0,3), function(t){ return (t.name || t.title) + ' - ' + (t.funder || t.source || 'funder to qualify'); }, 'No high-fit tender available in the local dataset.'),
+        '',
+        '4. Recommended next moves',
+        '- Qualify owners and decision makers for the top assets.',
+        '- Convert relevant alerts into tracked opportunities.',
+        '- Prepare short Artelia positioning messages for energy, water, drainage and technical due diligence scopes.'
+      ].join('\n');
+    }
+    return [
+      'Brief BD hebdomadaire - secours local',
+      '',
+      '1. Actions prioritaires cette semaine',
+      lineList(ctx.hot.slice(0,3), function(p){ return (p.name || p.title) + ' - ' + (p.zone || p.city || 'Cambodge') + ' - ' + priorityText(p); }, 'Aucun actif prioritaire detecte.'),
+      '',
+      '2. Lecture du pipeline',
+      '- ' + ctx.projects.length + ' actifs cartographies, ' + ctx.active.length + ' elements en suivi actif, ' + ctx.tenders.length + ' opportunites tenders/veille.',
+      '- Meilleures cibles actuelles : ' + (ctx.top.slice(0,5).map(function(p){ return p.name || p.title; }).join(', ') || 'a qualifier.'),
+      '',
+      '3. Appels d offres et opportunites institutionnelles',
+      lineList(ctx.highTenders.slice(0,3), function(t){ return (t.name || t.title) + ' - ' + (t.funder || t.source || 'bailleur a qualifier'); }, 'Aucun tender a fort fit dans les donnees locales.'),
+      '',
+      '4. Prochaines actions recommandees',
+      '- Qualifier les proprietaires et decideurs des actifs les mieux scores.',
+      '- Convertir les alertes pertinentes en opportunites suivies.',
+      '- Preparer des messages de positionnement Artelia sur energie, eau, drainage et due diligence technique.'
+    ].join('\n');
+  }
+  function promptFromContext(ctx){
+    var top = ctx.top.slice(0,8).map(function(p){
+      return {name:p.name||p.title, zone:p.zone||p.city, type:p.type||p.sector, status:p.status, priority:p.pot||p.priority, score:scoreOf(p)};
+    });
+    var tendersData = ctx.highTenders.slice(0,8).map(function(t){
+      return {name:t.name||t.title, funder:t.funder||t.source, sector:t.sector, fit:t.fit||t.priority, link:t.link||t.url||''};
+    });
+    if(lang() === 'en'){
+      return 'You are Artelia Cambodia BD analyst. Produce a concise weekly BD brief in English, max 350 words, with four sections: priority actions, pipeline reading, institutional/tender opportunities, recommended next moves. Stay factual and do not invent missing data. Data: '+JSON.stringify({assets:ctx.projects.length,active_followup:ctx.active.length,tenders:ctx.tenders.length,top:top,tenders_high_fit:tendersData});
+    }
+    return 'Tu es analyste Business Development pour Artelia Cambodia. Produis un brief BD hebdomadaire en francais, concis, max 350 mots, en quatre sections : actions prioritaires, lecture du pipeline, opportunites institutionnelles/tenders, prochaines actions recommandees. Reste factuel et n invente aucune donnee absente. Donnees : '+JSON.stringify({actifs:ctx.projects.length,suivi_actif:ctx.active.length,tenders:ctx.tenders.length,top:top,tenders_fort_fit:tendersData});
+  }
+  async function callBriefAI(prompt){
+    if(typeof callGemini !== 'function') throw new Error('AI module unavailable');
+    return await Promise.race([
+      callGemini(prompt, 850, 'brief'),
+      new Promise(function(_, reject){ setTimeout(function(){ reject(new Error('AI timeout')); }, 24000); })
+    ]);
+  }
+  function renderBrief(out, txt, fallback){
+    if(!out) return;
+    var note = fallback
+      ? '<div style="margin-bottom:8px;color:#f97316;font-size:11px;font-weight:700">' + (lang()==='en'?'Local fallback used because Gemini did not answer in time.':'Secours local utilise car Gemini n a pas repondu a temps.') + '</div>'
+      : '<div style="margin-bottom:8px;color:#16a34a;font-size:11px;font-weight:700">' + (lang()==='en'?'Generated with Gemini backend.':'Genere avec Gemini via le backend.') + '</div>';
+    out.innerHTML = note + '<div class="brief-txt">' + escapeHtml(txt) + '</div>';
+  }
+  window.generateBrief = async function(){
+    var btn = document.getElementById('brief-btn') || document.querySelector('[onclick*="generateBrief"]');
+    var out = document.getElementById('brief-content') || document.getElementById('brief-output') || document.getElementById('brief-out');
+    var modal = document.getElementById('mo-brief');
+    if(modal) modal.classList.add('on');
+    if(btn){
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spin"></span> ' + (lang()==='en'?'Generating...':'Generation...');
+    }
+    if(out){
+      out.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text3)">' + (lang()==='en'?'Generating the weekly BD brief...':'Generation du brief BD hebdomadaire...') + '</div>';
+    }
+    var ctx = buildContext();
+    var txt = '';
+    var usedFallback = false;
+    try{
+      txt = await callBriefAI(promptFromContext(ctx));
+      if(!txt || !String(txt).trim()) throw new Error('Empty AI response');
+    }catch(e){
+      usedFallback = true;
+      txt = localBrief(ctx);
+    }
+    window._briefTxt = txt;
+    renderBrief(out, txt, usedFallback);
+    if(btn){
+      btn.disabled = false;
+      btn.textContent = lang()==='en' ? 'Generate brief' : 'Generer le brief';
+    }
+    if(typeof window.syncFinalDynamicLanguage === 'function') window.syncFinalDynamicLanguage();
+    return txt;
+  };
+
+  function syncResidualTexts(){
+    var en = lang() === 'en';
+    var pairs = [
+      ['ACTIVITE RECENTE','RECENT ACTIVITY'],
+      ['ACTIVITÉ RÉCENTE','RECENT ACTIVITY'],
+      ['📡 ACTIVITÉ RÉCENTE','📡 RECENT ACTIVITY'],
+      ['📡 RECENT ACTIVITY','📡 ACTIVITÉ RÉCENTE'],
+      ['· Récent','· Recent'],
+      ['· Recent','· Récent'],
+      ['Mode administrateur actif','Administrator mode active'],
+      ['Mode admin actif','Admin mode active'],
+      ['Administrator mode active','Mode administrateur actif'],
+      ['Brief BD hebdomadaire - IA','Weekly BD brief - AI'],
+      ['Weekly BD brief - AI','Brief BD hebdomadaire - IA']
+    ];
+    function convertText(value){
+      if(!value) return value;
+      var out = String(value);
+      pairs.forEach(function(pair){
+        if(en && out.indexOf(pair[0]) > -1) out = out.split(pair[0]).join(pair[1]);
+        if(!en && out.indexOf(pair[1]) > -1) out = out.split(pair[1]).join(pair[0]);
+      });
+      return out;
+    }
+    try{
+      document.querySelectorAll('input').forEach(function(input){
+        var ph = input.getAttribute('placeholder') || '';
+        if(/Rechercher projets|Search projects|zones/i.test(ph)){
+          input.setAttribute('placeholder', en ? 'Search projects, areas...' : 'Rechercher projets, zones...');
+        }
+        if(/Rechercher un actif|Search an asset/i.test(ph)){
+          input.setAttribute('placeholder', en ? 'Search an asset...' : 'Rechercher un actif...');
+        }
+      });
+      document.querySelectorAll('[title],[aria-label]').forEach(function(el){
+        ['title','aria-label'].forEach(function(attr){
+          var value = el.getAttribute(attr);
+          var next = convertText(value);
+          if(next !== value) el.setAttribute(attr,next);
+        });
+      });
+      var brTitle = document.querySelector('#mo-brief .mo-title');
+      if(brTitle) brTitle.textContent = en ? 'Weekly BD brief - AI' : 'Brief BD hebdomadaire - IA';
+      var brBtn = document.getElementById('brief-btn');
+      if(brBtn && !brBtn.disabled && !brBtn.querySelector('.spin')) brBtn.textContent = en ? 'Generate brief' : 'Generer le brief';
+      var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+        acceptNode:function(node){
+          var p = node.parentElement;
+          if(!p || /^(SCRIPT|STYLE|TEXTAREA|INPUT|OPTION)$/i.test(p.tagName)) return NodeFilter.FILTER_REJECT;
+          if(!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      });
+      var nodes = [], node;
+      while((node = walker.nextNode())) nodes.push(node);
+      nodes.forEach(function(n){
+        var next = convertText(n.nodeValue);
+        if(next !== n.nodeValue) n.nodeValue = next;
+      });
+    }catch(e){
+      console.warn('[PATCH v105] language sync', e);
+    }
+  }
+  function scheduleLangSync(){
+    [0,80,300,900].forEach(function(delay){ setTimeout(syncResidualTexts, delay); });
+  }
+  window.syncFinalDynamicLanguage = syncResidualTexts;
+  var oldSetLang = window.setLang;
+  if(typeof oldSetLang === 'function'){
+    window.setLang = function(langValue, btn){
+      var result = oldSetLang.apply(this, arguments);
+      scheduleLangSync();
+      return result;
+    };
+  }
+  ['openMo','toggleNotif','sbTab','sbTab2','filterList','renderDashboard','renderSuivi','renderTenders','renderWatchList'].forEach(function(name){
+    var fn = window[name];
+    if(typeof fn === 'function' && !fn.__v105Lang){
+      var wrapped = function(){
+        var result = fn.apply(this, arguments);
+        scheduleLangSync();
+        return result;
+      };
+      wrapped.__v105Lang = true;
+      window[name] = wrapped;
+    }
+  });
+  document.addEventListener('DOMContentLoaded', scheduleLangSync);
+  window.addEventListener('load', scheduleLangSync);
+  setTimeout(scheduleLangSync, 1600);
+})();
+</script>
+
