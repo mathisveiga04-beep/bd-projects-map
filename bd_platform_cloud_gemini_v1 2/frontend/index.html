@@ -7212,34 +7212,43 @@ window.aiAnalyze = async function(item) {
     var sector = item ? (item.type||item.sector||item.category||'') : '';
     var zone = item ? (item.zone||item.location||item.country||'') : '';
     var budget = item ? (item.budget||item.amount||'') : '';
-    var prompt = 'Tu es expert BD senior chez Artelia Cambodia. Analyse ce projet/opportunite pour notre equipe BD :\\n\\n' +
-      'PROJET : ' + title + '\\n' +
-      (sector ? 'SECTEUR : ' + sector + '\\n' : '') +
-      (zone ? 'ZONE : ' + zone + '\\n' : '') +
-      (budget ? 'BUDGET : ' + budget + '\\n' : '') +
-      (text ? 'DESCRIPTION : ' + text.substring(0,2000) + '\\n' : '') +
-      '\\nFournis une analyse structuree en francais :\\n' +
-      '**OPPORTUNITE POUR ARTELIA** - Est-ce dans nos domaines ? (eau, energie, transport, batiment, environnement)\\n' +
-      '**SCOPES D INTERVENTION POSSIBLES** - Quels services Artelia peut proposer (etudes, maitrise d oeuvre, supervision, etc.)\\n' +
-      '**BAILLEUR / FINANCEUR** - Qui finance ? Quelle procedure d appel d offres probable ?\\n' +
-      '**CONCURRENTS POTENTIELS** - Qui d autre pourrait se positionner ?\\n' +
-      '**RECOMMANDATION GO/NO-GO** - Avec justification courte\\n' +
-      '**PROCHAINES ETAPES** - Actions immediates recommandees';
-    var result = await callGemini(prompt);
-    var lines = result.split('\\n');
-    var html = lines.map(function(l){
-      if (!l.trim()) return '<br>';
-      if (l.startsWith('**') && l.endsWith('**')) return '<h4 style="color:#174EA6;margin:10px 0 3px">'+l.replace(/\*\*/g,'')+'</h4>';
-      if (l.match(/^\*\*/)) return '<p><b style="color:#174EA6">'+l.replace(/\*\*/g,'')+'</b></p>';
-      if (l.match(/^[\-\u2022]/)) return '<li style="margin:2px 0 2px 12px">'+l.slice(1).trim()+'</li>';
-      return '<p style="margin:3px 0">'+l+'</p>';
+    var sourceUrl = item ? (item.source_url||item.url||item.link||'') : '';
+    var d = await apiRequest('/ai/analyze', {
+      method:'POST',
+      body: JSON.stringify({
+        title:title,
+        text:[sector, zone, budget, text].filter(Boolean).join('\\n').slice(0,4000),
+        source_url:sourceUrl
+      })
+    });
+    var score = d.score != null ? d.score : 0;
+    var priority = d.priority || 'A confirmer';
+    var rows = [
+      ['Secteur', d.sector],
+      ['Type', d.project_type],
+      ['Pays', d.country],
+      ['Bailleur', d.funder]
+    ].filter(function(r){ return r[1]; }).map(function(r){
+      return '<div style="display:flex;gap:8px;justify-content:space-between;border-bottom:1px solid #E5E7EB;padding:5px 0"><b style="color:#526174">'+r[0]+'</b><span>'+String(r[1])+'</span></div>';
     }).join('');
-    body.innerHTML = '<div style="margin-bottom:8px"><strong style="font-size:13px;color:#0B1F3A">'+title+'</strong></div>' + html +
-      '<div style="margin-top:12px;text-align:right"><button onclick="navigator.clipboard.writeText(window._lastAiResult||\'\')" style="background:#174EA6;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:11px;cursor:pointer">\u{1F4CB} Copier</button></div>';
-    window._lastAiResult = result;
+    var html = ''
+      + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">'
+      + '<strong style="font-size:13px;color:#0B1F3A;flex:1;min-width:220px">'+title+'</strong>'
+      + '<span style="background:#E7F5EC;color:#14804A;border:1px solid #BFE6CC;border-radius:999px;padding:4px 10px;font-weight:800">Score '+score+'/10</span>'
+      + '<span style="background:#EEF6FF;color:#174EA6;border:1px solid #BFDBFE;border-radius:999px;padding:4px 10px;font-weight:800">Priorite '+priority+'</span>'
+      + '</div>'
+      + '<h4 style="color:#174EA6;margin:10px 0 4px">Resume IA</h4><p style="margin:3px 0">'+(d.summary||'Analyse indisponible.')+'</p>'
+      + (rows ? '<div style="margin:12px 0;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:8px">'+rows+'</div>' : '')
+      + '<h4 style="color:#174EA6;margin:10px 0 4px">Recommandation</h4><p style="margin:3px 0">'+(d.recommendation||'A qualifier manuellement.')+'</p>'
+      + '<h4 style="color:#174EA6;margin:10px 0 4px">Scope Artelia</h4><p style="margin:3px 0">'+(d.artelia_scope||'Etudes, supervision, assistance technique et project management selon le cahier des charges.')+'</p>'
+      + '<h4 style="color:#174EA6;margin:10px 0 4px">Message de prospection</h4><p style="margin:3px 0;white-space:pre-wrap">'+(d.message_fr||'')+'</p>';
+    body.innerHTML = html +
+      '<div style="margin-top:12px;text-align:right"><button onclick="navigator.clipboard.writeText(window._lastAiResult||&quot;&quot;)" style="background:#174EA6;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:11px;cursor:pointer">\u{1F4CB} Copier</button></div>';
+    window._lastAiResult = JSON.stringify(d, null, 2);
   } catch(e){ body.innerHTML = '<div style="color:red;padding:12px">\u274C Erreur: '+e.message+'</div>'; }
 };
 console.info('[PATCH v70] AI Analyze fix deployed.');
+console.info('[PATCH v116] AI Analyze uses structured /ai/analyze endpoint.');
 
 // 4. EDITION & SUPPRESSION PING + DETAIL FIX
 window.editPing = function(id) {
