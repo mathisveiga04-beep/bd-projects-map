@@ -9014,4 +9014,31 @@ window.exportPingsPDF=function(){
   }
   window.__aiFallback={version:'ai-fallback-v1', localAnalysis:localAnalysis, localBrief:localBrief, localLinkedIn:localLinkedIn, fallbackFor:fallbackFor};
 })();
+/* ===== UX ACCESSIBILITE (ux-a11y-v1) =====
+   - Anneau de focus clavier (:focus-visible) sur les elements interactifs : invisible a la souris, visible au clavier (Tab). Purement additif, n'affecte AUCUNE mise en page.
+   - Respect de prefers-reduced-motion : desactive transitions/animations pour les utilisateurs qui le demandent.
+   - Idempotent ; aucune dependance ; ne touche pas le Socle. ===== */
+(function(){
+  if(window.__uxA11y && window.__uxA11y.version==='ux-a11y-v1') return;
+  var css = [
+    '@media (prefers-reduced-motion: reduce){',
+    '  *,*::before,*::after{animation-duration:0.001ms !important;animation-iteration-count:1 !important;transition-duration:0.001ms !important;scroll-behavior:auto !important;}',
+    '}',
+    'button:focus-visible,a:focus-visible,[role=button]:focus-visible,[role=tab]:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{',
+    '  outline:2px solid #2563EB !important;outline-offset:2px !important;border-radius:4px;',
+    '}',
+    '.leaflet-control a:focus-visible{outline:2px solid #2563EB !important;outline-offset:1px !important;}'
+  ].join('\n');
+  function inject(){
+    if(document.getElementById('ux-a11y-style')) return;
+    var s=document.createElement('style');
+    s.id='ux-a11y-style';
+    s.type='text/css';
+    s.appendChild(document.createTextNode(css));
+    (document.head||document.documentElement).appendChild(s);
+  }
+  if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', inject); } else { inject(); }
+  window.__uxA11y={version:'ux-a11y-v1', inject:inject};
+})();
+
 </script>
