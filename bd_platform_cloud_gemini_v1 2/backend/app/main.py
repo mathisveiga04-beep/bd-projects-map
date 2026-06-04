@@ -232,7 +232,7 @@ def ai_generate(payload: schemas.GenerateRequest, token: dict = Depends(verify_a
     return generate_with_gemini(payload.prompt, payload.max_tokens, payload.mode)
 
 @app.get("/scraper/sources")
-def scraper_sources():
+def scraper_sources(token: dict = Depends(verify_app_or_jwt)):
     return {"sources": active_sources()}
 
 @app.post("/scraper/run")
