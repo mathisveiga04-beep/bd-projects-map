@@ -126,14 +126,6 @@ def keep_alive():
     return {"status": "alive", "ts": datetime.utcnow().isoformat()}
 
 
-@app.patch("/buildings/{building_id}")
-def patch_building(building_id: str, payload: dict, token: dict = Depends(verify_app_or_jwt)):
-    # Proxy update to Supabase buildings table (owne@app.get("/keep-alive")
-def keep_alive():
-    # Lightweight endpoint to prevent Render cold start (called by frontend every 10min)
-    return {"status": "alive", "ts": datetime.utcnow().isoformat()}
-
-
 async def automated_scraper_loop():
     if not SCRAPER_AUTORUN or not APP_SECRET:
         return
@@ -156,7 +148,15 @@ async def automated_scraper_loop():
 async def start_automated_scraper():
     if SCRAPER_AUTORUN and APP_SECRET:
         asyncio.create_task(automated_scraper_loop())
-id = get_user_id(token)
+
+
+@app.patch("/buildings/{building_id}")
+def patch_building(building_id: str, payload: dict, token: dict = Depends(verify_app_or_jwt)):
+    # Proxy update to Supabase buildings table (owner or admin enforced via RLS)
+    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
+        raise HTTPException(500, "Supabase not configured")
+    is_admin = get_user_role(token) == "admin"
+    uid = get_user_id(token)
     headers = _sb_headers()
     headers["Prefer"] = "return=representation"
     # Verify ownership unless admin
