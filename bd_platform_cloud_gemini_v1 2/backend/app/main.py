@@ -213,7 +213,7 @@ def remove_project(project_id: int, db: Session = Depends(get_db), token: dict =
     return {"ok": True}
 
 @app.get("/tenders", response_model=list[schemas.TenderOut])
-def get_tenders(db: Session = Depends(get_db)):
+def get_tenders(db: Session = Depends(get_db), token: dict = Depends(verify_app_or_jwt)):
     return crud.list_tenders(db)
 
 @app.post("/tenders", response_model=schemas.TenderOut)
