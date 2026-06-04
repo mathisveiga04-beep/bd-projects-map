@@ -1,5 +1,6 @@
 from __future__ import annotations
 from datetime import datetime
+import asyncio
 import os
 import requests
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
@@ -21,6 +22,12 @@ APP_SECRET = os.getenv("APP_SECRET", "").strip()
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip() or SUPABASE_KEY
+SCRAPER_AUTORUN = os.getenv("SCRAPER_AUTORUN", "1").strip().lower() not in ("0", "false", "no")
+try:
+    SCRAPER_INTERVAL_SECONDS = max(900, int(os.getenv("SCRAPER_INTERVAL_SECONDS", "14400").strip() or "14400"))
+except ValueError:
+    SCRAPER_INTERVAL_SECONDS = 14400
+PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "https://bd-projects-map-akh.onrender.com").rstrip("/")
 
 app = FastAPI(title="BD Intelligence Platform API", version="1.0-cloud-gemini-production-ready")
 
@@ -121,11 +128,35 @@ def keep_alive():
 
 @app.patch("/buildings/{building_id}")
 def patch_building(building_id: str, payload: dict, token: dict = Depends(verify_app_or_jwt)):
-    # Proxy update to Supabase buildings table (owner or admin enforced via RLS)
-    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
-        raise HTTPException(500, "Supabase not configured")
-    is_admin = get_user_role(token) == "admin"
-    uid = get_user_id(token)
+    # Proxy update to Supabase buildings table (owne@app.get("/keep-alive")
+def keep_alive():
+    # Lightweight endpoint to prevent Render cold start (called by frontend every 10min)
+    return {"status": "alive", "ts": datetime.utcnow().isoformat()}
+
+
+async def automated_scraper_loop():
+    if not SCRAPER_AUTORUN or not APP_SECRET:
+        return
+    while True:
+        await asyncio.sleep(SCRAPER_INTERVAL_SECONDS)
+        try:
+            response = await asyncio.to_thread(
+                requests.post,
+                f"{PUBLIC_BASE_URL}/scraper/run",
+                json={"source": "all", "dry_run": False},
+                headers={"X-App-Token": APP_SECRET},
+                timeout=180,
+            )
+            print(f"[auto-scraper] status={response.status_code} body={response.text[:200]}")
+        except Exception as exc:
+            print(f"[auto-scraper] error={exc}")
+
+
+@app.on_event("startup")
+async def start_automated_scraper():
+    if SCRAPER_AUTORUN and APP_SECRET:
+        asyncio.create_task(automated_scraper_loop())
+id = get_user_id(token)
     headers = _sb_headers()
     headers["Prefer"] = "return=representation"
     # Verify ownership unless admin
