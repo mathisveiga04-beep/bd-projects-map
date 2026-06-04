@@ -8902,4 +8902,114 @@ window.exportPingsPDF=function(){
   }
   SUIVI_INTEL_MODULE();
 })();
+
+/* ===== IA FALLBACK + INDICATEUR DE MODE (ai-fallback-v1) =====
+   - window.callGemini encapsule : succes -> __aiMode='gemini', echec/vide -> __aiMode='local' + repli local base donnees (modes general, linkedin, brief).
+   - Badge de mode (Gemini / Mode local) injecte dans la modale #ai-analyze-modal.
+   - Aucune dependance externe ; ne casse pas le pipeline existant (les appelants recoivent toujours du texte exploitable). ===== */
+(function(){
+  if(window.__aiFallback && window.__aiFallback.version==='ai-fallback-v1') return;
+  function money(b){ var v=b&&b.budget; if(v==null||v==='') return 'budget non renseigne'; var n=Number(v); if(isNaN(n)) return String(v); return n.toLocaleString('fr-FR')+' USD'; }
+  function curItem(){
+    var it = window._currentSel || window._selBuilding || window._currentProject || null;
+    if(it && typeof it==='object') return it;
+    var bs = window.buildings||[];
+    if(typeof window.currentId!=='undefined'){
+      var f = bs.filter(function(b){return b.id===window.currentId;})[0];
+      if(f) return f;
+    }
+    return null;
+  }
+  var POT={high:'haute',med:'moyenne',low:'faible'};
+  var STAT={not_visited:'A identifier',prospect:'Prospect',contacted:'Contacte',meeting:'Reunion fixee',proposal:'Note transmise',qualified:'Qualifie',won:'Gagne',lost:'Perdu'};
+  function localAnalysis(b){
+    if(!b) return 'Mode local : aucun actif selectionne. Selectionnez un projet pour obtenir une analyse locale.';
+    var L=[];
+    L.push('**ANALYSE LOCALE (service IA momentanement indisponible)**');
+    L.push('');
+    L.push('**PROJET : '+(b.name||'-')+'**');
+    L.push('**TYPE : '+(b.type||'-')+'  -  ZONE : '+(b.zone||'-')+(b.year?('  -  ANNEE : '+b.year):''));
+    L.push('**BUDGET : '+money(b)+'**');
+    L.push('**PRIORITE : '+(POT[b.pot]||'faible')+'  -  ETAPE : '+(STAT[b.status]||'A identifier')+'**');
+    L.push('');
+    L.push('**OPPORTUNITE POUR ARTELIA**');
+    L.push('- Domaine : ce projet ('+(b.type||'batiment')+') entre dans le perimetre Batiment / efficacite energetique d\'Artelia Cambodia.');
+    var hot=(b.pot==='high');
+    L.push('- Potentiel : priorite '+(POT[b.pot]||'faible')+(hot?' — a traiter en priorite.':'.'));
+    L.push('- Services pertinents : '+(b.services||'audit technique, renovation, MEP, efficacite energetique')+'.');
+    if(b.contact) L.push('- Contact connu : '+b.contact+(b.email?(' ('+b.email+')'):'')+'.');
+    L.push('');
+    L.push('**PROCHAINES ETAPES SUGGEREES**');
+    L.push('1. Qualifier le besoin et le calendrier du projet.');
+    L.push('2. Identifier le decideur (facility / property manager) et preparer une approche ciblee.');
+    L.push('3. Positionner une offre Artelia adaptee au budget ('+money(b)+').');
+    if(b.notes) L.push('Note interne : '+b.notes);
+    return L.join('\n');
+  }
+  function localLinkedIn(b){
+    if(!b) return 'Bonjour, je represente Artelia Cambodia. J\'aimerais echanger avec vous au sujet de l\'efficacite energetique de votre batiment. (Message genere en mode local)';
+    var who = b.contact ? b.contact : 'au facility/property manager';
+    return 'Bonjour '+who+',\n\nArtelia Cambodia accompagne les batiments comme '+(b.name||'le votre')+' ('+(b.type||'')+', '+(b.zone||'')+') sur l\'efficacite energetique et la renovation technique. J\'aimerais echanger 15 minutes pour vous presenter nos references locales.\n\nSeriez-vous disponible cette semaine ?\n\nBien a vous,\nL\'equipe Business Development — Artelia Cambodia\n\n(Message genere en mode local)';
+  }
+  function localBrief(){
+    var bs=window.buildings||[];
+    var prio=bs.filter(function(b){return b.pot==='high';});
+    var pipe=bs.filter(function(b){return ['prospect','contacted','meeting','proposal','qualified','won'].indexOf(b.status)>=0;});
+    var L=[];
+    L.push('**BRIEF BD HEBDOMADAIRE (mode local)**');
+    L.push('');
+    L.push('- Actifs suivis : '+bs.length);
+    L.push('- Priorites hautes : '+prio.length);
+    L.push('- Au pipeline : '+pipe.length);
+    L.push('');
+    L.push('**A TRAITER EN PRIORITE**');
+    prio.slice(0,8).forEach(function(b){ L.push('- '+(b.name||'-')+' ('+(b.zone||'')+', '+money(b)+')'); });
+    if(!prio.length) L.push('- Aucune priorite haute identifiee.');
+    L.push('');
+    L.push('Service IA momentanement indisponible — synthese generee localement a partir des donnees.');
+    return L.join('\n');
+  }
+  function fallbackFor(mode){
+    if(mode==='linkedin') return localLinkedIn(curItem());
+    if(mode==='brief') return localBrief();
+    return localAnalysis(curItem());
+  }
+  if(typeof window.callGemini==='function' && !window.callGemini.__aiWrapped){
+    var orig=window.callGemini;
+    window.callGemini=async function(prompt,maxTok,mode){
+      try{
+        var t=await orig(prompt,maxTok,mode);
+        if(t){ window.__aiMode='gemini'; return t; }
+        window.__aiMode='local'; return fallbackFor(mode);
+      }catch(e){
+        window.__aiMode='local'; return fallbackFor(mode);
+      }
+    };
+    window.callGemini.__aiWrapped=orig;
+  }
+  function badgeHtml(mode){
+    var g=(mode==='gemini');
+    var bg=g?'#065F46':'#92400E', txt=g?'\u26A1 Gemini':'\uD83D\uDCF4 Mode local';
+    return '<span id="ai-mode-badge" style="display:inline-block;margin-left:8px;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;color:#fff;background:'+bg+';vertical-align:middle">'+txt+'</span>';
+  }
+  function ensureBadge(){
+    var m=document.getElementById('ai-analyze-modal');
+    if(!m) return;
+    var header=null, all=m.querySelectorAll('div,h2,h3,span');
+    for(var i=0;i<all.length;i++){ if(/Analyse IA/.test(all[i].textContent||'') && all[i].children.length<=2){ header=all[i]; break; } }
+    var old=m.querySelector('#ai-mode-badge'); if(old) old.remove();
+    if(header) header.insertAdjacentHTML('beforeend', badgeHtml(window.__aiMode||'gemini'));
+  }
+  var mo=new MutationObserver(function(){ setTimeout(ensureBadge,30); });
+  function attachObserver(){
+    var m=document.getElementById('ai-analyze-modal');
+    if(m){ try{mo.observe(m,{childList:true,subtree:true});}catch(e){} ensureBadge(); }
+  }
+  if(typeof window.aiAnalyze==='function' && !window.aiAnalyze.__aiWrapped){
+    var oa=window.aiAnalyze;
+    window.aiAnalyze=function(){ window.__aiMode='gemini'; var r=oa.apply(this,arguments); setTimeout(attachObserver,100); setTimeout(ensureBadge,1500); setTimeout(ensureBadge,8000); return r; };
+    window.aiAnalyze.__aiWrapped=oa;
+  }
+  window.__aiFallback={version:'ai-fallback-v1', localAnalysis:localAnalysis, localBrief:localBrief, localLinkedIn:localLinkedIn, fallbackFor:fallbackFor};
+})();
 </script>
