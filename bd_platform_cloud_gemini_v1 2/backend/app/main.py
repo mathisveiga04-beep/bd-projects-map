@@ -26,7 +26,7 @@ app = FastAPI(title="BD Intelligence Platform API", version="1.0-cloud-gemini-pr
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://bd-projects-map.vercel.app","http://localhost:8765","http://127.0.0.1:8765"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
