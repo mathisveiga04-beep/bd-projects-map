@@ -185,7 +185,7 @@ def delete_building(building_id: str, token: dict = Depends(verify_app_or_jwt)):
 
 
 @app.get("/projects", response_model=list[schemas.ProjectOut])
-def get_projects(db: Session = Depends(get_db)):
+def get_projects(db: Session = Depends(get_db), token: dict = Depends(verify_app_or_jwt)):
     return crud.list_projects(db)
 
 @app.post("/projects", response_model=schemas.ProjectOut)
