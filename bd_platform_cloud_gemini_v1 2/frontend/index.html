@@ -7781,6 +7781,50 @@ body:has(#sbt-pipe.on) #pipe-view .pcol2-empty{
 }
 </style>
 <script>
+/* PATCH v119 - watch copy reflects automated 4h backend scraping */
+(function(){
+  function lang(){
+    try{return (typeof currentLang==='function'?currentLang():localStorage.getItem('artelia_lang'))==='en'?'en':'fr';}
+    catch(e){return 'fr';}
+  }
+  function copy(){
+    var isEn=lang()==='en';
+    var watch=document.querySelector('#sbt-watch .watch-sub');
+    if(watch){
+      watch.innerHTML=isEn
+        ? 'Automated monitoring: the Render backend checks active sources every 4 hours, deduplicates new opportunities, scores them with Gemini/local fallback, and sends relevant items to Alerts.<br><br><strong>Qualification method:</strong> no signal is considered won by default. Items move through Alerts and Pipeline only after review.<br><br><strong>Default rhythm:</strong> funders, institutions, public procurement portals and strategic company sources are monitored automatically; localStorage remains a browser fallback only.'
+        : 'Veille automatisée : le backend Render interroge les sources actives toutes les 4 heures, déduplique les nouvelles opportunités, les score avec Gemini ou le mode local, puis envoie les éléments pertinents dans Alertes.<br><br><strong>Méthode de qualification :</strong> aucun signal n’est considéré gagné par défaut. Les éléments passent par Alertes puis Suivi après revue.<br><br><strong>Rythme par défaut :</strong> bailleurs, institutions, portails d’appels d’offres et sources entreprises stratégiques sont surveillés automatiquement ; localStorage reste uniquement un secours navigateur.';
+    }
+    Array.prototype.slice.call(document.querySelectorAll('.scope-card')).forEach(function(card){
+      var title=card.querySelector('.scope-card-title');
+      var sub=card.querySelector('.watch-sub');
+      if(!title||!sub)return;
+      var t=(title.textContent||'').trim();
+      if(t==='Fonctionnement de la veille'||t==='How monitoring works'){
+        title.textContent=isEn?'How monitoring works':'Fonctionnement de la veille';
+        sub.textContent=isEn
+          ? 'The platform now relies on the Render backend for scheduled scraping, deduplication, scoring and alert creation. Manual watch items remain useful for human intelligence and field signals.'
+          : 'La plateforme s’appuie désormais sur le backend Render pour le scraping planifié, la déduplication, le scoring et la création d’alertes. Les entrées manuelles restent utiles pour les signaux terrain et la veille humaine.';
+      }
+      if(t==='Sources suivies'||t==='Monitored sources'){
+        title.textContent=isEn?'Monitored sources':'Sources suivies';
+        sub.textContent=isEn
+          ? 'ADB, World Bank, AFD, JICA, AIIB, UNGM, UNDP, UNOPS, DG Market, DevelopmentAid, Cambodia ministries, utilities, infrastructure trackers and strategic contractors/energy companies.'
+          : 'ADB, Banque mondiale, AFD, JICA, AIIB, UNGM, UNDP, UNOPS, DG Market, DevelopmentAid, ministères cambodgiens, utilities, trackers infrastructure et entreprises stratégiques construction/énergie.';
+      }
+    });
+  }
+  document.addEventListener('DOMContentLoaded',function(){setTimeout(copy,400);});
+  window.addEventListener('load',function(){setTimeout(copy,800);});
+  var old=window.setLang;
+  if(typeof old==='function'&&!old.__watchCopyV119){
+    window.setLang=function(){var r=old.apply(this,arguments);setTimeout(copy,80);setTimeout(copy,450);return r;};
+    window.setLang.__watchCopyV119=true;
+  }
+  window.refreshWatchCopyV119=copy;
+})();
+</script>
+<script>
 /* PATCH v93 - normalize late-rendered FR/EN labels without touching map state */
 (function(){
   function isEn(){
