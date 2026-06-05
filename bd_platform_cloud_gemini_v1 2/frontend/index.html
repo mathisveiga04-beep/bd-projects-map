@@ -5148,6 +5148,10 @@ document.querySelectorAll('.lang-btn').forEach(function(b){if(b.getAttribute('on
     try{ if(typeof escapeHtml==='function') return escapeHtml(v==null?'':String(v)); }catch(e){}
     return String(v==null?'':v).replace(/[&<>'"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c];});
   }
+  function isTechnicalWatchItem(w){
+    var txt=((w&&w.title)||'')+' '+((w&&w.name)||'')+' '+((w&&w.notes)||'')+' '+((w&&w.text)||'');
+    return /scraper error|failed scraper|traceback|exception|http\s*(4|5)\d\d/i.test(txt);
+  }
   function getActionAlerts(){
     var today=new Date(); today.setHours(0,0,0,0);
     var tomorrow=new Date(today); tomorrow.setDate(tomorrow.getDate()+1);
@@ -5168,7 +5172,7 @@ document.querySelectorAll('.lang-btn').forEach(function(b){if(b.getAttribute('on
   }
   function getProjectAlerts(){
     return (typeof watchItems!=='undefined'?watchItems:[]).filter(function(w){
-      return isNonLocalized(w) && (w.fit==='high'||w.fit==='med'||w.priority==='high'||w.priority==='med');
+      return !isTechnicalWatchItem(w) && isNonLocalized(w) && (w.fit==='high'||w.fit==='med'||w.priority==='high'||w.priority==='med');
     }).sort(function(a,b){
       var score=function(x){return (x.fit==='high'||x.priority==='high')?2:1;};
       return score(b)-score(a);
@@ -5279,7 +5283,11 @@ document.querySelectorAll('.lang-btn').forEach(function(b){if(b.getAttribute('on
   function safeLang(){try{return (typeof currentLang==='function'&&currentLang()==='en')?'en':'fr';}catch(e){return 'fr';}}
   function tr(fr,en){return safeLang()==='en'?en:fr;}
   function esc(v){try{if(typeof escapeHtml==='function')return escapeHtml(v==null?'':String(v));}catch(e){} return String(v==null?'':v).replace(/[&<>'"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c];});}
-function priorityLabel(w){
+  function isTechnicalWatchItem(w){
+    var txt=((w&&w.title)||'')+' '+((w&&w.name)||'')+' '+((w&&w.notes)||'')+' '+((w&&w.text)||'');
+    return /scraper error|failed scraper|traceback|exception|http\s*(4|5)\d\d/i.test(txt);
+  }
+	function priorityLabel(w){
   var f=(w&&((w.fit||w.priority)||'med'))||'med';
   try{
     if(typeof watchPriorityLabel==='function') return watchPriorityLabel(f);
@@ -5312,13 +5320,13 @@ function priorityColorClass(priority){
     var vague=/(corridor|province|regional|nationwide|multiple|multi|several|road|km|distance|along|across|network|programme|program|areas|urban areas|flood-prone)/i.test(txt);
     return !hasPoint || vague;
   }
-  function watchAlerts(){
-    var arr=[];
-    try{arr=(typeof watchItems!=='undefined'&&Array.isArray(watchItems))?watchItems:[];}catch(e){arr=[];}
-    return arr.filter(function(w){
-      var f=w.fit||w.priority||'med';
-      return isNonLocalized(w) && (f==='high'||f==='med');
-    }).sort(function(a,b){
+	  function watchAlerts(){
+	    var arr=[];
+	    try{arr=(typeof watchItems!=='undefined'&&Array.isArray(watchItems))?watchItems:[];}catch(e){arr=[];}
+	    return arr.filter(function(w){
+	      var f=w.fit||w.priority||'med';
+	      return !isTechnicalWatchItem(w) && isNonLocalized(w) && (f==='high'||f==='med');
+	    }).sort(function(a,b){
       function score(x){return (x.fit||x.priority)==='high'?2:1;}
       if(!!a.isNew!==!!b.isNew)return b.isNew?1:-1;
       return score(b)-score(a);
@@ -7704,6 +7712,25 @@ console.info('[PATCH v70 COMPLETE] Settings lock, Brief Intelligence, AI Fix, Pi
       }
     }
   }catch(e){console.warn('cache-clean-v83',e);}
+})();
+</script>
+<script>
+/* PATCH v117 - keep technical scraper failures out of user-facing watch alerts */
+(function(){
+  try{
+    var key='artelia_watch_v2';
+    var raw=JSON.parse(localStorage.getItem(key)||'[]');
+    if(!Array.isArray(raw))return;
+    var clean=raw.filter(function(item){
+      var txt=String((item&&(item.title||item.name||''))+' '+(item&&(item.notes||item.text||'')));
+      return !/scraper error|failed scraper|traceback|exception|http\s*(4|5)\d\d/i.test(txt);
+    });
+    if(clean.length!==raw.length){
+      localStorage.setItem(key,JSON.stringify(clean));
+      if(typeof watchItems!=='undefined')watchItems=clean;
+      if(typeof updateNotifs==='function')setTimeout(updateNotifs,50);
+    }
+  }catch(e){console.warn('watch-alert-clean-v117',e);}
 })();
 </script>
 <script>
