@@ -7733,6 +7733,76 @@ console.info('[PATCH v70 COMPLETE] Settings lock, Brief Intelligence, AI Fix, Pi
   }catch(e){console.warn('watch-alert-clean-v117',e);}
 })();
 </script>
+<style id="mobile-header-polish-v120">
+/* PATCH v120 - mobile header stays usable without covering the map */
+@media(max-width:768px){
+  .hdr{height:52px;padding:0 8px;gap:8px;overflow:hidden}
+  .hdr-l{min-width:0;gap:8px;flex:1 1 auto}
+  .hdr-brand{font-size:12px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px}
+  .hdr-sub{font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px}
+  .mob-toggle{height:32px;padding:0 10px;font-size:12px;font-weight:700;flex:0 0 auto}
+  .hdr-r{position:absolute!important;right:6px;top:7px;gap:5px;max-width:140px;overflow:hidden}
+  .hdr-r .btn,
+  .hdr-r .lang-btn,
+  .hdr-r #admin-status-label,
+  .hdr-r .admin-status,
+  .hdr-r [id*="admin-status"]{display:none!important}
+  .hdr-r .notif-btn{display:inline-flex!important;align-items:center;justify-content:center;min-width:66px;height:31px;padding:0 8px;font-size:11px}
+  .notif-badge{min-width:16px;height:16px;font-size:9px;right:-5px;top:-5px}
+  .map-filter-bar{left:6px!important;right:6px!important;transform:none!important;width:auto!important;max-width:none!important;overflow-x:auto!important;justify-content:flex-start!important;padding:5px!important;border-radius:18px}
+  .mtb{padding:6px 10px!important;font-size:11px!important;white-space:nowrap!important;flex:0 0 auto}
+  .watch-map-filter,#bd-quick-filters{left:50%!important;max-width:calc(100vw - 18px)!important;overflow-x:auto!important;white-space:nowrap!important}
+}
+</style>
+<script>
+/* PATCH v120 - alert action labels follow the selected language */
+(function(){
+  function isEn(){
+    try{return (typeof currentLang==='function'?currentLang():localStorage.getItem('artelia_lang'))==='en';}
+    catch(e){return false;}
+  }
+  var pairs=[
+    ['Analyser IA','Analyze AI'],
+    ['Marquer vu','Mark seen'],
+    ['À qualifier','To qualify'],
+    ['Convertir en projet','Convert to project'],
+    ['Ignorer','Ignore'],
+    ['Nouveau','New'],
+    ['Vu','Seen'],
+    ['Ignoré','Ignored'],
+    ['Converti','Converted'],
+    ['Réinitialiser','Reset']
+  ];
+  function swapText(text){
+    var out=String(text||'');
+    pairs.forEach(function(p){
+      var from=isEn()?p[0]:p[1], to=isEn()?p[1]:p[0];
+      out=out.replace(new RegExp(from.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'g'),to);
+    });
+    return out;
+  }
+  function apply(){
+    var nodes=document.querySelectorAll('#notif-panel button,#notif-panel .ws-btn,#notif-items button,.intel-node button,.ws-btn');
+    Array.prototype.forEach.call(nodes,function(el){
+      var next=swapText(el.textContent);
+      if(next!==el.textContent)el.textContent=next;
+    });
+  }
+  var oldUpdate=window.updateNotifs;
+  if(typeof oldUpdate==='function'&&!oldUpdate.__alertLangV120){
+    window.updateNotifs=function(){var r=oldUpdate.apply(this,arguments);setTimeout(apply,30);setTimeout(apply,250);return r;};
+    window.updateNotifs.__alertLangV120=true;
+  }
+  var oldSet=window.setLang;
+  if(typeof oldSet==='function'&&!oldSet.__alertLangV120){
+    window.setLang=function(){var r=oldSet.apply(this,arguments);setTimeout(apply,80);setTimeout(apply,450);return r;};
+    window.setLang.__alertLangV120=true;
+  }
+  document.addEventListener('DOMContentLoaded',function(){setTimeout(apply,600);});
+  window.addEventListener('load',function(){setTimeout(apply,900);});
+  window.refreshAlertLabelsV120=apply;
+})();
+</script>
 <style id="suivi-pipeline-polish-v118">
 /* PATCH v118 - clearer Suivi sidebar without changing pipeline behavior */
 @media (min-width:980px){
