@@ -9238,4 +9238,58 @@ window.exportPingsPDF=function(){
   window.__uxA11y={version:'ux-a11y-v1', inject:inject};
 })();
 
+/* PATCH v121 - guarantee map boot after login and late script patches */
+(function(){
+  if(window.__mapBootGuard && window.__mapBootGuard.version==='v121') return;
+  function getMap(){
+    if(window.mapObj) return window.mapObj;
+    try{ if(typeof mapObj!=='undefined' && mapObj){ window.mapObj=mapObj; return mapObj; } }catch(e){}
+    return null;
+  }
+  function hasVisibleMapContainer(){
+    var el=document.getElementById('map');
+    if(!el) return false;
+    var r=el.getBoundingClientRect();
+    return r.width>40 && r.height>40;
+  }
+  function renderAll(){
+    try{ if(typeof renderMarkers==='function') renderMarkers(); }catch(e){ console.warn('v121 renderMarkers skipped', e); }
+    try{ if(typeof renderWatchMarkers==='function') renderWatchMarkers(); }catch(e){ console.warn('v121 renderWatchMarkers skipped', e); }
+    try{ if(typeof filterList==='function') filterList(); }catch(e){ console.warn('v121 filterList skipped', e); }
+    try{ if(typeof updateStats==='function') updateStats(); }catch(e){ console.warn('v121 updateStats skipped', e); }
+    try{ var m=getMap(); if(m && m.invalidateSize) setTimeout(function(){ m.invalidateSize(true); }, 80); }catch(e){}
+  }
+  function ensureMapBoot(reason){
+    if(!hasVisibleMapContainer() || typeof window.L==='undefined') return false;
+    var m=getMap();
+    if(!m && typeof window.initMap==='function'){
+      try{ window.initMap(); }catch(e){ console.warn('v121 initMap failed', reason, e); }
+      m=getMap();
+    }
+    if(m){ renderAll(); return true; }
+    return false;
+  }
+  function schedule(reason){
+    [120,450,1000,2000,4000].forEach(function(delay){
+      setTimeout(function(){ ensureMapBoot(reason); }, delay);
+    });
+  }
+  var previousDoLogin=window.doLogin;
+  if(typeof previousDoLogin==='function' && !previousDoLogin.__mapBootV121){
+    window.doLogin=function(){
+      var result=previousDoLogin.apply(this,arguments);
+      try{
+        if(result && typeof result.then==='function') result.finally(function(){ schedule('login'); });
+        else schedule('login');
+      }catch(e){ schedule('login'); }
+      return result;
+    };
+    window.doLogin.__mapBootV121=true;
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', function(){ schedule('dom'); });
+  else schedule('ready');
+  window.addEventListener('load', function(){ schedule('load'); });
+  window.__mapBootGuard={version:'v121', ensure:ensureMapBoot, schedule:schedule};
+})();
+
 </script>
