@@ -16,5 +16,5 @@ def scrape_world_bank_cambodia(limit: int = 25):
             source_url = p.get("url") or "https://projects.worldbank.org/"
             items.append(Opportunity(title=title, text=text, source="World Bank", source_url=source_url, funder="World Bank"))
     except Exception as exc:
-        items.append(Opportunity(title="World Bank scraper error", text=str(exc), source="World Bank", source_url=url))
+        print(f"World Bank scraper failed: {exc}")
     return items
