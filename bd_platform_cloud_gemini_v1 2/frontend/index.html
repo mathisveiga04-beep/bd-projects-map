@@ -6906,11 +6906,15 @@ input:focus, select:focus, textarea:focus {
         var d7 = new Date(Date.now() - 7*24*3600000).toISOString();
         c.from("projects").select("id,title,city,sector,source_url,created_at").gte("created_at", d7).order("created_at",{ascending:false}).limit(20)
           .then(function(res) {
-            if (res.error || !res.data || !res.data.length) {
+            var cleanData = (res.data || []).filter(function(p){
+              var txt = String((p && (p.title || p.name || "")) + " " + (p && (p.city || p.sector || p.source_url || "")));
+              return !/scraper error|failed scraper|traceback|exception|http\s*(4|5)\d\d|world bank scraper error/i.test(txt);
+            });
+            if (res.error || !cleanData.length) {
               list.innerHTML = "<div style=\"padding:20px;text-align:center;color:#6b7280\"><div style=\"font-size:24px\">&#10003;</div><p>" + alertTr("Aucun nouveau projet ces 7 jours.","No new projects in the last 7 days.") + "</p></div>";
               return;
             }
-            var rows = res.data.map(function(p) {
+            var rows = cleanData.map(function(p) {
               var ago = "";
               try { ago = Math.round((Date.now() - new Date(p.created_at).getTime()) / 3600000) + "h"; } catch(e) {}
               return "<div class=\"ni-item\" style=\"padding:12px 16px;border-bottom:1px solid #f3f4f6\">" +
@@ -6921,7 +6925,7 @@ input:focus, select:focus, textarea:focus {
                 (p.source_url ? "<a href=\"" + p.source_url + "\" target=\"_blank\" style=\"font-size:11px;color:#2563eb\">" + alertTr("Voir la source","View source") + " &#8594;</a>" : "") +
                 "</div>";
             }).join("");
-            list.innerHTML = "<div style=\"padding:8px 16px;font-size:12px;color:#6b7280;border-bottom:1px solid #e5e7eb\">" + res.data.length + " " + alertTr("projet(s) ces 7 jours","project(s) in the last 7 days") + "</div>" + rows;
+            list.innerHTML = "<div style=\"padding:8px 16px;font-size:12px;color:#6b7280;border-bottom:1px solid #e5e7eb\">" + cleanData.length + " " + alertTr("projet(s) ces 7 jours","project(s) in the last 7 days") + "</div>" + rows;
           });
       }, 100);
     };
