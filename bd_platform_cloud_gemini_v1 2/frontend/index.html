@@ -7733,6 +7733,53 @@ console.info('[PATCH v70 COMPLETE] Settings lock, Brief Intelligence, AI Fix, Pi
   }catch(e){console.warn('watch-alert-clean-v117',e);}
 })();
 </script>
+<style id="suivi-pipeline-polish-v118">
+/* PATCH v118 - clearer Suivi sidebar without changing pipeline behavior */
+@media (min-width:980px){
+  body:has(#sbt-pipe.on) #sb{width:360px!important;flex:0 0 360px!important}
+  body:has(#sbt-pipe.on) #pipe-view,
+  body:has(#sbt-pipe.on) #sbt-pipe,
+  body:has(#sbt-pipe.on) .sb-body{width:359px!important}
+}
+body:has(#sbt-pipe.on) #pipe-view.pipe-wrap{
+  display:flex!important;flex-direction:column!important;gap:10px!important;
+  padding:10px 12px 18px!important;background:#F6F8FB!important;
+  overflow-y:auto!important;overflow-x:hidden!important;height:100%!important
+}
+body:has(#sbt-pipe.on) #pipe-view .pcol2{
+  width:100%!important;min-width:0!important;flex:0 0 auto!important;
+  border-radius:12px!important;border:1px solid #D7DEE8!important;background:#fff!important;
+  box-shadow:0 2px 8px rgba(15,31,58,.06)!important;overflow:hidden!important
+}
+body:has(#sbt-pipe.on) #pipe-view .pch2{
+  min-height:34px!important;padding:9px 12px!important;background:#0B1F3A!important;color:#fff!important;
+  font-size:10px!important;letter-spacing:.055em!important
+}
+body:has(#sbt-pipe.on) #pipe-view .pcol2-body{padding:9px!important;gap:8px!important}
+body:has(#sbt-pipe.on) #pipe-view .pc2{
+  border-radius:10px!important;border:1px solid #E0E7F0!important;border-left:4px solid #174EA6!important;
+  padding:10px!important;background:#fff!important;box-shadow:0 1px 2px rgba(15,31,58,.05)!important
+}
+body:has(#sbt-pipe.on) #pipe-view .pc2:hover{
+  transform:translateY(-1px)!important;box-shadow:0 8px 18px rgba(15,31,58,.12)!important;border-color:#B8C4D4!important
+}
+body:has(#sbt-pipe.on) #pipe-view .pc2-name{font-size:12.5px!important;line-height:1.25!important;color:#172033!important}
+body:has(#sbt-pipe.on) #pipe-view .pc2-m{font-size:10.5px!important;color:#526174!important;line-height:1.35!important}
+body:has(#sbt-pipe.on) #pipe-view .pc2-ctl{
+  display:grid!important;grid-template-columns:minmax(0,1fr) 126px!important;gap:7px!important;margin-top:8px!important
+}
+body:has(#sbt-pipe.on) #pipe-view .pc2-ctl select,
+body:has(#sbt-pipe.on) #pipe-view .pc2-ctl input[type=date]{
+  height:29px!important;border-radius:8px!important;border:1px solid #D7DEE8!important;
+  background:#F8FAFC!important;color:#172033!important;font-size:10.5px!important
+}
+body:has(#sbt-pipe.on) #pipe-view .pc2-ctl select{width:100%!important;max-width:none!important}
+body:has(#sbt-pipe.on) #pipe-view .pc2-ctl input[type=date]{width:126px!important}
+body:has(#sbt-pipe.on) #pipe-view .pcol2-empty{
+  border:1px dashed #C8D4E3!important;border-radius:10px!important;background:#F8FAFC!important;
+  text-align:center!important;color:#8A98AA!important;font-weight:700!important
+}
+</style>
 <script>
 /* PATCH v93 - normalize late-rendered FR/EN labels without touching map state */
 (function(){
