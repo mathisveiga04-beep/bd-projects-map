@@ -8309,7 +8309,52 @@ window.exportPingsPDF=function(){
       +'<h1>Projets cibles - MVE</h1>'
       +'<div class="sub">'+new Date().toLocaleDateString('fr-FR')+' - '+rows.length+' projets</div>'
       +'<table><tr><th>Titre</th><th>Secteur</th><th>Ville</th><th>Bailleur</th><th>Statut</th><th>Priorite</th><th>Score</th></tr>'
-      +body+'</table></body></html>';
+      +body+'</table><script>
+/* PATCH v125 - robust MVE map and markers boot */
+(function(){
+  if(window.__mveMapMarkerBoot && window.__mveMapMarkerBoot.version==='v125') return;
+  function countMarkers(){ try{return window.markers?Object.keys(window.markers).length:0;}catch(e){return 0;} }
+  function countBuildings(){ return Array.isArray(window.buildings)?window.buildings.length:0; }
+  function visibleMap(){ var el=document.getElementById('map'); if(!el) return false; var r=el.getBoundingClientRect(); return r.width>40 && r.height>40; }
+  function boot(reason){
+    if(!visibleMap() || typeof window.L==='undefined') return false;
+    try{
+      if(!window.mapObj && typeof window.initMap==='function'){
+        try{ window.initMap(); }catch(e){ console.warn('v125 initMap recovery', reason, e); }
+      }
+      if(typeof window.renderMarkers==='function') window.renderMarkers();
+      if(typeof window.filterList==='function') window.filterList();
+      if(typeof window.updateStats==='function') window.updateStats();
+      if(window.mapObj && window.mapObj.invalidateSize) setTimeout(function(){ try{ window.mapObj.invalidateSize(true); }catch(e){} }, 80);
+      return !!window.mapObj && countMarkers()>0;
+    }catch(e){ console.warn('v125 map boot failed', reason, e); return false; }
+  }
+  function schedule(reason){
+    var tries=0;
+    var timer=setInterval(function(){
+      tries++;
+      var ok=boot(reason+'#'+tries);
+      if(ok && countMarkers()>=Math.max(1,Math.min(45,countBuildings()))) clearInterval(timer);
+      if(tries>=24) clearInterval(timer);
+    }, 500);
+    setTimeout(function(){ boot(reason+'-late'); }, 8000);
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', function(){ schedule('dom'); });
+  else schedule('ready');
+  window.addEventListener('load', function(){ schedule('load'); });
+  var prevLogin=window.doLogin;
+  if(typeof prevLogin==='function' && !prevLogin.__mveMapV125){
+    window.doLogin=function(){
+      var r=prevLogin.apply(this,arguments);
+      try{ if(r&&typeof r.then==='function') r.finally(function(){ schedule('login'); }); else schedule('login'); }catch(e){ schedule('login'); }
+      return r;
+    };
+    window.doLogin.__mveMapV125=true;
+  }
+  window.__mveMapMarkerBoot={version:'v125', boot:boot, schedule:schedule};
+})();
+</script>
+</body></html>';
     var w=window.open('','_blank');
     if(!w){alert('Autorisez les pop-ups pour generer le PDF.');return;}
     w.document.write(html);
@@ -9382,47 +9427,5 @@ window.exportPingsPDF=function(){
 
 
 
-/* PATCH v125 - robust MVE map and markers boot */
-(function(){
-  if(window.__mveMapMarkerBoot && window.__mveMapMarkerBoot.version==='v125') return;
-  function countMarkers(){ try{return window.markers?Object.keys(window.markers).length:0;}catch(e){return 0;} }
-  function countBuildings(){ return Array.isArray(window.buildings)?window.buildings.length:0; }
-  function visibleMap(){ var el=document.getElementById('map'); if(!el) return false; var r=el.getBoundingClientRect(); return r.width>40 && r.height>40; }
-  function boot(reason){
-    if(!visibleMap() || typeof window.L==='undefined') return false;
-    try{
-      if(!window.mapObj && typeof window.initMap==='function'){
-        try{ window.initMap(); }catch(e){ console.warn('v125 initMap recovery', reason, e); }
-      }
-      if(typeof window.renderMarkers==='function') window.renderMarkers();
-      if(typeof window.filterList==='function') window.filterList();
-      if(typeof window.updateStats==='function') window.updateStats();
-      if(window.mapObj && window.mapObj.invalidateSize) setTimeout(function(){ try{ window.mapObj.invalidateSize(true); }catch(e){} }, 80);
-      return !!window.mapObj && countMarkers()>0;
-    }catch(e){ console.warn('v125 map boot failed', reason, e); return false; }
-  }
-  function schedule(reason){
-    var tries=0;
-    var timer=setInterval(function(){
-      tries++;
-      var ok=boot(reason+'#'+tries);
-      if(ok && countMarkers()>=Math.max(1,Math.min(45,countBuildings()))) clearInterval(timer);
-      if(tries>=24) clearInterval(timer);
-    }, 500);
-    setTimeout(function(){ boot(reason+'-late'); }, 8000);
-  }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', function(){ schedule('dom'); });
-  else schedule('ready');
-  window.addEventListener('load', function(){ schedule('load'); });
-  var prevLogin=window.doLogin;
-  if(typeof prevLogin==='function' && !prevLogin.__mveMapV125){
-    window.doLogin=function(){
-      var r=prevLogin.apply(this,arguments);
-      try{ if(r&&typeof r.then==='function') r.finally(function(){ schedule('login'); }); else schedule('login'); }catch(e){ schedule('login'); }
-      return r;
-    };
-    window.doLogin.__mveMapV125=true;
-  }
-  window.__mveMapMarkerBoot={version:'v125', boot:boot, schedule:schedule};
-})();
+
 </script>
