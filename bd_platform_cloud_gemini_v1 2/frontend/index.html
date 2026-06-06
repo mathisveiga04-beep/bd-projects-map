@@ -1604,14 +1604,14 @@ window.addEventListener('load',()=>{
 // AUTH
 // 
 const ADMIN_HASH='aa79d7924973e0853db66feed8d577e38e3eb2c82280cce28efb5755e40040fa';
-const PWD_HASH='ab44413b8a57966b6b9120ca848bfd622657e214ddf224828fb2f7182b7fb3b7';
+const PWD_HASH='53b4b24b9f083cbabf5710907c6524f1005d19212d25a3799f8f3f284b727b79';
 async function sha256(s){const b=new TextEncoder().encode(s);const h=await crypto.subtle.digest('SHA-256',b);return Array.from(new Uint8Array(h)).map(x=>x.toString(16).padStart(2,'0')).join('')}
 async function doLogin(){
   const v=(document.getElementById('pwd-input').value||'').trim();
   if(!v)return;
   const h=await sha256(v);
-  // Password restored explicitly: artelia2026
-  if(v==='artelia2026' || h===PWD_HASH){
+  // Password restored explicitly: MVE2026
+  if(v==='MVE2026' || h===PWD_HASH){
     sessionStorage.setItem('artelia_auth','1');
     sessionStorage.setItem('artelia_app_token', v);
     sessionStorage.setItem('artelia_admin','1');
@@ -2680,11 +2680,11 @@ async function aiAuthHeaders(){
     var token = sess ? sess.access_token : null;
     if (token) headers['Authorization'] = 'Bearer ' + token;
     else {
-      var appToken = sessionStorage.getItem('artelia_app_token') || localStorage.getItem('artelia_app_token') || (localStorage.getItem('bd_admin_ok')==='1'?'artelia2026':'');
+      var appToken = sessionStorage.getItem('artelia_app_token') || localStorage.getItem('artelia_app_token') || (localStorage.getItem('bd_admin_ok')==='1'?'MVE2026':'');
       if (appToken) headers['X-App-Token'] = appToken;
     }
   }catch(_){
-    var fallbackToken = sessionStorage.getItem('artelia_app_token') || localStorage.getItem('artelia_app_token') || (localStorage.getItem('bd_admin_ok')==='1'?'artelia2026':'');
+    var fallbackToken = sessionStorage.getItem('artelia_app_token') || localStorage.getItem('artelia_app_token') || (localStorage.getItem('bd_admin_ok')==='1'?'MVE2026':'');
     if (fallbackToken) headers['X-App-Token'] = fallbackToken;
   }
   return headers;
@@ -5529,7 +5529,7 @@ function priorityColorClass(priority){
     var ls = document.getElementById('ls');
     var app = document.getElementById('app');
     var value = input ? (input.value || '').trim() : '';
-    var ok = value === 'artelia2026';
+    var ok = value === 'MVE2026';
     if(!ok){
       if(err) err.style.display='block';
       if(input) { input.value=''; input.focus(); }
@@ -5976,7 +5976,7 @@ async function loadProjectsFromSupabase(){try{if(typeof sb==='undefined'||!sb)re
     var ls = document.getElementById('ls');
     var app = document.getElementById('app');
     var value = input ? (input.value || '').trim() : '';
-    var ok = value === 'artelia2026';
+    var ok = value === 'MVE2026';
     if(!ok && typeof sha256 === 'function'){
       try{ ok = (await sha256(value)) === PWD_HASH; }catch(e){}
     }
@@ -7767,6 +7767,48 @@ console.info('[PATCH v70 COMPLETE] Settings lock, Brief Intelligence, AI Fix, Pi
 })();
 </script>
 
+<script>
+
+/* PATCH v127 - active MVE logo scale and UI harmony */
+(function(){
+  if(window.__mveUiHarmony && window.__mveUiHarmony.version==='v127') return;
+  var css = [
+    '.mve-logo-shell{display:inline-flex!important;align-items:center!important;justify-content:center!important;flex:0 0 58px!important;width:58px!important;min-width:58px!important;max-width:58px!important;height:34px!important;min-height:34px!important;max-height:34px!important;overflow:hidden!important;background:rgba(255,255,255,.96)!important;border:1px solid rgba(255,255,255,.22)!important;border-radius:7px!important;padding:4px 6px!important;box-shadow:0 1px 5px rgba(0,0,0,.16)!important;line-height:0!important}',
+    '.mve-logo-shell img{display:block!important;width:auto!important;height:auto!important;max-width:48px!important;max-height:25px!important;object-fit:contain!important;margin:0!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important;position:static!important;transform:none!important}',
+    '.hdr-l{min-width:0!important;gap:10px!important}',
+    '.hdr-l .mve-logo-shell+div{min-width:0!important}',
+    '.hdr-brand{font-size:13px!important;font-weight:800!important;letter-spacing:0!important;white-space:nowrap!important;line-height:1.05!important}',
+    '.hdr-sub{font-size:9.5px!important;letter-spacing:.04em!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;max-width:245px!important}',
+    '.lc{border-radius:18px!important;box-shadow:0 20px 60px rgba(15,31,58,.18)!important}',
+    '.lc-logo-img{height:auto!important;min-height:0!important;margin-bottom:16px!important;overflow:visible!important}',
+    '.lc-logo-file,.lc-logo-img img{width:150px!important;max-width:150px!important;height:auto!important;max-height:84px!important;object-fit:contain!important;background:#fff!important;border:1px solid #E2E8F0!important;border-radius:12px!important;padding:8px 12px!important;box-shadow:0 12px 28px rgba(15,31,58,.14)!important}',
+    '.lc-project-title{font-size:21px!important;line-height:1.15!important;letter-spacing:0!important}',
+    '@media(max-width:768px){.mve-logo-shell{flex-basis:50px!important;width:50px!important;min-width:50px!important;max-width:50px!important;height:30px!important;min-height:30px!important;max-height:30px!important}.mve-logo-shell img{max-width:42px!important;max-height:22px!important}.hdr-sub{max-width:155px!important}.lc{width:min(92vw,380px)!important;padding:34px 28px 30px!important}.lc-logo-file,.lc-logo-img img{width:132px!important;max-width:132px!important;max-height:72px!important}}'
+  ].join('\n');
+  function inject(){
+    var old=document.getElementById('mve-ui-harmony-v127') || document.getElementById('mve-ui-harmony-v126');
+    if(old) old.remove();
+    var s=document.createElement('style');
+    s.id='mve-ui-harmony-v127';
+    s.textContent=css;
+    (document.head||document.documentElement).appendChild(s);
+  }
+  function apply(){
+    inject();
+    document.querySelectorAll('.mve-logo-shell img,.lc-logo-img img,.lc-logo-file').forEach(function(img){
+      img.alt='MVE';
+      img.removeAttribute('width');
+      img.removeAttribute('height');
+    });
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', apply);
+  else apply();
+  window.addEventListener('load', function(){ setTimeout(apply,250); setTimeout(apply,1200); });
+  window.__mveUiHarmony={version:'v127',apply:apply};
+})();
+
+</script>
+
 </body>
 
 </html>
@@ -8355,48 +8397,7 @@ window.exportPingsPDF=function(){
       +'<h1>Projets cibles - MVE</h1>'
       +'<div class="sub">'+new Date().toLocaleDateString('fr-FR')+' - '+rows.length+' projets</div>'
       +'<table><tr><th>Titre</th><th>Secteur</th><th>Ville</th><th>Bailleur</th><th>Statut</th><th>Priorite</th><th>Score</th></tr>'
-      +body+'</table><script>
-
-/* PATCH v126 - MVE logo scale and UI harmony */
-(function(){
-  if(window.__mveUiHarmony && window.__mveUiHarmony.version==='v126') return;
-  var css = [
-    '.mve-logo-shell{display:inline-flex!important;align-items:center!important;justify-content:center!important;flex:0 0 58px!important;width:58px!important;min-width:58px!important;max-width:58px!important;height:34px!important;min-height:34px!important;max-height:34px!important;overflow:hidden!important;background:rgba(255,255,255,.96)!important;border:1px solid rgba(255,255,255,.22)!important;border-radius:7px!important;padding:4px 6px!important;box-shadow:0 1px 5px rgba(0,0,0,.16)!important;line-height:0!important}',
-    '.mve-logo-shell img{display:block!important;width:auto!important;height:auto!important;max-width:48px!important;max-height:25px!important;object-fit:contain!important;margin:0!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important;position:static!important;transform:none!important}',
-    '.hdr-l{min-width:0!important;gap:10px!important}',
-    '.hdr-l .mve-logo-shell+div{min-width:0!important}',
-    '.hdr-brand{font-size:13px!important;font-weight:800!important;letter-spacing:.01em!important;white-space:nowrap!important;line-height:1.05!important}',
-    '.hdr-sub{font-size:9.5px!important;letter-spacing:.045em!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;max-width:245px!important}',
-    '.lc{border-radius:18px!important;box-shadow:0 20px 60px rgba(15,31,58,.18)!important}',
-    '.lc-logo-img{height:auto!important;min-height:0!important;margin-bottom:16px!important;overflow:visible!important}',
-    '.lc-logo-file,.lc-logo-img img{width:150px!important;max-width:150px!important;height:auto!important;max-height:84px!important;object-fit:contain!important;background:#fff!important;border:1px solid #E2E8F0!important;border-radius:12px!important;padding:8px 12px!important;box-shadow:0 12px 28px rgba(15,31,58,.14)!important}',
-    '.lc-project-title{font-size:21px!important;line-height:1.15!important;letter-spacing:0!important}',
-    '@media(max-width:768px){.mve-logo-shell{flex-basis:50px!important;width:50px!important;min-width:50px!important;max-width:50px!important;height:30px!important;min-height:30px!important;max-height:30px!important}.mve-logo-shell img{max-width:42px!important;max-height:22px!important}.hdr-sub{max-width:155px!important}.lc{width:min(92vw,380px)!important;padding:34px 28px 30px!important}.lc-logo-file,.lc-logo-img img{width:132px!important;max-width:132px!important;max-height:72px!important}}'
-  ].join('\n');
-  function inject(){
-    var old=document.getElementById('mve-ui-harmony-v126');
-    if(old) old.remove();
-    var s=document.createElement('style');
-    s.id='mve-ui-harmony-v126';
-    s.textContent=css;
-    (document.head||document.documentElement).appendChild(s);
-  }
-  function apply(){
-    inject();
-    document.querySelectorAll('.mve-logo-shell img,.lc-logo-img img,.lc-logo-file').forEach(function(img){
-      img.alt='MVE';
-      img.removeAttribute('width');
-      img.removeAttribute('height');
-    });
-  }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', apply);
-  else apply();
-  window.addEventListener('load', function(){ setTimeout(apply,250); setTimeout(apply,1200); });
-  window.__mveUiHarmony={version:'v126',apply:apply};
-})();
-
-</script>
-</body></html>';
+      +body+'</table></body></html>';
     var w=window.open('','_blank');
     if(!w){alert('Autorisez les pop-ups pour generer le PDF.');return;}
     w.document.write(html);
