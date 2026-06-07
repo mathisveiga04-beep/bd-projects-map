@@ -139,6 +139,7 @@ def scraper_run(
     db.add(run)
     db.commit()
     saved = 0
+    skipped = 0
     opportunities = []
     if payload.source in (None, "all", "worldbank"):
         opportunities.extend(scrape_world_bank_cambodia())
@@ -150,7 +151,7 @@ def scraper_run(
     if not payload.dry_run:
         for item in opportunities:
             ai = analyze_with_gemini(item.title, item.text, item.source_url)
-            project = models.Project(
+            project = schemas.ProjectCreate(
                 title=item.title,
                 description=item.text,
                 country=ai.get("country") or item.country or "Cambodia",
@@ -174,9 +175,13 @@ def scraper_run(
                 contributor="scraper+gemini",
             )
             try:
-                db.add(project)
-                db.commit()
-                saved += 1
+                before_count = db.query(models.Project).count()
+                crud.create_project(db, project)
+                after_count = db.query(models.Project).count()
+                if after_count > before_count:
+                    saved += 1
+                else:
+                    skipped += 1
             except Exception:
                 db.rollback()
 
@@ -184,9 +189,9 @@ def scraper_run(
     run.items_found = len(opportunities)
     run.items_saved = saved
     run.finished_at = datetime.utcnow()
-    run.message = "OK"
+    run.message = f"OK - skipped {skipped}"
     db.commit()
-    return {"ok": True, "items_found": len(opportunities), "items_saved": saved}
+    return {"ok": True, "items_found": len(opportunities), "items_saved": saved, "items_skipped": skipped}
 
 
 # ── Admin config ──────────────────────────────────────────────────────────────
