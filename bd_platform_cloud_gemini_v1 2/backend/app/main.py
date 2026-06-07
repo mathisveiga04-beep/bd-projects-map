@@ -1,9 +1,8 @@
 from __future__ import annotations
 from datetime import datetime
-import asyncio
 import os
 import requests
-from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from .database import Base, engine, get_db
@@ -19,91 +18,45 @@ Base.metadata.create_all(bind=engine)
 
 SCRAPER_API_KEY = os.getenv("SCRAPER_API_KEY", "").strip()
 APP_SECRET = os.getenv("APP_SECRET", "").strip()
-SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
-SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip() or SUPABASE_KEY
-SCRAPER_AUTORUN = os.getenv("SCRAPER_AUTORUN", "1").strip().lower() not in ("0", "false", "no")
-try:
-    SCRAPER_INTERVAL_SECONDS = max(900, int(os.getenv("SCRAPER_INTERVAL_SECONDS", "14400").strip() or "14400"))
-except ValueError:
-    SCRAPER_INTERVAL_SECONDS = 14400
-PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "https://bd-projects-map-akh.onrender.com").rstrip("/")
+APP_LOGIN_TOKEN = os.getenv("APP_LOGIN_TOKEN", "MVE2026").strip()
+ALLOWED_ORIGINS = [
+    "https://bd-projects-map.vercel.app",
+    "http://localhost:8765",
+    "http://127.0.0.1:8765",
+]
 
 app = FastAPI(title="BD Intelligence Platform API", version="1.0-cloud-gemini-production-ready")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://bd-projects-map.vercel.app","http://localhost:8765","http://127.0.0.1:8765"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Supabase REST helpers
 
-def _sb_headers() -> dict:
-    return {
-        "apikey": SUPABASE_SERVICE_ROLE_KEY,
-        "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
-        "Content-Type": "application/json",
-    }
-
-def supabase_url_exists(source_url: str) -> bool:
-    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY or not source_url:
-        return False
-    try:
-        r = requests.get(
-            f"{SUPABASE_URL}/rest/v1/projects",
-            headers=_sb_headers(),
-            params={"source_url": f"eq.{source_url}", "select": "id", "limit": "1"},
-            timeout=8,
-        )
-        return r.status_code == 200 and len(r.json()) > 0
-    except Exception:
-        return False
-
-def insert_to_supabase(data: dict) -> bool:
-    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
-        return False
-    try:
-        headers = _sb_headers()
-        headers["Prefer"] = "return=minimal"
-        r = requests.post(
-            f"{SUPABASE_URL}/rest/v1/projects",
-            json=data,
-            headers=headers,
-            timeout=10,
-        )
-        return r.status_code in (200, 201)
-    except Exception:
-        return False
-
-def insert_tender_to_supabase(data: dict) -> bool:
-    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
-        return False
-    try:
-        headers = _sb_headers()
-        headers["Prefer"] = "return=minimal"
-        r = requests.post(
-            f"{SUPABASE_URL}/rest/v1/tenders",
-            json=data, headers=headers, timeout=10,
-        )
-        return r.status_code in (200, 201)
-    except Exception:
-        return False
+@app.get("/health")
+def health():
+    return {"status": "ok", "database": "connected", "version": "v1-cloud-gemini-production-ready"}
 
 
-# Auth helpers
+@app.get("/projects", response_model=list[schemas.ProjectOut])
+def get_projects(db: Session = Depends(get_db)):
+    return crud.list_projects(db)
+
 
 def verify_app_or_jwt(authorization: str | None = Header(default=None), x_app_token: str | None = Header(default=None)) -> dict:
-    if APP_SECRET and x_app_token == APP_SECRET:
+    if (APP_SECRET and x_app_token == APP_SECRET) or (APP_LOGIN_TOKEN and x_app_token == APP_LOGIN_TOKEN):
         return {"sub": "app-token", "email": "app-token", "app_metadata": {"role": "admin"}}
     return verify_supabase_jwt(authorization)
+
 
 def require_admin_token(token: dict) -> dict:
     if get_user_role(token) != "admin":
         raise HTTPException(403, "Admin access required")
     return token
+
 
 def ensure_project_access(project: models.Project | None, token: dict) -> None:
     if not project:
@@ -114,110 +67,6 @@ def ensure_project_access(project: models.Project | None, token: dict) -> None:
         return
     raise HTTPException(403, "Project owner or admin access required")
 
-# Routes
-
-@app.get("/health")
-def health():
-    return {"status": "ok", "database": "connected", "version": "v1-cloud-gemini-production-ready"}
-
-@app.get("/keep-alive")
-def keep_alive():
-    # Lightweight endpoint to prevent Render cold start (called by frontend every 10min)
-    return {"status": "alive", "ts": datetime.utcnow().isoformat()}
-
-
-async def automated_scraper_loop():
-    if not SCRAPER_AUTORUN or not APP_SECRET:
-        return
-    while True:
-        await asyncio.sleep(SCRAPER_INTERVAL_SECONDS)
-        try:
-            response = await asyncio.to_thread(
-                requests.post,
-                f"{PUBLIC_BASE_URL}/scraper/run",
-                json={"source": "all", "dry_run": False},
-                headers={"X-App-Token": APP_SECRET},
-                timeout=180,
-            )
-            print(f"[auto-scraper] status={response.status_code} body={response.text[:200]}")
-        except Exception as exc:
-            print(f"[auto-scraper] error={exc}")
-
-
-@app.on_event("startup")
-async def start_automated_scraper():
-    if SCRAPER_AUTORUN and APP_SECRET:
-        asyncio.create_task(automated_scraper_loop())
-
-
-@app.patch("/buildings/{building_id}")
-def patch_building(building_id: str, payload: dict, token: dict = Depends(verify_app_or_jwt)):
-    # Proxy update to Supabase buildings table (owner or admin enforced via RLS)
-    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
-        raise HTTPException(500, "Supabase not configured")
-    is_admin = get_user_role(token) == "admin"
-    uid = get_user_id(token)
-    headers = _sb_headers()
-    headers["Prefer"] = "return=representation"
-    # Verify ownership unless admin
-    if not is_admin:
-        chk = requests.get(
-            f"{SUPABASE_URL}/rest/v1/buildings",
-            headers=_sb_headers(),
-            params={"id": f"eq.{building_id}", "select": "owner_id", "limit": "1"},
-            timeout=8,
-        )
-        rows = chk.json() if chk.status_code == 200 else []
-        if not rows:
-            raise HTTPException(404, "Building not found")
-        if rows[0].get("owner_id") and rows[0].get("owner_id") != uid:
-            raise HTTPException(403, "Building owner or admin access required")
-    allowed = {k: v for k, v in payload.items() if k in ("name", "type", "note", "zone", "status", "description", "latitude", "longitude")}
-    r = requests.patch(
-        f"{SUPABASE_URL}/rest/v1/buildings",
-        headers=headers,
-        params={"id": f"eq.{building_id}"},
-        json=allowed,
-        timeout=10,
-    )
-    if r.status_code not in (200, 201, 204):
-        raise HTTPException(r.status_code, f"Supabase error: {r.text[:200]}")
-    return {"status": "updated", "id": building_id}
-
-
-@app.delete("/buildings/{building_id}")
-def delete_building(building_id: str, token: dict = Depends(verify_app_or_jwt)):
-    # Proxy delete to Supabase buildings table (owner or admin enforced)
-    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
-        raise HTTPException(500, "Supabase not configured")
-    is_admin = get_user_role(token) == "admin"
-    uid = get_user_id(token)
-    if not is_admin:
-        chk = requests.get(
-            f"{SUPABASE_URL}/rest/v1/buildings",
-            headers=_sb_headers(),
-            params={"id": f"eq.{building_id}", "select": "owner_id", "limit": "1"},
-            timeout=8,
-        )
-        rows = chk.json() if chk.status_code == 200 else []
-        if not rows:
-            raise HTTPException(404, "Building not found")
-        if rows[0].get("owner_id") and rows[0].get("owner_id") != uid:
-            raise HTTPException(403, "Building owner or admin access required")
-    r = requests.delete(
-        f"{SUPABASE_URL}/rest/v1/buildings",
-        headers=_sb_headers(),
-        params={"id": f"eq.{building_id}"},
-        timeout=10,
-    )
-    if r.status_code not in (200, 204):
-        raise HTTPException(r.status_code, f"Supabase error: {r.text[:200]}")
-    return {"status": "deleted", "id": building_id}
-
-
-@app.get("/projects", response_model=list[schemas.ProjectOut])
-def get_projects(db: Session = Depends(get_db), token: dict = Depends(verify_app_or_jwt)):
-    return crud.list_projects(db)
 
 @app.post("/projects", response_model=schemas.ProjectOut)
 def post_project(payload: schemas.ProjectCreate, db: Session = Depends(get_db), token: dict = Depends(verify_app_or_jwt)):
@@ -228,6 +77,7 @@ def post_project(payload: schemas.ProjectCreate, db: Session = Depends(get_db), 
     payload.is_localized = bool(payload.latitude is not None and payload.longitude is not None)
     return crud.create_project(db, payload)
 
+
 @app.patch("/projects/{project_id}", response_model=schemas.ProjectOut)
 def patch_project(project_id: int, payload: schemas.ProjectUpdate, db: Session = Depends(get_db), token: dict = Depends(verify_app_or_jwt)):
     ensure_project_access(db.get(models.Project, project_id), token)
@@ -236,6 +86,7 @@ def patch_project(project_id: int, payload: schemas.ProjectUpdate, db: Session =
         raise HTTPException(404, "Project not found")
     return obj
 
+
 @app.delete("/projects/{project_id}")
 def remove_project(project_id: int, db: Session = Depends(get_db), token: dict = Depends(verify_app_or_jwt)):
     require_admin_token(token)
@@ -243,28 +94,35 @@ def remove_project(project_id: int, db: Session = Depends(get_db), token: dict =
         raise HTTPException(404, "Project not found")
     return {"ok": True}
 
+
 @app.get("/tenders", response_model=list[schemas.TenderOut])
-def get_tenders(db: Session = Depends(get_db), token: dict = Depends(verify_app_or_jwt)):
+def get_tenders(db: Session = Depends(get_db)):
     return crud.list_tenders(db)
+
 
 @app.post("/tenders", response_model=schemas.TenderOut)
 def post_tender(payload: schemas.TenderCreate, db: Session = Depends(get_db), token: dict = Depends(verify_app_or_jwt)):
     return crud.create_tender(db, payload)
 
+
 def verify_ai_access(authorization: str | None = Header(default=None), x_app_token: str | None = Header(default=None)) -> dict:
     return verify_app_or_jwt(authorization, x_app_token)
+
 
 @app.post("/ai/analyze")
 def ai_analyze(payload: schemas.AnalyzeRequest, token: dict = Depends(verify_ai_access)):
     return analyze_with_gemini(payload.title, payload.text, payload.source_url)
 
+
 @app.post("/ai/generate")
 def ai_generate(payload: schemas.GenerateRequest, token: dict = Depends(verify_ai_access)):
     return generate_with_gemini(payload.prompt, payload.max_tokens, payload.mode)
 
+
 @app.get("/scraper/sources")
-def scraper_sources(token: dict = Depends(verify_app_or_jwt)):
+def scraper_sources():
     return {"sources": active_sources()}
+
 
 @app.post("/scraper/run")
 def scraper_run(
@@ -277,15 +135,11 @@ def scraper_run(
     has_scraper_key = SCRAPER_API_KEY and x_api_key == SCRAPER_API_KEY
     if not has_scraper_key:
         require_admin_token(verify_app_or_jwt(authorization, x_app_token))
-
     run = models.ScraperRun(source=payload.source or "all", status="started")
     db.add(run)
     db.commit()
-
     saved = 0
-    skipped = 0
     opportunities = []
-
     if payload.source in (None, "all", "worldbank"):
         opportunities.extend(scrape_world_bank_cambodia())
     if payload.source in (None, "all", "rss"):
@@ -295,118 +149,51 @@ def scraper_run(
 
     if not payload.dry_run:
         for item in opportunities:
-            if item.source_url and supabase_url_exists(item.source_url):
-                skipped += 1
-                continue
-
             ai = analyze_with_gemini(item.title, item.text, item.source_url)
-
-            project_data = {
-                "title": item.title,
-                "description": item.text,
-                "country": ai.get("country") or item.country or "Cambodia",
-                "city": ai.get("city") or "",
-                "is_localized": False,
-                "sector": ai.get("sector") or "",
-                "project_type": ai.get("project_type") or "Opportunity",
-                "status": "identified",
-                "priority": ai.get("priority") or "medium",
-                "source": item.source,
-                "source_url": item.source_url,
-                "funder": ai.get("funder") or item.funder,
-                "estimated_budget": ai.get("estimated_budget") or "unknown",
-                "deadline": ai.get("deadline") or "",
-                "reliability": ai.get("confidence") or "medium",
-                "confidence": ai.get("confidence") or "medium",
-                "opportunity_size": ai.get("opportunity_size") or "unknown",
-                "scope_summary": ai.get("scope_summary") or "",
-                "ai_summary": ai.get("summary") or "",
-                "ai_recommendation": ai.get("recommendation") or "watch",
-                "contributor": "scraper+gemini",
-            }
-
-            if insert_to_supabase(project_data):
+            project = models.Project(
+                title=item.title,
+                description=item.text,
+                country=ai.get("country") or item.country or "Cambodia",
+                city=ai.get("city") or "",
+                is_localized=False,
+                sector=ai.get("sector") or "",
+                project_type=ai.get("project_type") or "Opportunity",
+                status="identified",
+                priority=ai.get("priority") or "medium",
+                source=item.source,
+                source_url=item.source_url,
+                funder=ai.get("funder") or item.funder,
+                estimated_budget=ai.get("estimated_budget") or "unknown",
+                deadline=ai.get("deadline") or "",
+                reliability=ai.get("confidence") or "medium",
+                confidence=ai.get("confidence") or "medium",
+                opportunity_size=ai.get("opportunity_size") or "unknown",
+                scope_summary=ai.get("scope_summary") or "",
+                ai_summary=ai.get("summary") or "",
+                ai_recommendation=ai.get("recommendation") or "watch",
+                contributor="scraper+gemini",
+            )
+            try:
+                db.add(project)
+                db.commit()
                 saved += 1
-            else:
-                try:
-                    project = models.Project(**project_data)
-                    db.add(project)
-                    db.commit()
-                    saved += 1
-                except Exception:
-                    db.rollback()
-
-            # --- Router aussi vers la table tenders si appel d'offres ---
-            joined = f"{item.title} {item.text}".lower()
-            is_tender = any(k in joined for k in (
-                "eoi", "reoi", "rfp", "rfq", "expression of interest",
-                "request for proposal", "tender", "procurement",
-                "invitation to bid", "appel d'offres", "deadline",
-            )) or ("tender" in (ai.get("project_type", "") or "").lower())
-            if is_tender:
-                tender_data = {
-                    "title": item.title,
-                    "country": ai.get("country") or item.country or "Cambodia",
-                    "sector": ai.get("sector") or "",
-                    "funder": ai.get("funder") or item.funder or "",
-                    "stage": ai.get("project_type") or "EOI",
-                    "fit": ai.get("confidence") or "medium",
-                    "estimated_budget": ai.get("estimated_budget") or "unknown",
-                    "deadline": ai.get("deadline") or "",
-                    "source_url": item.source_url,
-                    "summary": ai.get("scope_summary") or item.text[:500],
-                    "ai_summary": ai.get("summary") or "",
-                    "ai_recommendation": ai.get("recommendation") or "watch",
-                }
-                if not insert_tender_to_supabase(tender_data):
-                    try:
-                        db.add(models.Tender(**tender_data))
-                        db.commit()
-                    except Exception:
-                        db.rollback()
+            except Exception:
+                db.rollback()
 
     run.status = "finished"
     run.items_found = len(opportunities)
     run.items_saved = saved
     run.finished_at = datetime.utcnow()
-    run.message = f"OK -- {skipped} duplicates skipped"
+    run.message = "OK"
     db.commit()
+    return {"ok": True, "items_found": len(opportunities), "items_saved": saved}
 
-    return {
-        "ok": True,
-        "items_found": len(opportunities),
-        "items_saved": saved,
-        "items_skipped": skipped,
-    }
 
-@app.post("/import/csv")
-async def import_csv(
-    request: Request,
-    token: dict = Depends(verify_supabase_jwt),
-):
-    require_admin_token(token)
-    import csv, io
-    body = await request.body()
-    if not body:
-        raise HTTPException(400, "No CSV data provided")
-    try:
-        content = body.decode("utf-8-sig")
-        reader = csv.DictReader(io.StringIO(content))
-        inserted = 0
-        errors = []
-        for i, row in enumerate(reader):
-            data = {k.strip(): v.strip() for k, v in row.items() if k and v.strip()}
-            if not data.get("title"):
-                continue
-            if insert_to_supabase(data):
-                inserted += 1
-            else:
-                errors.append(i)
-        return {"ok": True, "inserted": inserted, "errors": len(errors)}
-    except Exception as e:
-        raise HTTPException(400, f"CSV parse error: {str(e)}")
+# ── Admin config ──────────────────────────────────────────────────────────────
+SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip() or SUPABASE_KEY
 
-# Admin
 
 @app.get("/admin/users")
 def admin_list_users(token: dict = Depends(verify_app_or_jwt)):
@@ -417,8 +204,9 @@ def admin_list_users(token: dict = Depends(verify_app_or_jwt)):
     headers = {"apikey": SUPABASE_SERVICE_ROLE_KEY, "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}"}
     r = requests.get(url, headers=headers, params={"page": 1, "per_page": 100})
     if not r.ok:
-        raise HTTPException(r.status_code, "Supabase admin API refused credentials.")
+        raise HTTPException(r.status_code, "Supabase admin API refused credentials. Set SUPABASE_SERVICE_ROLE_KEY on Render.")
     return r.json()
+
 
 @app.post("/admin/users/{user_id}/set-role")
 def admin_set_role(user_id: str, role: str, token: dict = Depends(verify_app_or_jwt)):
@@ -429,72 +217,5 @@ def admin_set_role(user_id: str, role: str, token: dict = Depends(verify_app_or_
     headers = {"apikey": SUPABASE_SERVICE_ROLE_KEY, "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}", "Content-Type": "application/json"}
     r = requests.put(url, headers=headers, json={"app_metadata": {"role": role}})
     if not r.ok:
-        raise HTTPException(r.status_code, "Supabase admin API refused credentials.")
+        raise HTTPException(r.status_code, "Supabase admin API refused credentials. Set SUPABASE_SERVICE_ROLE_KEY on Render.")
     return {"success": True, "user_id": user_id, "role": role}
-
-
-@app.post("/admin/invite")
-async def admin_invite_user(request: Request, token: dict = Depends(verify_app_or_jwt)):
-    """Invite a user by email via Supabase Auth admin API."""
-    require_admin_token(token)
-    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
-        raise HTTPException(503, "Supabase admin config missing")
-    body = await request.json()
-    email = (body.get("email") or "").strip().lower()
-    if not email or "@" not in email:
-        raise HTTPException(400, "Valid email required")
-    headers = {
-        "apikey": SUPABASE_SERVICE_ROLE_KEY,
-        "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
-        "Content-Type": "application/json",
-    }
-    r = requests.post(
-        f"{SUPABASE_URL}/auth/v1/admin/invites",
-        headers=headers,
-        json={"email": email},
-        timeout=15,
-    )
-    if not r.ok:
-        raise HTTPException(r.status_code, f"Supabase invite failed: {r.text[:200]}")
-    return {"ok": True, "email": email, "message": f"Invitation envoyée à {email}"}
-
-
-@app.post("/notify/weekly")
-def notify_weekly(db: Session = Depends(get_db), token: dict = Depends(verify_app_or_jwt)):
-    """Envoie un email hebdomadaire des nouveaux projets via Resend."""
-    require_admin_token(token)
-    resend_key = os.getenv("RESEND_API_KEY", "").strip()
-    to_addr = os.getenv("NOTIFY_TO", "").strip()
-    from_addr = os.getenv("NOTIFY_FROM", "onboarding@resend.dev").strip()
-    if not resend_key or not to_addr:
-        raise HTTPException(503, "RESEND_API_KEY ou NOTIFY_TO manquant")
-    from datetime import timedelta
-    since = datetime.utcnow() - timedelta(days=7)
-    recent = [p for p in crud.list_projects(db) if p.created_at and p.created_at >= since]
-    if not recent:
-        return {"ok": True, "sent": False, "message": "Aucun nouveau projet cette semaine"}
-    rows = "".join(
-        f"<tr><td style='border:1px solid #ddd;padding:6px'>{p.title}</td>"
-        f"<td style='border:1px solid #ddd;padding:6px'>{p.sector or ''}</td>"
-        f"<td style='border:1px solid #ddd;padding:6px'>{p.city or ''}</td>"
-        f"<td style='border:1px solid #ddd;padding:6px'>{p.funder or ''}</td></tr>"
-        for p in recent
-    )
-    html = (
-        f"<h2 style='color:#0B1F3A'>Veille BD Artelia Cambodia &mdash; {len(recent)} nouveaux projets</h2>"
-        f"<table style='border-collapse:collapse;font-family:Arial;font-size:13px'>"
-        f"<tr><th style='background:#174EA6;color:#fff;padding:6px'>Titre</th>"
-        f"<th style='background:#174EA6;color:#fff;padding:6px'>Secteur</th>"
-        f"<th style='background:#174EA6;color:#fff;padding:6px'>Ville</th>"
-        f"<th style='background:#174EA6;color:#fff;padding:6px'>Bailleur</th></tr>{rows}</table>"
-    )
-    r = requests.post(
-        "https://api.resend.com/emails",
-        headers={"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"},
-        json={"from": from_addr, "to": [to_addr],
-              "subject": f"[Artelia BD] {len(recent)} nouveaux projets cette semaine", "html": html},
-        timeout=15,
-    )
-    if not r.ok:
-        raise HTTPException(r.status_code, f"Resend error: {r.text[:200]}")
-    return {"ok": True, "sent": True, "count": len(recent)}
