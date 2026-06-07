@@ -9737,3 +9737,40 @@ window.exportPingsPDF=function(){
   setTimeout(refresh,120);setTimeout(refresh,900);setTimeout(refresh,2200);
 })();
 </script>
+
+<script>
+/* PATCH v136 - actionable alert statuses in notification panel */
+(function(){
+  var KEY='mve_alert_status_v1';
+  var labels={nouveau:'Nouveau',vu:'Vu',qualifier:'À qualifier',ignore:'Ignoré',converti:'Converti'};
+  function load(){try{return JSON.parse(localStorage.getItem(KEY)||'{}')||{};}catch(e){return {};}}
+  function save(m){try{localStorage.setItem(KEY,JSON.stringify(m));}catch(e){}}
+  function slug(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,120);}
+  function setStatus(id,status){var m=load();m[id]=status;save(m);setTimeout(enhance,20);}
+  function itemTitle(item){var t=(item.innerText||'').split('\n').map(function(x){return x.trim();}).filter(Boolean)[0]||'alerte';return t;}
+  function enhance(){
+    var panel=document.getElementById('notif-panel');if(!panel)return;
+    var map=load();
+    [].slice.call(panel.querySelectorAll('.notif-item.lead-alert')).forEach(function(item){
+      var id=slug(item.getAttribute('data-alert-id')||itemTitle(item));
+      item.setAttribute('data-alert-id',id);
+      var current=map[id]||'nouveau';
+      item.setAttribute('data-alert-status',current);
+      var old=item.querySelector('.mve-alert-actions');if(old)old.remove();
+      var box=document.createElement('div');box.className='mve-alert-actions';
+      box.innerHTML='<span class="mve-alert-status mve-alert-status-'+current+'">'+labels[current]+'</span>'+['vu','qualifier','ignore','converti'].map(function(st){return '<button type="button" class="mve-alert-action '+(current===st?'on':'')+'" data-st="'+st+'">'+labels[st]+'</button>';}).join('');
+      box.querySelectorAll('button').forEach(function(btn){btn.addEventListener('click',function(ev){ev.stopPropagation();setStatus(id,btn.getAttribute('data-st'));});});
+      item.appendChild(box);
+    });
+  }
+  function injectStyle(){
+    if(document.getElementById('mve-alert-status-style'))return;
+    var st=document.createElement('style');st.id='mve-alert-status-style';st.textContent='.mve-alert-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:9px;padding-top:8px;border-top:1px solid rgba(15,23,42,.08)}.mve-alert-status{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;border-radius:999px;padding:4px 8px;background:#eef2ff;color:#1e3a8a}.mve-alert-status-vu{background:#e0f2fe;color:#075985}.mve-alert-status-qualifier{background:#fef3c7;color:#92400e}.mve-alert-status-ignore{background:#f1f5f9;color:#475569}.mve-alert-status-converti{background:#dcfce7;color:#166534}.mve-alert-action{border:1px solid rgba(15,23,42,.14);background:#fff;border-radius:999px;padding:4px 8px;font-size:10px;font-weight:700;color:#334155;cursor:pointer}.mve-alert-action:hover,.mve-alert-action.on{background:#0b1f3a;color:white;border-color:#0b1f3a}';document.head.appendChild(st);
+  }
+  var oldToggle=window.toggleNotif;if(typeof oldToggle==='function'&&!oldToggle.__mve136){window.toggleNotif=function(){var r=oldToggle.apply(this,arguments);setTimeout(function(){injectStyle();enhance();},80);return r;};window.toggleNotif.__mve136=true;}
+  var oldUpdate=window.updateLeadNotifs;if(typeof oldUpdate==='function'&&!oldUpdate.__mve136){window.updateLeadNotifs=function(){var r=oldUpdate.apply(this,arguments);setTimeout(function(){injectStyle();enhance();},80);return r;};window.updateLeadNotifs.__mve136=true;}
+  window.mveEnhanceAlerts=function(){injectStyle();enhance();};
+  document.addEventListener('DOMContentLoaded',function(){injectStyle();setTimeout(enhance,300);});
+  setTimeout(function(){injectStyle();enhance();},800);
+})();
+</script>
