@@ -7851,6 +7851,54 @@ console.info('[PATCH v70 COMPLETE] Settings lock, Brief Intelligence, AI Fix, Pi
 
 </script>
 
+<script>
+
+/* PATCH v129 - force frameless removebg MVE logo */
+(function(){
+  if(window.__mveLogoFrameless && window.__mveLogoFrameless.version==='v129') return;
+  var css = [
+    'html body .mve-logo-shell,html body .hdr-l .mve-logo-shell{display:inline-flex!important;align-items:center!important;justify-content:center!important;flex:0 0 54px!important;width:54px!important;min-width:54px!important;max-width:54px!important;height:32px!important;min-height:32px!important;max-height:32px!important;overflow:visible!important;background:transparent!important;border:0!important;border-radius:0!important;padding:0!important;box-shadow:none!important;line-height:0!important}',
+    'html body .mve-logo-shell img,html body .hdr-l .mve-logo-shell img{display:block!important;width:auto!important;height:auto!important;max-width:54px!important;max-height:30px!important;object-fit:contain!important;margin:0!important;padding:0!important;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;position:static!important;transform:none!important}',
+    'html body .lc-logo-img{height:auto!important;min-height:0!important;margin-bottom:18px!important;overflow:visible!important;background:transparent!important;border:0!important;box-shadow:none!important}',
+    'html body .lc-logo-file,html body .lc-logo-img img{display:block!important;width:152px!important;max-width:152px!important;height:auto!important;max-height:88px!important;object-fit:contain!important;margin:0 auto!important;padding:0!important;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important}',
+    '@media(max-width:768px){html body .mve-logo-shell{flex-basis:48px!important;width:48px!important;min-width:48px!important;max-width:48px!important;height:29px!important;min-height:29px!important;max-height:29px!important}html body .mve-logo-shell img{max-width:48px!important;max-height:27px!important}html body .lc-logo-file,html body .lc-logo-img img{width:136px!important;max-width:136px!important;max-height:78px!important}}'
+  ].join('\n');
+  function inject(){
+    var old=document.getElementById('mve-logo-frameless-v129');
+    if(old) old.remove();
+    var s=document.createElement('style');
+    s.id='mve-logo-frameless-v129';
+    s.textContent=css;
+    (document.head||document.documentElement).appendChild(s);
+  }
+  function forceStyle(el){
+    if(!el) return;
+    el.style.setProperty('background','transparent','important');
+    el.style.setProperty('border','0','important');
+    el.style.setProperty('box-shadow','none','important');
+    el.style.setProperty('padding','0','important');
+    el.style.setProperty('border-radius','0','important');
+  }
+  function apply(){
+    inject();
+    document.querySelectorAll('.mve-logo-shell,.lc-logo-img,.mve-logo-shell img,.lc-logo-img img,.lc-logo-file').forEach(function(el){
+      forceStyle(el);
+      if(el.tagName==='IMG'){
+        el.alt='MVE';
+        el.removeAttribute('width');
+        el.removeAttribute('height');
+      }
+    });
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', apply);
+  else apply();
+  [80,250,700,1400,2600,4200].forEach(function(ms){setTimeout(apply,ms);});
+  window.addEventListener('load', function(){ [80,600,1600,3200].forEach(function(ms){setTimeout(apply,ms);}); });
+  window.__mveLogoFrameless={version:'v129',apply:apply,source:'logo_mve-removebg-preview.png'};
+})();
+
+</script>
+
 </body>
 
 </html>
