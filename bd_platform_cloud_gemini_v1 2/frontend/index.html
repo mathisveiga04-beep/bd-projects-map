@@ -9561,28 +9561,28 @@ window.exportPingsPDF=function(){
 
 
 
-</script>
 
-<script>
-/* PATCH v131 - safe neutral language polish after MVE logo rollout */
+
+/* PATCH v132 - late MVE language polish inside final script */
 (function(){
   function getLang(){try{return (window.currentLang&&window.currentLang())||window.currentLanguage||window.LANG||localStorage.getItem('artelia_lang')||'fr';}catch(e){return 'fr';}}
   function isEn(){return String(getLang()).toLowerCase()==='en';}
   function setText(el, fr, en){ if(el) el.textContent = isEn() ? en : fr; }
   function key(s){return String(s||'').replace(/\s+/g,' ').trim();}
-  function replaceTextNode(node){
+  function patchNode(node){
     var raw=node.nodeValue, k=key(raw); if(!k) return;
     var map=isEn()?{
       'COLOR = BD PRIORITY':'COLOR = PROJECT PRIORITY',
       'COULEUR = PRIORITÉ BD':'COLOR = PROJECT PRIORITY',
       'COULEUR = PRIORITÉ PROJET':'COLOR = PROJECT PRIORITY',
+      'Color = BD priority':'Color = project priority',
       'Couleur = Priorité BD':'Color = project priority',
       'Couleur = priorité projet':'Color = project priority',
       '📡 ACTIVITÉ RÉCENTE':'📡 RECENT ACTIVITY',
       'ACTIVITÉ RÉCENTE':'RECENT ACTIVITY',
       'Tableau de bord':'Dashboard',
-      'Appels d’offres':'Tenders',
-      'Appels d'offres':'Tenders'
+      'Appels d offres':'Tenders',
+      'Appels d’offres':'Tenders'
     }:{
       'COLOR = BD PRIORITY':'COULEUR = PRIORITÉ PROJET',
       'COLOR = PROJECT PRIORITY':'COULEUR = PRIORITÉ PROJET',
@@ -9601,19 +9601,20 @@ window.exportPingsPDF=function(){
       var p=n.parentElement; if(!p||/^(SCRIPT|STYLE|TEXTAREA|CODE|PRE|OPTION)$/i.test(p.tagName)) return NodeFilter.FILTER_REJECT;
       return n.nodeValue&&n.nodeValue.trim()?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
     }});
-    var n, arr=[]; while((n=tw.nextNode())) arr.push(n); arr.forEach(replaceTextNode);
+    var n, arr=[]; while((n=tw.nextNode())) arr.push(n); arr.forEach(patchNode);
   }
   function polish(){
     var tabs=[['Carte','Map'],['Tableau de bord','Dashboard'],['Suivi','Pipeline'],['Appels d’offres','Tenders'],['Veille','Watch'],['Actions','Actions']];
     document.querySelectorAll('.sbt').forEach(function(el,i){ if(tabs[i]) setText(el,tabs[i][0],tabs[i][1]); });
     walk(document.body);
-    document.querySelectorAll('.lang-btn').forEach(function(b){var lang=(b.dataset.lang||b.textContent||'').trim().toLowerCase();b.classList.toggle('active',lang===(isEn()?'en':'fr'));});
   }
   var oldSetLang=window.setLang;
-  window.setLang=function(lang,btn){var r;try{r=oldSetLang?oldSetLang.apply(this,arguments):undefined;}catch(e){console.warn('v131 setLang wrapper:',e);}setTimeout(polish,40);setTimeout(polish,160);setTimeout(polish,500);return r===undefined?false:r;};
-  ['sbTab','sbTab2','filterList','renderDashboard','renderSuivi','renderTenders','renderWatchList','renderBDActions','updateStats','updateNotifs'].forEach(function(name){var fn=window[name];if(typeof fn==='function'&&!fn.__mveV131){var wrapped=function(){var r=fn.apply(this,arguments);setTimeout(polish,40);return r;};wrapped.__mveV131=true;window[name]=wrapped;}});
+  window.setLang=function(lang,btn){var r;try{r=oldSetLang?oldSetLang.apply(this,arguments):undefined;}catch(e){console.warn('v132 setLang wrapper:',e);}setTimeout(polish,40);setTimeout(polish,160);setTimeout(polish,500);setTimeout(polish,1200);return r===undefined?false:r;};
+  ['sbTab','sbTab2','filterList','renderDashboard','renderSuivi','renderTenders','renderWatchList','renderBDActions','updateStats','updateNotifs'].forEach(function(name){var fn=window[name];if(typeof fn==='function'&&!fn.__mveV132){var wrapped=function(){var r=fn.apply(this,arguments);setTimeout(polish,40);setTimeout(polish,300);return r;};wrapped.__mveV132=true;window[name]=wrapped;}});
   window.mvePolishLanguage=polish;
-  document.addEventListener('DOMContentLoaded',function(){setTimeout(polish,120);setTimeout(polish,700);});
-  window.addEventListener('load',function(){setTimeout(polish,120);setTimeout(polish,700);});
+  function start(){polish();var count=0;var timer=setInterval(function(){polish();if(++count>20)clearInterval(timer);},250);try{new MutationObserver(function(){setTimeout(polish,30);}).observe(document.body,{childList:true,subtree:true,characterData:true});}catch(e){}}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+  window.addEventListener('load',function(){setTimeout(polish,120);setTimeout(polish,700);setTimeout(polish,1500);});
 })();
+
 </script>
