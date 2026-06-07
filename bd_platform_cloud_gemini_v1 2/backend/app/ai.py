@@ -56,7 +56,7 @@ def _fallback(title: str, text: str) -> Dict[str, Any]:
         "opportunity_size": "unknown",
         "priority": priority,
         "recommendation": "watch",
-        "scope_summary": "Review source and qualify Artelia scope.",
+        "scope_summary": "Review source and qualify MVE scope.",
         "score": score,
         "message_fr": message_fr,
     }
