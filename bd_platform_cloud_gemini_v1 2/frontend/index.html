@@ -9616,10 +9616,10 @@ window.exportPingsPDF=function(){
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
   window.addEventListener('load',function(){setTimeout(polish,120);setTimeout(polish,700);setTimeout(polish,1500);});
 })();
+</script>
 
-
-
-/* PATCH v133 - keep map markers curated/localized while backend alerts stay in watch */
+<script>
+/* PATCH v134 - independent map marker guard for curated/localized projects */
 (function(){
   function normText(s){return String(s||'').toLowerCase().replace(/\s+/g,' ').trim();}
   function projectKey(b){return normText((b&&((b.name||b.title)||''))+'|'+(b&&((b.zone||b.address||b.city)||'')));}
@@ -9687,7 +9687,7 @@ window.exportPingsPDF=function(){
     try{Object.values(markers||{}).forEach(function(m){if(m && !mp.hasLayer(m))m.addTo(mp);});}catch(e){}
   };
   function refresh(){try{window.renderMarkers();}catch(e){console.warn('v133 renderMarkers skipped',e);}try{if(typeof updateStats==='function')updateStats();}catch(e){}try{if(typeof filterList==='function')filterList();}catch(e){}}
-  window.mveMapMarkerGuard={version:'v133', refresh:refresh, markerProjects:curatedMarkerProjects};
+  window.mveMapMarkerGuard={version:'v134', refresh:refresh, markerProjects:curatedMarkerProjects};
   setTimeout(refresh,80);setTimeout(refresh,600);setTimeout(refresh,1600);
 })();
 </script>
