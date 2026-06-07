@@ -9691,3 +9691,49 @@ window.exportPingsPDF=function(){
   setTimeout(refresh,80);setTimeout(refresh,600);setTimeout(refresh,1600);
 })();
 </script>
+
+<script>
+/* PATCH v135 - restore curated project statuses after backend sync */
+(function(){
+  function normText(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();}
+  function keyOf(b){return normText((b&&((b.name||b.title)||''))+'|'+(b&&((b.zone||b.address||b.city)||'')));}
+  function activePipelineCount(){
+    var active=['prospect','contacted','meeting','proposal','qualified','won'];
+    return (Array.isArray(window.buildings)?window.buildings:[]).filter(function(b){return active.indexOf(String(b.status||''))>=0;}).length;
+  }
+  function restoreCuratedMeta(){
+    var presets=[];
+    try{presets=(typeof PRESETS!=='undefined'&&Array.isArray(PRESETS))?PRESETS:[];}catch(e){presets=[];}
+    var list=Array.isArray(window.buildings)?window.buildings:[];
+    if(!presets.length||!list.length)return 0;
+    var byKey={};
+    presets.forEach(function(p){var k=keyOf(p);if(k)byKey[k]=p;});
+    var changed=0;
+    list.forEach(function(b){
+      var p=byKey[keyOf(b)];
+      if(!p)return;
+      ['status','pot','type','year','floors','budget','services','notes','scopes','activity','aiCache','liCache','isChantier'].forEach(function(k){
+        if(p[k]!==undefined && JSON.stringify(b[k])!==JSON.stringify(p[k])){b[k]=Array.isArray(p[k])?p[k].slice():p[k];changed++;}
+      });
+      if(!b.name && p.name){b.name=p.name;changed++;}
+      if(!b.zone && p.zone){b.zone=p.zone;changed++;}
+    });
+    return changed;
+  }
+  var oldUpdate=window.updateStats;
+  window.updateStats=function(){
+    restoreCuratedMeta();
+    var r;if(typeof oldUpdate==='function'){try{r=oldUpdate.apply(this,arguments);}catch(e){console.warn('base updateStats skipped',e);}}
+    var el=document.getElementById('hs-pipe');if(el)el.textContent=activePipelineCount();
+    return r;
+  };
+  function refresh(){
+    restoreCuratedMeta();
+    try{window.updateStats();}catch(e){}
+    try{if(typeof filterList==='function')filterList();}catch(e){}
+    try{if(window.mveMapMarkerGuard&&typeof window.mveMapMarkerGuard.refresh==='function')window.mveMapMarkerGuard.refresh();}catch(e){}
+  }
+  window.mveCuratedStatusGuard={version:'v135',restore:restoreCuratedMeta,count:activePipelineCount,refresh:refresh};
+  setTimeout(refresh,120);setTimeout(refresh,900);setTimeout(refresh,2200);
+})();
+</script>
