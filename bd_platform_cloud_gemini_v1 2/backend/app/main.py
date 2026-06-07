@@ -140,6 +140,7 @@ def scraper_run(
     db.commit()
     saved = 0
     skipped = 0
+    failed = 0
     opportunities = []
     if payload.source in (None, "all", "worldbank"):
         opportunities.extend(scrape_world_bank_cambodia())
@@ -150,31 +151,31 @@ def scraper_run(
 
     if not payload.dry_run:
         for item in opportunities:
-            ai = analyze_with_gemini(item.title, item.text, item.source_url)
-            project = schemas.ProjectCreate(
-                title=item.title,
-                description=item.text,
-                country=ai.get("country") or item.country or "Cambodia",
-                city=ai.get("city") or "",
-                is_localized=False,
-                sector=ai.get("sector") or "",
-                project_type=ai.get("project_type") or "Opportunity",
-                status="identified",
-                priority=ai.get("priority") or "medium",
-                source=item.source,
-                source_url=item.source_url,
-                funder=ai.get("funder") or item.funder,
-                estimated_budget=ai.get("estimated_budget") or "unknown",
-                deadline=ai.get("deadline") or "",
-                reliability=ai.get("confidence") or "medium",
-                confidence=ai.get("confidence") or "medium",
-                opportunity_size=ai.get("opportunity_size") or "unknown",
-                scope_summary=ai.get("scope_summary") or "",
-                ai_summary=ai.get("summary") or "",
-                ai_recommendation=ai.get("recommendation") or "watch",
-                contributor="scraper+gemini",
-            )
             try:
+                ai = analyze_with_gemini(item.title, item.text, item.source_url)
+                project = schemas.ProjectCreate(
+                    title=item.title,
+                    description=item.text,
+                    country=str(ai.get("country") or item.country or "Cambodia"),
+                    city=str(ai.get("city") or ""),
+                    is_localized=False,
+                    sector=str(ai.get("sector") or ""),
+                    project_type=str(ai.get("project_type") or "Opportunity"),
+                    status="identified",
+                    priority=str(ai.get("priority") or "medium").lower(),
+                    source=item.source,
+                    source_url=item.source_url,
+                    funder=str(ai.get("funder") or item.funder or ""),
+                    estimated_budget=str(ai.get("estimated_budget") or "unknown"),
+                    deadline=str(ai.get("deadline") or ""),
+                    reliability=str(ai.get("confidence") or "medium"),
+                    confidence=str(ai.get("confidence") or "medium"),
+                    opportunity_size=str(ai.get("opportunity_size") or "unknown"),
+                    scope_summary=str(ai.get("scope_summary") or ""),
+                    ai_summary=str(ai.get("summary") or ""),
+                    ai_recommendation=str(ai.get("recommendation") or "watch"),
+                    contributor="scraper+gemini",
+                )
                 before_count = db.query(models.Project).count()
                 crud.create_project(db, project)
                 after_count = db.query(models.Project).count()
@@ -182,16 +183,23 @@ def scraper_run(
                     saved += 1
                 else:
                     skipped += 1
-            except Exception:
+            except Exception as exc:
                 db.rollback()
+                failed += 1
 
     run.status = "finished"
     run.items_found = len(opportunities)
     run.items_saved = saved
     run.finished_at = datetime.utcnow()
-    run.message = f"OK - skipped {skipped}"
+    run.message = f"OK - skipped {skipped}, failed {failed}"
     db.commit()
-    return {"ok": True, "items_found": len(opportunities), "items_saved": saved, "items_skipped": skipped}
+    return {
+        "ok": True,
+        "items_found": len(opportunities),
+        "items_saved": saved,
+        "items_skipped": skipped,
+        "items_failed": failed,
+    }
 
 
 # ── Admin config ──────────────────────────────────────────────────────────────
