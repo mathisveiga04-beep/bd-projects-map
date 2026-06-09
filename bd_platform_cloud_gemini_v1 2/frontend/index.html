@@ -13863,7 +13863,7 @@ if(window.renderDPBody){
     if(document.getElementById("bd-sector-dd")) return true;
     var dd=document.createElement("div");
     dd.id="bd-sector-dd";
-    dd.style.cssText="position:absolute;top:12px;right:64px;z-index:1001;font-family:inherit;";
+    dd.style.cssText="position:absolute;top:12px;right:168px;z-index:1001;font-family:inherit;";
     var btn=document.createElement("button");
     btn.id="bd-sector-toggle";btn.type="button";
     btn.style.cssText="background:#0b1f3a;color:#fff;border:none;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.25);display:flex;align-items:center;gap:6px;";
@@ -13888,5 +13888,47 @@ if(window.renderDPBody){
   }
   if(init())return;
   var n=0;var iv=setInterval(function(){n++;if(init()||n>40)clearInterval(iv);},250);
+})();
+</script>
+
+<script>
+/* AI CACHE v1 - cache + deduplication des appels IA (/ai/analyze, /ai/generate) */
+(function(){
+  if(window.__aiCacheV1) return;
+  window.__aiCacheV1=true;
+  if(typeof window.fetch!=="function") return;
+  var cache=new Map();
+  var inflight=new Map();
+  var TTL=5*60*1000;
+  var orig=window.fetch.bind(window);
+  function isAI(u){return u.indexOf("/ai/analyze")>-1||u.indexOf("/ai/generate")>-1;}
+  window.fetch=function(input,init){
+    try{
+      var url=(typeof input==="string")?input:((input&&input.url)||"");
+      var method=((init&&init.method)||(input&&input.method)||"GET").toUpperCase();
+      if(isAI(url)&&method==="POST"&&init&&typeof init.body==="string"){
+        var key=url+"|"+init.body;
+        var now=Date.now();
+        var hit=cache.get(key);
+        if(hit&&(now-hit.t)<TTL){
+          return Promise.resolve(new Response(hit.body,{status:200,headers:{"Content-Type":hit.ct||"application/json"}}));
+        }
+        if(inflight.has(key)){
+          return inflight.get(key).then(function(r){return r.clone();});
+        }
+        var p=orig(input,init).then(function(res){
+          inflight.delete(key);
+          if(res&&res.ok){
+            var ct=res.headers.get("Content-Type")||"application/json";
+            res.clone().text().then(function(t){cache.set(key,{t:now,body:t,ct:ct});}).catch(function(){});
+          }
+          return res;
+        }).catch(function(e){inflight.delete(key);throw e;});
+        inflight.set(key,p);
+        return p.then(function(r){return r.clone();});
+      }
+    }catch(e){}
+    return orig(input,init);
+  };
 })();
 </script>
