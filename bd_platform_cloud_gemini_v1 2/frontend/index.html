@@ -6841,7 +6841,7 @@ async function loadProjectsFromSupabase(){try{if(typeof sb==='undefined'||!sb)re
     var el = document.getElementById('hs-pipe');
     if(!el) return;
     var active = ['prospect','contacted','meeting','proposal','qualified','won'];
-    var n = (window.buildings||[]).filter(function(b){ return active.indexOf(b.status) >= 0; }).length;
+    var n = (window.buildings||[]).filter(function(b){ return b&&active.indexOf(b.status) >= 0; }).length;
     el.textContent = n;
   }
 
@@ -10369,7 +10369,7 @@ window.exportPingsPDF=function(){
   function keyOf(b){return normText((b&&((b.name||b.title)||''))+'|'+(b&&((b.zone||b.address||b.city)||'')));}
   function activePipelineCount(){
     var active=['prospect','contacted','meeting','proposal','qualified','won'];
-    return (Array.isArray(window.buildings)?window.buildings:[]).filter(function(b){return active.indexOf(String(b.status||''))>=0;}).length;
+    return (Array.isArray(window.buildings)?window.buildings:[]).filter(function(b){return b&&active.indexOf(String(b.status||''))>=0;}).length;
   }
   function restoreCuratedMeta(){
     var presets=[];
