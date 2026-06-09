@@ -13850,3 +13850,43 @@ if(window.renderDPBody){
   ensureEmailField();
 })();
 </script>
+
+<script>
+/* SECTOR DROPDOWN v1 - barre de filtres secteurs deplacee en menu deroulant a droite */
+(function(){
+  if(window.__sectorDropdownV1) return;
+  window.__sectorDropdownV1=true;
+  function init(){
+    var qf=document.getElementById("bd-quick-filters");
+    var wrap=document.getElementById("map-wrap");
+    if(!qf||!wrap) return false;
+    if(document.getElementById("bd-sector-dd")) return true;
+    var dd=document.createElement("div");
+    dd.id="bd-sector-dd";
+    dd.style.cssText="position:absolute;top:12px;right:64px;z-index:1001;font-family:inherit;";
+    var btn=document.createElement("button");
+    btn.id="bd-sector-toggle";btn.type="button";
+    btn.style.cssText="background:#0b1f3a;color:#fff;border:none;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.25);display:flex;align-items:center;gap:6px;";
+    btn.innerHTML="<span style=\"opacity:.7\">Secteur :</span> <span id=\"bd-sector-label\">Tous</span> <span id=\"bd-sector-caret\" style=\"transition:transform .15s\">\u25be</span>";
+    var panel=document.createElement("div");
+    panel.id="bd-sector-panel";
+    panel.style.cssText="display:none;position:absolute;top:100%;right:0;margin-top:6px;background:#0b1f3a;border-radius:8px;padding:8px;box-shadow:0 4px 16px rgba(0,0,0,.35);min-width:160px;";
+    dd.appendChild(btn);dd.appendChild(panel);wrap.appendChild(dd);
+    panel.appendChild(qf);
+    qf.style.position="";qf.style.left="";qf.style.top="";qf.style.transform="";qf.style.boxShadow="";qf.style.background="";qf.style.padding="";
+    qf.style.display="flex";qf.style.flexDirection="column";qf.style.gap="4px";
+    var qfb=qf.querySelectorAll(".qf-btn");
+    for(var i=0;i<qfb.length;i++){qfb[i].style.width="100%";qfb[i].style.textAlign="left";}
+    var caret=document.getElementById("bd-sector-caret");
+    var label=document.getElementById("bd-sector-label");
+    function openP(){panel.style.display="block";caret.style.transform="rotate(180deg)";}
+    function closeP(){panel.style.display="none";caret.style.transform="";}
+    btn.addEventListener("click",function(e){e.stopPropagation();if(panel.style.display==="none"){openP();}else{closeP();}});
+    document.addEventListener("click",function(e){if(!dd.contains(e.target))closeP();});
+    qf.addEventListener("click",function(e){var t=e.target;if(t&&t.classList&&t.classList.contains("qf-btn")){label.textContent=(t.textContent||"").trim();closeP();}});
+    return true;
+  }
+  if(init())return;
+  var n=0;var iv=setInterval(function(){n++;if(init()||n>40)clearInterval(iv);},250);
+})();
+</script>
