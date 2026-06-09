@@ -2816,6 +2816,7 @@ function priorityColorClass(priority){
 // DASHBOARD
 // 
 function renderDashboard(){
+  buildings=(buildings||[]).filter(Boolean);
   const el=document.getElementById('dboard');if(!el)return;
   const statsBuildings=buildings;
   const total=buildings.length;
