@@ -13858,7 +13858,7 @@ if(window.renderDPBody){
   window.__sectorDropdownV1=true;
   function init(){
     var qf=document.getElementById("bd-quick-filters");
-    var wrap=document.getElementById("map-wrap");
+    var wrap=document.querySelector("#map-wrap")||document.querySelector(".map-wrap")||(qf&&qf.parentElement);
     if(!qf||!wrap) return false;
     if(document.getElementById("bd-sector-dd")) return true;
     var dd=document.createElement("div");
