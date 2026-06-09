@@ -49,9 +49,6 @@ def get_user_id(payload: dict) -> str:
 
 def get_user_role(payload: dict) -> str:
     """Extract user role from app_metadata."""
-    return (
-        payload.get("app_metadata", {}).get("role")
-        or payload.get("user_metadata", {}).get("role")
-        or payload.get("role")
-        or "user"
-    )
+    # SECURITE: lire le role uniquement depuis app_metadata (controle serveur),
+    # jamais depuis user_metadata qui est modifiable par l'utilisateur (escalade de privileges).
+    return payload.get("app_metadata", {}).get("role") or "user"
