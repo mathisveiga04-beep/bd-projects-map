@@ -13932,3 +13932,16 @@ if(window.renderDPBody){
   };
 })();
 </script>
+
+<!-- SECTOR DROPDOWN STYLE v2 - menu deroulant secteurs propre -->
+<style id="bd-sector-style-v2">
+#bd-sector-toggle{background:#0b1f3a !important;color:#fff !important;border:1px solid rgba(255,255,255,.10) !important;border-radius:10px !important;padding:8px 14px !important;font-size:13px !important;font-weight:500 !important;box-shadow:0 2px 10px rgba(0,0,0,.18) !important;display:flex !important;align-items:center;gap:8px;transition:background .15s,box-shadow .15s;cursor:pointer;}
+#bd-sector-toggle:hover{background:#13284a !important;box-shadow:0 4px 14px rgba(0,0,0,.25) !important;}
+#bd-sector-toggle #bd-sector-label{font-weight:600;}
+#bd-sector-caret{font-size:11px;opacity:.85;transition:transform .18s;}
+#bd-sector-panel{background:#fff !important;border:1px solid #e6e8ec !important;border-radius:12px !important;padding:6px !important;margin-top:8px !important;box-shadow:0 12px 32px rgba(15,23,42,.20) !important;min-width:192px !important;overflow:hidden !important;}
+#bd-sector-panel > #bd-quick-filters{position:static !important;left:auto !important;top:auto !important;right:auto !important;transform:none !important;background:transparent !important;box-shadow:none !important;border:none !important;border-radius:0 !important;outline:none !important;padding:0 !important;margin:0 !important;width:auto !important;display:flex !important;flex-direction:column !important;gap:2px !important;}
+#bd-sector-panel .qf-btn{display:block !important;width:100% !important;text-align:left !important;background:transparent !important;color:#374151 !important;border:none !important;border-radius:8px !important;padding:9px 12px !important;margin:0 !important;font-size:13px !important;font-weight:500 !important;cursor:pointer !important;box-shadow:none !important;outline:none !important;transition:background .12s,color .12s;}
+#bd-sector-panel .qf-btn:hover{background:#f3f4f6 !important;color:#0b1f3a !important;}
+#bd-sector-panel .qf-btn.qf-active{background:#eaf0fb !important;color:#0b1f3a !important;font-weight:600 !important;}
+</style>
