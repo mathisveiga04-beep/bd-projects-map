@@ -10081,7 +10081,7 @@ window.exportPingsPDF=function(){
     return L.join('\n');
   }
   function localLinkedIn(b){
-    if(!b) return 'Bonjour, je vous contacte au sujet d'une opportunite technique. J\'aimerais echanger avec vous au sujet de l\'efficacite energetique de votre batiment. (Message genere en mode local)';
+    if(!b) return 'Bonjour, je vous contacte au sujet d\'une opportunite technique. J\'aimerais echanger avec vous au sujet de l\'efficacite energetique de votre batiment. (Message genere en mode local)';
     var who = b.contact ? b.contact : 'au facility/property manager';
     return 'Bonjour '+who+',\n\nMVE accompagne les batiments comme '+(b.name||'le votre')+' ('+(b.type||'')+', '+(b.zone||'')+') sur l\'efficacite energetique et la renovation technique. J\'aimerais echanger 15 minutes pour vous presenter nos references locales.\n\nSeriez-vous disponible cette semaine ?\n\nBien a vous,\nL\'equipe Project Intelligence — MVE\n\n(Message genere en mode local)';
   }
