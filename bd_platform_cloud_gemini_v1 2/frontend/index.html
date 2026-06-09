@@ -13775,3 +13775,77 @@ if(window.renderDPBody){
 
 })();
 </script>
+
+<script>
+/* AUTH REPAIR v1 - login email+password Supabase + signup + reset, admin role-based */
+(function(){
+  if(window.__authRepairV1) return;
+  if(typeof window.doLogin==='function' && !window.__legacyDoLogin){ window.__legacyDoLogin = window.doLogin; }
+  window.__authRepairV1 = true;
+  var ADMIN_EMAILS = ['mathis.veiga@outlook.fr'];
+  function getClient(){ if(window._sbCapture && window._sbCapture.auth) return window._sbCapture; return null; }
+  function ensureEmailField(){
+    var form=document.getElementById('auth-login-form'); if(!form) return;
+    if(document.getElementById('email-input')) return;
+    var pwd=document.getElementById('pwd-input'); if(!pwd) return;
+    var inp=document.createElement('input');
+    inp.type='email'; inp.id='email-input'; inp.className=pwd.className;
+    inp.placeholder='Email'; inp.setAttribute('autocomplete','username');
+    inp.addEventListener('keydown', function(e){ if(e.key==='Enter') window.doLogin(); });
+    pwd.parentNode.insertBefore(inp, pwd);
+    if(pwd.placeholder) pwd.placeholder='Mot de passe';
+  }
+  function showErr(msg){ var e=document.getElementById('login-err'); if(e){ e.style.display='block'; if(msg) e.textContent=msg; } }
+  function enterApp(){
+    var ls=document.getElementById('ls'); var app=document.getElementById('app');
+    if(ls) ls.style.display='none'; if(app) app.style.display='flex';
+    try{ if(typeof initApp==='function') initApp(); }catch(e){}
+  }
+  async function applyRole(email){
+    var isAdm = ADMIN_EMAILS.indexOf((email||'').toLowerCase())>=0;
+    try{ if(typeof loadRole==='function'){ await loadRole(); if(window.currentRole==='admin') isAdm=true; } }catch(e){}
+    if(isAdm){ sessionStorage.setItem('artelia_admin','1'); localStorage.setItem('bd_admin_ok','1'); window.currentRole='admin'; }
+    else { sessionStorage.removeItem('artelia_admin'); localStorage.removeItem('bd_admin_ok'); window.currentRole=window.currentRole||'user'; }
+    try{ if(typeof refreshAdminStateSafe==='function') refreshAdminStateSafe(); }catch(e){}
+  }
+  window.doLogin = async function(){
+    var emailEl=document.getElementById('email-input');
+    var email=emailEl ? (emailEl.value||'').trim() : '';
+    var pwdEl=document.getElementById('pwd-input'); var pwd=pwdEl ? (pwdEl.value||'').trim() : '';
+    var errEl=document.getElementById('login-err'); if(errEl) errEl.style.display='none';
+    if(email){
+      var client=getClient(); if(!client){ showErr('Service indisponible, reessayez dans un instant.'); return; }
+      var r; try{ r=await client.auth.signInWithPassword({email:email,password:pwd}); }catch(e){ showErr('Erreur de connexion.'); return; }
+      if(r.error){ showErr('Email ou mot de passe incorrect.'); if(pwdEl) pwdEl.value=''; return; }
+      window.currentUser=r.data.user; sessionStorage.setItem('artelia_auth','1'); sessionStorage.setItem('artelia_email',email);
+      await applyRole(email); enterApp(); return;
+    }
+    if(typeof window.__legacyDoLogin==='function'){ window.__legacyDoLogin(); return; }
+    showErr('Veuillez saisir votre email.');
+  };
+  window.doSignup = async function(){
+    var email=(document.getElementById('signup-email').value||'').trim();
+    var pwd=document.getElementById('signup-pwd').value||'';
+    var msgEl=document.getElementById('signup-msg');
+    function m(t){ if(msgEl){ msgEl.style.display='block'; msgEl.textContent=t; } }
+    if(!email||!pwd){ m('Email et mot de passe requis.'); return; }
+    if(pwd.length<8){ m('Mot de passe : 8 caracteres minimum.'); return; }
+    var client=getClient(); if(!client){ m('Service indisponible.'); return; }
+    var r; try{ r=await client.auth.signUp({email:email,password:pwd}); }catch(e){ m('Erreur lors de la creation du compte.'); return; }
+    if(r.error){ m(r.error.message); return; }
+    m('Compte cree. Verifiez votre boite mail pour confirmer, puis connectez-vous.');
+  };
+  window.doResetPassword = async function(){
+    var email=(document.getElementById('reset-email').value||'').trim();
+    var msgEl=document.getElementById('reset-msg');
+    function m(t){ if(msgEl){ msgEl.style.display='block'; msgEl.textContent=t; } }
+    if(!email){ m('Veuillez saisir votre email.'); return; }
+    var client=getClient(); if(!client){ m('Service indisponible.'); return; }
+    var r; try{ r=await client.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+'?reset=true'}); }catch(e){ m('Erreur.'); return; }
+    if(r.error){ m(r.error.message); return; }
+    m('Si un compte existe pour cet email, un lien de reinitialisation a ete envoye.');
+  };
+  try{ var c=getClient(); if(c){ c.auth.getSession().then(function(rr){ if(rr&&rr.data&&rr.data.session&&rr.data.session.user){ var ls=document.getElementById('ls'); if(ls && ls.style.display!=='none'){ window.currentUser=rr.data.session.user; sessionStorage.setItem('artelia_auth','1'); applyRole(rr.data.session.user.email).then(enterApp); } } }); } }catch(e){}
+  ensureEmailField();
+})();
+</script>
