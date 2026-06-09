@@ -13821,7 +13821,7 @@ if(window.renderDPBody){
       window.currentUser=r.data.user; sessionStorage.setItem('artelia_auth','1'); sessionStorage.setItem('artelia_email',email);
       await applyRole(email); enterApp(); return;
     }
-    if(typeof window.__legacyDoLogin==='function'){ window.__legacyDoLogin(); return; }
+    /* fallback mot de passe maitre retire - email obligatoire */
     showErr('Veuillez saisir votre email.');
   };
   window.doSignup = async function(){
