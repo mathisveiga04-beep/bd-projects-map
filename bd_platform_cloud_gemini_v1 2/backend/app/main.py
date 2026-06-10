@@ -19,6 +19,23 @@ Base.metadata.create_all(bind=engine)
 SCRAPER_API_KEY = os.getenv("SCRAPER_API_KEY", "").strip()
 APP_SECRET = os.getenv("APP_SECRET", "").strip()
 APP_LOGIN_TOKEN = os.getenv("APP_LOGIN_TOKEN", "MVE2026").strip()
+
+# --- In-memory rate limiter for AI routes (no extra deps, fail-safe) ---
+import time as _time
+AI_RATE_LIMIT_PER_MIN = int(os.getenv("AI_RATE_LIMIT_PER_MIN", "20"))
+_AI_RATE_WINDOW = 60.0
+_ai_rate_hits: dict[str, list[float]] = {}
+
+def _enforce_ai_rate_limit(key: str) -> None:
+    if AI_RATE_LIMIT_PER_MIN <= 0:
+        return
+    now = _time.time()
+    cutoff = now - _AI_RATE_WINDOW
+    hits = [t for t in _ai_rate_hits.get(key, []) if t >= cutoff]
+    if len(hits) >= AI_RATE_LIMIT_PER_MIN:
+        raise HTTPException(429, "Trop de requetes IA. Patientez une minute.")
+    hits.append(now)
+    _ai_rate_hits[key] = hits
 ALLOWED_ORIGINS = [
     "https://bd-projects-map.vercel.app",
     "http://localhost:8765",
@@ -106,7 +123,9 @@ def post_tender(payload: schemas.TenderCreate, db: Session = Depends(get_db), to
 
 
 def verify_ai_access(authorization: str | None = Header(default=None), x_app_token: str | None = Header(default=None)) -> dict:
-    return verify_app_or_jwt(authorization, x_app_token)
+    token = verify_app_or_jwt(authorization, x_app_token)
+    _enforce_ai_rate_limit(str(token.get("sub") or "anon"))
+    return token
 
 
 @app.post("/ai/analyze")
