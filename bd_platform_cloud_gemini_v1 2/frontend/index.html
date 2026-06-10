@@ -14002,42 +14002,34 @@ if(window.renderDPBody){
 </script>
 
 <script>
-/* UI PUNCT NORMALIZE v1 - em-dashes + bullet separators -> "-" and "/" (fail-open, idempotent) */
+/* UI PUNCT NORMALIZE v2 - em-dashes + bullet separators -> "-" and "/" (robust sweeps + observer, fail-open) */
 (function(){
-  if(window.__uiPunctV1) return; window.__uiPunctV1=true;
+  if(window.__uiPunctV2) return; window.__uiPunctV2=true;
   try{
     var SKIP={SCRIPT:1,STYLE:1,NOSCRIPT:1,TEXTAREA:1,INPUT:1,SELECT:1,OPTION:1,CODE:1,PRE:1};
     var DASH=/[\u2014\u2013]/, BULLET=/[\u2022\u25CF\u25CB\u25E6\u00B7\u2023\u25AA\u25AB\u25C6\u25C7\u2666\u30FB\u2219]/;
-    function transform(s){
-      var o=s;
+    function transform(s){var o=s;
       s=s.replace(/\s*[\u2014\u2013]\s*/g,function(m){return /^\s|\s$/.test(m)?" - ":"-";});
       s=s.replace(/\s*[\u2022]\s*/g," / ");
       s=s.replace(/\s*[\u00B7\u2219\u30FB]\s*/g," - ");
       s=s.replace(/\s*[\u25CF\u25CB\u25E6\u2023\u25AA\u25AB\u25C6\u25C7\u2666]\s*/g,function(m){return /^\s/.test(m)?" - ":"- ";});
-      s=s.replace(/\s{2,}/g," ");
-      return s===o?null:s;
-    }
+      s=s.replace(/\s{2,}/g," ");return s===o?null:s;}
     function skip(node){var p=node.parentElement;while(p){if(SKIP[p.tagName])return true;p=p.parentElement;}return false;}
-    function processNode(tn){
-      if(!tn||!tn.nodeValue||(!DASH.test(tn.nodeValue)&&!BULLET.test(tn.nodeValue)))return;
-      if(skip(tn))return;
-      var nv=transform(tn.nodeValue); if(nv!=null)tn.nodeValue=nv;
-    }
-    function processTree(root){try{var w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,null);var n,b=[];while(n=w.nextNode())b.push(n);b.forEach(processNode);}catch(e){}}
-    function run(){try{processTree(document.body);}catch(e){}}
-    var scheduled=false,pending=[];
-    var obs=new MutationObserver(function(muts){
-      muts.forEach(function(m){
-        if(m.type==="characterData"){pending.push(m.target);}
-        else if(m.addedNodes){m.addedNodes.forEach(function(nd){if(nd.nodeType===3||nd.nodeType===1)pending.push(nd);});}
-      });
-      if(!scheduled){scheduled=true;requestAnimationFrame(function(){
-        scheduled=false;var items=pending;pending=[];
-        try{obs.disconnect();items.forEach(function(it){if(!it)return;if(it.nodeType===3)processNode(it);else if(it.nodeType===1)processTree(it);});}catch(e){}finally{startObs();}
-      });}
-    });
-    function startObs(){try{if(document.body)obs.observe(document.body,{childList:true,characterData:true,subtree:true});}catch(e){}}
-    if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",function(){run();startObs();});}else{run();startObs();}
+    function processNode(tn){if(!tn||!tn.nodeValue||(!DASH.test(tn.nodeValue)&&!BULLET.test(tn.nodeValue)))return;if(skip(tn))return;var nv=transform(tn.nodeValue);if(nv!=null)tn.nodeValue=nv;}
+    function sweep(root){try{var w=document.createTreeWalker(root||document.body,NodeFilter.SHOW_TEXT,null);var n;while(n=w.nextNode())processNode(n);}catch(e){}}
+    function go(){if(document.body)sweep(document.body);}
+    go();
+    document.addEventListener("DOMContentLoaded",go);
+    window.addEventListener("load",go);
+    var count=0,iv=setInterval(function(){go();if(++count>=25)clearInterval(iv);},600);
+    try{
+      var obs=new MutationObserver(function(muts){for(var i=0;i<muts.length;i++){var m=muts[i];
+        if(m.type==="characterData"){processNode(m.target);}
+        else if(m.addedNodes){for(var j=0;j<m.addedNodes.length;j++){var nd=m.addedNodes[j];if(nd.nodeType===3)processNode(nd);else if(nd.nodeType===1)sweep(nd);}}
+      }});
+      function obsStart(){try{if(document.body)obs.observe(document.body,{childList:true,characterData:true,subtree:true});}catch(e){}}
+      if(document.body)obsStart();else document.addEventListener("DOMContentLoaded",obsStart);
+    }catch(e){}
   }catch(e){}
 })();
 </script>
