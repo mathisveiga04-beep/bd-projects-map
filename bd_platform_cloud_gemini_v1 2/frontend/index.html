@@ -14033,3 +14033,31 @@ if(window.renderDPBody){
   }catch(e){}
 })();
 </script>
+
+<script>
+/* AUTH OVERLAY FIX v1 - hide login overlay #ls when a valid Supabase session exists; show it on sign-out (fail-open, idempotent) */
+(function(){
+  if(window.__authOverlayFix) return; window.__authOverlayFix=true;
+  try{
+    var TOKEN_KEY="sb-xyvsfkalaeatwmcobwrg-auth-token";
+    function hasValidSession(){
+      try{var raw=localStorage.getItem(TOKEN_KEY); if(!raw)return false;
+        var j=JSON.parse(raw); var s=j.currentSession||j; if(!s||!s.access_token)return false;
+        var now=Math.floor(Date.now()/1000); if(s.expires_at&&now>=s.expires_at)return false; return true;}catch(e){return false;}
+    }
+    function setOverlay(show){try{var ls=document.getElementById("ls"); if(!ls)return; ls.style.display=show?"flex":"none";}catch(e){}}
+    function sync(){try{if(hasValidSession())setOverlay(false);}catch(e){}}
+    sync();
+    document.addEventListener("DOMContentLoaded",sync);
+    window.addEventListener("load",sync);
+    var c2=0,iv=setInterval(function(){sync(); if(++c2>=25)clearInterval(iv);},400);
+    try{var sb=window._sbCapture;
+      if(sb&&sb.auth&&sb.auth.onAuthStateChange){
+        sb.auth.onAuthStateChange(function(event,session){try{
+          if(event==="SIGNED_OUT"){setOverlay(true);} else if(session||hasValidSession()){setOverlay(false);}
+        }catch(e){}});
+      }
+    }catch(e){}
+  }catch(e){}
+})();
+</script>
