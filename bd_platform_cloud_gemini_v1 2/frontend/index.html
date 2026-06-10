@@ -13945,3 +13945,58 @@ if(window.renderDPBody){
 #bd-sector-panel .qf-btn:hover{background:#f3f4f6 !important;color:#0b1f3a !important;}
 #bd-sector-panel .qf-btn.qf-active{background:#eaf0fb !important;color:#0b1f3a !important;font-weight:600 !important;}
 </style>
+
+<script>
+/* ===== AI PROMPT v1 — non-invasive prompt refinement + portfolio context (fail-open) ===== */
+(function(){
+  if(window.__aiPromptV1) return; window.__aiPromptV1 = true;
+  var MARK = "[[MVE-AI-GUIDE]]";
+  var AI_RE = /\/ai\/(analyze|generate)/;
+  var INSTR = "Tu es l'assistant Business Development de MVE/Artelia, specialiste ingenierie (HVAC, energie, structure, BMS, durabilite, solaire) sur les projets de construction au Cambodge. Reponds en francais, de maniere precise, factuelle et structuree: 1) une synthese courte (2-3 phrases), puis 2) les points cles essentiels, puis 3) les prochaines actions concretes et priorisees. Appuie-toi UNIQUEMENT sur les donnees fournies; si une information manque, dis-le explicitement plutot que d'inventer. Mets en avant les opportunites a fort potentiel et reste concis et operationnel.";
+
+  function actLabel(){ try{ var e=document.querySelector('.qf-btn.qf-active')||document.getElementById('bd-sector-label'); return e?(e.textContent||'').trim():''; }catch(_){ return ''; } }
+  function ctx(){
+    try{
+      var bs=Array.isArray(window.buildings)?window.buildings:[]; if(!bs.length) return '';
+      var byType={},byScope={},hi=0;
+      bs.forEach(function(p){ if(p&&p.type){byType[p.type]=(byType[p.type]||0)+1;} var sc=Array.isArray(p&&p.scopes)?p.scopes:[]; sc.forEach(function(s){byScope[s]=(byScope[s]||0)+1;}); if(p&&String(p.pot||'').toLowerCase()==='high') hi++; });
+      function top(o,n){ return Object.keys(o).sort(function(a,b){return o[b]-o[a];}).slice(0,n).map(function(k){return k+' ('+o[k]+')';}).join(', '); }
+      var fl=actLabel(), L=[];
+      L.push("Contexte du portefeuille (donnees reelles de l'application)"+(fl?(" — filtre secteur actif: "+fl):"")+":");
+      L.push("- Projets: "+bs.length+(hi?(" ; a fort potentiel: "+hi):""));
+      L.push("- Types: "+top(byType,6));
+      L.push("- Scopes techniques frequents: "+top(byScope,6));
+      return L.join("\n");
+    }catch(_){ return ''; }
+  }
+  function enhance(s){
+    if(typeof s!=='string'||!s) return s;
+    if(s.indexOf(MARK)>=0) return s;
+    var c=ctx(), parts=[MARK+" "+INSTR];
+    if(c) parts.push(c);
+    parts.push("[Demande de l'utilisateur]\n"+s);
+    return parts.join("\n\n");
+  }
+  function enhanceBody(body){
+    var o; try{ o=JSON.parse(body); }catch(_){ return null; }
+    if(!o||typeof o!=='object') return null;
+    var changed=false, keys=["prompt","message","text","query","question","input","instruction"];
+    for(var i=0;i<keys.length;i++){ if(typeof o[keys[i]]==='string'){ var n=enhance(o[keys[i]]); if(n!==o[keys[i]]){o[keys[i]]=n;changed=true;} break; } }
+    if(!changed && Array.isArray(o.messages)){ for(var j=o.messages.length-1;j>=0;j--){ var m=o.messages[j]; if(m&&m.role==='user'&&typeof m.content==='string'){ var n2=enhance(m.content); if(n2!==m.content){m.content=n2;changed=true;} break; } } }
+    if(!changed && Array.isArray(o.contents)){ try{ var last=o.contents[o.contents.length-1]; if(last&&Array.isArray(last.parts)){ for(var k=last.parts.length-1;k>=0;k--){ if(typeof last.parts[k].text==='string'){ var n3=enhance(last.parts[k].text); if(n3!==last.parts[k].text){last.parts[k].text=n3;changed=true;} break; } } } }catch(_){} }
+    if(!changed){ var bk=null,bl=0; Object.keys(o).forEach(function(kk){ if(typeof o[kk]==='string'&&o[kk].length>bl){bl=o[kk].length;bk=kk;} }); if(bk&&bl>20){ var n4=enhance(o[bk]); if(n4!==o[bk]){o[bk]=n4;changed=true;} } }
+    return changed?JSON.stringify(o):null;
+  }
+  var _f=window.fetch;
+  window.fetch=function(input,init){
+    try{
+      var url=(typeof input==='string')?input:(input&&input.url)||'';
+      if(init&&typeof init.body==='string'&&(init.method||'GET').toUpperCase()==='POST'&&AI_RE.test(url)){
+        var nb=enhanceBody(init.body);
+        if(nb){ init=Object.assign({},init,{body:nb}); }
+      }
+    }catch(_){ /* fail-open: never break the call */ }
+    return _f.call(this,input,init);
+  };
+})();
+</script>
