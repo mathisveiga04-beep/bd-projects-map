@@ -14000,3 +14000,44 @@ if(window.renderDPBody){
   };
 })();
 </script>
+
+<script>
+/* UI PUNCT NORMALIZE v1 - em-dashes + bullet separators -> "-" and "/" (fail-open, idempotent) */
+(function(){
+  if(window.__uiPunctV1) return; window.__uiPunctV1=true;
+  try{
+    var SKIP={SCRIPT:1,STYLE:1,NOSCRIPT:1,TEXTAREA:1,INPUT:1,SELECT:1,OPTION:1,CODE:1,PRE:1};
+    var DASH=/[\u2014\u2013]/, BULLET=/[\u2022\u25CF\u25CB\u25E6\u00B7\u2023\u25AA\u25AB\u25C6\u25C7\u2666\u30FB\u2219]/;
+    function transform(s){
+      var o=s;
+      s=s.replace(/\s*[\u2014\u2013]\s*/g,function(m){return /^\s|\s$/.test(m)?" - ":"-";});
+      s=s.replace(/\s*[\u2022]\s*/g," / ");
+      s=s.replace(/\s*[\u00B7\u2219\u30FB]\s*/g," - ");
+      s=s.replace(/\s*[\u25CF\u25CB\u25E6\u2023\u25AA\u25AB\u25C6\u25C7\u2666]\s*/g,function(m){return /^\s/.test(m)?" - ":"- ";});
+      s=s.replace(/\s{2,}/g," ");
+      return s===o?null:s;
+    }
+    function skip(node){var p=node.parentElement;while(p){if(SKIP[p.tagName])return true;p=p.parentElement;}return false;}
+    function processNode(tn){
+      if(!tn||!tn.nodeValue||(!DASH.test(tn.nodeValue)&&!BULLET.test(tn.nodeValue)))return;
+      if(skip(tn))return;
+      var nv=transform(tn.nodeValue); if(nv!=null)tn.nodeValue=nv;
+    }
+    function processTree(root){try{var w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,null);var n,b=[];while(n=w.nextNode())b.push(n);b.forEach(processNode);}catch(e){}}
+    function run(){try{processTree(document.body);}catch(e){}}
+    var scheduled=false,pending=[];
+    var obs=new MutationObserver(function(muts){
+      muts.forEach(function(m){
+        if(m.type==="characterData"){pending.push(m.target);}
+        else if(m.addedNodes){m.addedNodes.forEach(function(nd){if(nd.nodeType===3||nd.nodeType===1)pending.push(nd);});}
+      });
+      if(!scheduled){scheduled=true;requestAnimationFrame(function(){
+        scheduled=false;var items=pending;pending=[];
+        try{obs.disconnect();items.forEach(function(it){if(!it)return;if(it.nodeType===3)processNode(it);else if(it.nodeType===1)processTree(it);});}catch(e){}finally{startObs();}
+      });}
+    });
+    function startObs(){try{if(document.body)obs.observe(document.body,{childList:true,characterData:true,subtree:true});}catch(e){}}
+    if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",function(){run();startObs();});}else{run();startObs();}
+  }catch(e){}
+})();
+</script>
