@@ -14061,3 +14061,20 @@ if(window.renderDPBody){
   }catch(e){}
 })();
 </script>
+
+<script>
+/* MAP EXTRA CONTROLS REMOVE v1 - removes orphaned #map-extra-controls that overlaps the main toolbar (.map-btns-br). User chose to delete these 4 filter buttons. Fail-safe, self-terminating. */
+(function(){
+  if(window.__mapExtraCtrlRemoveV1) return; window.__mapExtraCtrlRemoveV1=true;
+  function kill(){try{var p=document.getElementById("map-extra-controls"); if(p){p.remove();}}catch(e){}}
+  try{
+    kill();
+    document.addEventListener("DOMContentLoaded",kill);
+    window.addEventListener("load",kill);
+    var mo=null; try{mo=new MutationObserver(function(){kill();});}catch(e){}
+    function startObs(){try{if(mo&&document.body)mo.observe(document.body,{childList:true,subtree:true});}catch(e){}}
+    if(document.body)startObs(); else document.addEventListener("DOMContentLoaded",startObs);
+    var c=0,iv=setInterval(function(){kill(); if(++c>=30){clearInterval(iv); try{if(mo)mo.disconnect();}catch(e){}}},400);
+  }catch(e){}
+})();
+</script>
