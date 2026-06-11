@@ -251,3 +251,5 @@ def admin_set_role(user_id: str, role: str, token: dict = Depends(verify_app_or_
     if not r.ok:
         raise HTTPException(r.status_code, "Supabase admin API refused credentials. Set SUPABASE_SERVICE_ROLE_KEY on Render.")
     return {"success": True, "user_id": user_id, "role": role}
+from .api import router as ao_router
+app.include_router(ao_router)
