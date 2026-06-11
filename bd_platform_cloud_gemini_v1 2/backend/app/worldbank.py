@@ -2,7 +2,7 @@
 Connecteur Banque Mondiale (source 'WB', bailleur, multi-pays).
 
 Projects API : https://search.worldbank.org/api/v3/projects (JSON)
-  -> projets finances par la WB, avec secteur, montant, statut, pays.
+-> projets finances par la WB, avec secteur, montant, statut, pays.
 
 NOTE : la fonction fetch() fait des appels reseau (a executer sur le backend
 Render qui a acces internet). Les fonctions parse_*() sont pures et testables
@@ -19,11 +19,16 @@ from .common import RawTender, ASEAN_ISO2
 SOURCE_CODE = "WB"
 PROJECTS_API = "https://search.worldbank.org/api/v3/projects"
 
-# WB country codes (ISO3) -> ISO2 pour les 11 pays ASEAN
+# WB country codes (ISO3) -> ISO2 pour les 11 pays ASEAN.
+# IMPORTANT : l'API World Bank attend des codes ISO2 dans countrycode_exact
+# (ex. "VN" -> 331 projets, "VNM" -> 0). On interroge donc avec la valeur ISO2.
 WB_ISO3_TO_ISO2 = {
     "BRN": "BN", "KHM": "KH", "IDN": "ID", "LAO": "LA", "MYS": "MY",
     "MMR": "MM", "PHL": "PH", "SGP": "SG", "THA": "TH", "VNM": "VN", "TLS": "TL",
 }
+
+# Ensemble des ISO2 ASEAN cibles (pour valider la valeur renvoyee par l'API).
+WB_ISO2 = set(WB_ISO3_TO_ISO2.values())
 
 # Coordonnees de repli par pays (centroides capitales) pour geocode_precision='country'
 COUNTRY_CENTROID = {
@@ -32,7 +37,6 @@ COUNTRY_CENTROID = {
     "PH": (14.5995, 120.9842), "SG": (1.3521, 103.8198), "TH": (13.7563, 100.5018),
     "VN": (21.0278, 105.8342), "TL": (-8.5569, 125.5603),
 }
-
 
 def _http_json(url: str, params: dict[str, Any]) -> dict:
     qs = urllib.parse.urlencode(params, doseq=True)
@@ -44,7 +48,6 @@ def _http_json(url: str, params: dict[str, Any]) -> dict:
     with urllib.request.urlopen(req, timeout=30) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
-
 def fetch(rows_per_country: int = 200) -> list[RawTender]:
     """Recupere les projets WB des 11 pays ASEAN. (Reseau : backend Render.)"""
     out: list[RawTender] = []
@@ -55,8 +58,9 @@ def fetch(rows_per_country: int = 200) -> list[RawTender]:
     ])
     for iso3, iso2 in WB_ISO3_TO_ISO2.items():
         try:
+            # L'API attend l'ISO2 (ex. "VN"), pas l'ISO3 (ex. "VNM").
             data = _http_json(PROJECTS_API, {
-                "format": "json", "countrycode_exact": iso3,
+                "format": "json", "countrycode_exact": iso2,
                 "rows": rows_per_country, "fl": fields,
             })
             out.extend(parse_projects(data, iso2))
@@ -64,6 +68,11 @@ def fetch(rows_per_country: int = 200) -> list[RawTender]:
             print(f"[WB] {iso2} fetch error: {e}")
     return out
 
+def _country_code_iso2(value: Any) -> str:
+    """Normalise le champ countrycode (str OU liste ['VN']) en ISO2 majuscule."""
+    if isinstance(value, list):
+        value = value[0] if value else ""
+    return str(value or "").upper()
 
 def parse_projects(payload: dict, iso2_hint: str | None = None) -> list[RawTender]:
     """Transforme la reponse Projects API en RawTender (pur, testable)."""
@@ -78,9 +87,9 @@ def parse_projects(payload: dict, iso2_hint: str | None = None) -> list[RawTende
     results: list[RawTender] = []
     for p in items:
         iso2 = iso2_hint
-        cc = (p.get("countrycode") or "").upper()
-        if cc in WB_ISO3_TO_ISO2:
-            iso2 = WB_ISO3_TO_ISO2[cc]
+        cc = _country_code_iso2(p.get("countrycode"))
+        if cc in WB_ISO2:
+            iso2 = cc
         if iso2 not in ASEAN_ISO2:
             continue
 
@@ -116,7 +125,6 @@ def parse_projects(payload: dict, iso2_hint: str | None = None) -> list[RawTende
         results.append(rt)
     return results
 
-
 def _sector_str(sector_field: Any) -> str:
     if not sector_field:
         return ""
@@ -132,7 +140,6 @@ def _sector_str(sector_field: Any) -> str:
         return sector_field.get("Name") or sector_field.get("name") or ""
     return str(sector_field)
 
-
 def _to_float(v: Any) -> float | None:
     if v in (None, "", "0"):
         return None
@@ -141,12 +148,10 @@ def _to_float(v: Any) -> float | None:
     except (TypeError, ValueError):
         return None
 
-
 def _date_only(v: Any) -> str | None:
     if not v:
         return None
     return str(v)[:10]
-
 
 def _map_stage(status: Any) -> str:
     s = (status or "").lower()
@@ -159,7 +164,6 @@ def _map_stage(status: Any) -> str:
     if "dropped" in s or "cancel" in s:
         return "cancelled"
     return "open"
-
 
 def _geocode_country(iso2: str):
     c = COUNTRY_CENTROID.get(iso2)
