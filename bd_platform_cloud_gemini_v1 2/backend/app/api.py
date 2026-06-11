@@ -206,7 +206,7 @@ def _require_admin(authorization: str | None = Header(default=None),
                    x_app_token: str | None = Header(default=None)) -> dict:
     """Reutilise l'auth de main.py (token app OU JWT Supabase role admin).
     Import tardif -> evite tout import circulaire au demarrage."""
-    from ..main import verify_app_or_jwt, require_admin_token  # type: ignore
+    from .main import verify_app_or_jwt, require_admin_token  # type: ignore
     token = verify_app_or_jwt(authorization=authorization, x_app_token=x_app_token)
     return require_admin_token(token)
 
