@@ -1,0 +1,23 @@
+name: AO Ingestion
+
+on:
+  workflow_dispatch:        # declenchement manuel depuis l'onglet Actions
+
+jobs:
+  run-ao-ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger AO ingestion (run-all) on Render
+        run: |
+          HTTP_STATUS=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+            -X POST https://bd-projects-map-akh.onrender.com/ao/ingest/run-all \
+            -H "X-App-Token: ${{ secrets.APP_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            --max-time 300)
+          echo "HTTP status: $HTTP_STATUS"
+          cat /tmp/response.json
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "AO ingestion failed with status $HTTP_STATUS"
+            exit 1
+          fi
+          echo "AO ingestion completed successfully"
