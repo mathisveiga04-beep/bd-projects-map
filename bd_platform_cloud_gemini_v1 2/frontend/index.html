@@ -14079,3 +14079,67 @@ if(window.renderDPBody){
   }catch(e){}
 })();
 </script>
+
+<script>
+/* === AO tenders layer v1 — appels d'offre (World Bank) clusters par capitale === */
+(function(){
+  if(window.__aoLayerV1) return; window.__aoLayerV1 = true;
+  var API='https://bd-projects-map-akh.onrender.com';
+  var COUNTRY={KH:'Cambodge',VN:'Vietnam',TH:'Thaïlande',MM:'Myanmar',LA:'Laos',ID:'Indonésie',MY:'Malaisie',PH:'Philippines',SG:'Singapour'};
+  function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+  function fetchAll(){
+    var all=[];
+    function next(off){
+      return fetch(API+'/ao/tenders?limit=1000&offset='+off,{cache:'no-store'}).then(function(r){return r.json();}).then(function(a){
+        if(!Array.isArray(a)||a.length===0) return all;
+        all=all.concat(a);
+        if(a.length<1000||off>6000) return all;
+        return next(off+1000);
+      });
+    }
+    return next(0);
+  }
+  function build(L, map){
+    fetchAll().then(function(all){
+      var groups={};
+      all.forEach(function(t){ if(typeof t.lat!=='number'||typeof t.lng!=='number')return; var k=t.lat.toFixed(4)+','+t.lng.toFixed(4); (groups[k]=groups[k]||{lat:t.lat,lng:t.lng,items:[]}).items.push(t); });
+      var layer=L.layerGroup();
+      Object.keys(groups).forEach(function(k){
+        var g=groups[k], n=g.items.length;
+        var r=Math.min(34, 13+Math.round(Math.sqrt(n)*2.2));
+        var html='<div style="display:flex;align-items:center;justify-content:center;width:'+(r*2)+'px;height:'+(r*2)+'px;border-radius:50%;background:rgba(52,71,170,.92);color:#fff;font:700 13px/1 Calibri,Segoe UI,Arial;border:2px solid #FBEAEB;box-shadow:0 2px 8px rgba(32,40,89,.45)">'+n+'</div>';
+        var icon=L.divIcon({className:'ao-cluster',html:html,iconSize:[r*2,r*2],iconAnchor:[r,r]});
+        var country=g.items[0].country_name||COUNTRY[g.items[0].country_iso2]||g.items[0].country_iso2||'';
+        var rows=g.items.slice().sort(function(a,b){return (b.relevance_score||0)-(a.relevance_score||0);}).slice(0,40).map(function(t){
+          var link=t.source_url?'<a href="'+esc(t.source_url)+'" target="_blank" rel="noopener" style="color:#3447AA;text-decoration:none">'+esc(t.title)+'</a>':esc(t.title);
+          var meta=[t.sector,t.stage,t.donor].filter(Boolean).map(esc).join(' · ');
+          return '<div style="padding:6px 0;border-bottom:1px solid #ECDADF"><div style="font-weight:600;font-size:12px">'+link+'</div><div style="color:#5A5470;font-size:11px">'+meta+(t.project_ref?' · '+esc(t.project_ref):'')+'</div></div>';
+        }).join('');
+        var more=n>40?'<div style="color:#5A5470;font-size:11px;padding-top:6px">… +'+(n-40)+' autres</div>':'';
+        var popup='<div style="max-width:320px;font-family:Calibri,Segoe UI,Arial"><div style="font-weight:700;color:#202859;font-size:14px;margin-bottom:4px">'+esc(country)+' — '+n+' appels d’offre</div><div style="max-height:280px;overflow:auto">'+rows+more+'</div></div>';
+        L.marker([g.lat,g.lng],{icon:icon,zIndexOffset:1000}).bindPopup(popup,{maxWidth:340}).addTo(layer);
+      });
+      window.__aoLayer=layer; window.__aoVisible=true; layer.addTo(map);
+      var Ctl=L.Control.extend({options:{position:'topright'},onAdd:function(){
+        var btn=L.DomUtil.create('div','');
+        btn.style.cssText='background:#3447AA;color:#fff;font:700 12px/1 Calibri,Segoe UI,Arial;padding:8px 12px;border-radius:8px;cursor:pointer;box-shadow:0 2px 8px rgba(32,40,89,.45);border:2px solid #FBEAEB;user-select:none;opacity:1';
+        btn.title='Afficher / masquer les appels d’offre';
+        btn.innerHTML='AO ('+all.length+')';
+        L.DomEvent.disableClickPropagation(btn);
+        L.DomEvent.on(btn,'click',function(){
+          if(window.__aoVisible){ map.removeLayer(layer); window.__aoVisible=false; btn.style.opacity='.55'; }
+          else { layer.addTo(map); window.__aoVisible=true; btn.style.opacity='1'; }
+        });
+        return btn;
+      }});
+      try{ map.addControl(new Ctl()); }catch(e){}
+    }).catch(function(e){ console.warn('AO layer failed', e); });
+  }
+  var tries=0;
+  var iv=setInterval(function(){
+    tries++;
+    if(window.mapObj && window.L){ clearInterval(iv); build(window.L, window.mapObj); }
+    else if(tries>120){ clearInterval(iv); }
+  },500);
+})();
+</script>
