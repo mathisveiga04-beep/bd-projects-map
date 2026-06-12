@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import datetime
 import json
 import urllib.parse
 import urllib.request
 from typing import Any
+
+# d-portal encode les dates (day_start/day_end) comme des entiers :
+# le nombre de jours ecoules depuis le 1er janvier 1970.
+_EPOCH = datetime.date(1970, 1, 1)
 
 from .common import RawTender, ASEAN_ISO2
 
@@ -44,9 +49,27 @@ def _txt(v: Any) -> str:
     return str(v)
 
 
+def _days_to_iso(n):
+    try:
+        return (_EPOCH + datetime.timedelta(days=int(n))).isoformat()
+    except (ValueError, OverflowError):
+        return None
+
+
 def _date_only(v: Any):
+    # d-portal renvoie un entier (jours depuis 1970-01-01), pas une date ISO.
+    # Les colonnes published_at (date) / deadline_at (timestamptz) exigent une
+    # date valide : on convertit donc le jour-numero en "YYYY-MM-DD".
+    if v is None or isinstance(v, bool):
+        return None
+    if isinstance(v, (int, float)):
+        return _days_to_iso(v)
     s = _txt(v).strip()
-    return s[:10] if s else None
+    if not s:
+        return None
+    if s.lstrip("-").isdigit():
+        return _days_to_iso(s)
+    return s[:10]
 
 
 def _amount(v: Any):
