@@ -9158,7 +9158,32 @@ window.exportPingsPDF=function(){
       +'<h1>Projets cibles - MVE</h1>'
       +'<div class="sub">'+new Date().toLocaleDateString('fr-FR')+' - '+rows.length+' projets</div>'
       +'<table><tr><th>Titre</th><th>Secteur</th><th>Ville</th><th>Bailleur</th><th>Statut</th><th>Priorite</th><th>Score</th></tr>'
-      +body+'</table></body></html>';
+      +body+'</table>
+<script>
+/* MVE country filter enhancement v1 */
+(function(){
+  var C=[["","Tous les pays"],["Cambodia","Cambodge"],["Thailand","Thaïlande"],["Vietnam","Vietnam"],["Laos","Laos"],["Myanmar","Myanmar"],["Singapore","Singapour"],["Philippines","Philippines"],["Indonesia","Indonésie"],["Malaysia","Malaisie"],["Brunei","Brunei"],["Timor-Leste","Timor-Leste"]];
+  var B={Cambodia:[[10.4,102.3],[14.7,107.6]],Thailand:[[5.6,97.3],[20.5,105.6]],Vietnam:[[8.4,102.1],[23.4,109.5]],Laos:[[13.9,100.0],[22.5,107.7]],Myanmar:[[9.6,92.2],[28.5,101.2]],Singapore:[[1.2,103.6],[1.5,104.0]],Philippines:[[4.6,116.9],[19.6,126.6]],Indonesia:[[-11.0,95.0],[6.1,141.0]],Malaysia:[[0.8,99.6],[7.4,119.3]],"Timor-Leste":[[-9.5,124.0],[-8.1,127.3]]};
+  var opts=C.map(function(c){return '<option value="'+c[0]+'">'+c[1]+'</option>';}).join('');
+  function recenter(v){ try{ if(window.mapObj&&B[v]) window.mapObj.fitBounds(B[v],{padding:[20,20]}); else if(window.mapObj&&!v) window.mapObj.setView([8,110],4); }catch(e){} }
+  function go(){
+    var af=document.getElementById('af-country'); var anchor=document.getElementById('adv-filters-wrap');
+    if(!af||!anchor) return false;
+    if(af.options.length<C.length){ var cur=af.value; af.innerHTML=opts; af.value=C.some(function(c){return c[0]===cur;})?cur:''; }
+    if(!document.getElementById('mve-country-top')){
+      var w=document.createElement('div'); w.style.cssText='margin:6px 0 10px;';
+      var l=document.createElement('div'); l.textContent='PAYS'; l.style.cssText='font-size:10px;font-weight:700;color:#64748b;margin-bottom:4px;letter-spacing:.05em;';
+      var s=document.createElement('select'); s.id='mve-country-top'; s.style.cssText='width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;background:#fff;cursor:pointer;';
+      s.innerHTML=opts; w.appendChild(l); w.appendChild(s); anchor.parentElement.insertBefore(w,anchor);
+      s.addEventListener('change',function(){ af.value=s.value; af.dispatchEvent(new Event('change',{bubbles:true})); recenter(s.value); });
+      af.addEventListener('change',function(){ if(s.value!==af.value) s.value=af.value; });
+    }
+    return true;
+  }
+  var n=0,t=setInterval(function(){ if(go()||++n>60) clearInterval(t); },500);
+})();
+</script>
+</body></html>';
 
     var w=window.open('','_blank');
     if(!w){alert('Autorisez les pop-ups pour generer le PDF.');return;}
