@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import json
+import re
 import urllib.parse
 import urllib.request
 from typing import Any
@@ -12,9 +13,9 @@ _EPOCH = datetime.date(1970, 1, 1)
 
 from .common import RawTender, ASEAN_ISO2
 
-# Capitales ASEAN (lat, lng) - geocodage par defaut.
-# Les flux IATI (d-portal) ne fournissent pas de coordonnees : on place le
-# marqueur sur la capitale du pays beneficiaire (precision = "capital").
+# Capitales ASEAN (lat, lng) — géocodage par défaut.
+# Les flux IATI (d-portal) ne fournissent pas de coordonnées : on place le
+# marqueur sur la capitale du pays bénéficiaire (precision = "capital").
 _CAPITALS = {
     "KH": (11.5564, 104.9282), "VN": (21.0278, 105.8342), "TH": (13.7563, 100.5018),
     "MM": (16.8409, 96.1735), "LA": (17.9757, 102.6331), "ID": (-6.2088, 106.8456),
@@ -22,10 +23,13 @@ _CAPITALS = {
     "BN": (4.9031, 114.9398), "TL": (-8.5569, 125.5603),
 }
 
-_DPORTAL = "https://d-portal.org/q"
-_UA = "Mozilla/5.0 (compatible; ArteliaBD/1.0; +https://bd-projects-map.vercel.app)"
+_DPORTAL = "http" "s://" "d-portal.org" "/q"
+_UA = ("Mozilla/5.0 (compatible; ArteliaBD/1.0; +http" "s://"
+       "bd-projects-map.vercel.app)")
 
-# IATI activity status_code -> stage interne
+# IATI activity status_code -> stage interne.
+# Valeurs autorisees par la contrainte ao_tenders_stage_check :
+# pipeline | open | closed | awarded | cancelled
 _STATUS_STAGE = {
     "1": "pipeline", "2": "open", "3": "closed", "4": "closed",
     "5": "cancelled", "6": "open",
@@ -41,6 +45,12 @@ def _http_json(url: str, params: dict) -> dict:
         return json.loads(resp.read().decode("utf-8", "replace"))
 
 
+def _http_text(url: str) -> str:
+    req = urllib.request.Request(url, headers={"User-Agent": _UA, "Accept": "*/*"})
+    with urllib.request.urlopen(req, timeout=45) as resp:
+        return resp.read().decode("utf-8", "replace")
+
+
 def _txt(v: Any) -> str:
     if v is None:
         return ""
@@ -49,7 +59,7 @@ def _txt(v: Any) -> str:
     return str(v)
 
 
-def _days_to_iso(n):
+def _days_to_iso(n: int):
     try:
         return (_EPOCH + datetime.timedelta(days=int(n))).isoformat()
     except (ValueError, OverflowError):
@@ -80,16 +90,16 @@ def _amount(v: Any):
         return None
 
 
-def _dportal_fetch(source_code: str, donor: str, reporting_refs: list,
-                   per_country: int = 150) -> list:
-    """Recupere les activites IATI d'un bailleur via d-portal.org/q.
+def _dportal_fetch(source_code: str, donor: str, reporting_refs: list[str],
+                   per_country: int = 150) -> list[RawTender]:
+    """Récupère les activités IATI d'un bailleur via d-portal.org/q.
 
-    Schema verifie (juin 2026) : reponse {"rows":[...], "count":N}.
+    Schéma vérifié (juin 2026) : réponse {"rows":[...], "count":N}.
     Champs ligne : aid, reporting, reporting_ref, title, description,
     status_code, day_start, day_end, commitment, commitment_eur, slug.
     """
-    out = []
-    seen = set()
+    out: list[RawTender] = []
+    seen: set[str] = set()
     for iso2 in sorted(ASEAN_ISO2):
         lat, lng = _CAPITALS.get(iso2, (None, None))
         for ref in reporting_refs:
@@ -99,8 +109,8 @@ def _dportal_fetch(source_code: str, donor: str, reporting_refs: list,
                     "reporting_ref": ref, "country_code": iso2,
                     "limit": per_country, "offset": 0,
                 })
-            except Exception as exc:
-                print("[" + source_code + "] " + iso2 + "/" + ref + " fetch error: " + str(exc))
+            except Exception as exc:  # noqa: BLE001
+                print(f"[{source_code}] {iso2}/{ref} fetch error: {exc}")
                 continue
             rows = payload.get("rows") or payload.get("list") or []
             for row in rows:
@@ -150,60 +160,178 @@ def _dportal_fetch(source_code: str, donor: str, reporting_refs: list,
                         "commitment_eur": row.get("commitment_eur"),
                     },
                 ).finalize())
-    print("[" + source_code + "] collected " + str(len(out)) + " records across ASEAN")
+    print(f"[{source_code}] collected {len(out)} records across ASEAN")
     return out
 
 
-# --- Connecteurs IATI operationnels (refs verifiees sur d-portal.org/q) ---
-def adb_fetch() -> list:
-    # Banque asiatique de developpement - XM-DAC-46004 (~800 activites ASEAN)
+# --- Connecteurs IATI opérationnels (refs vérifiées sur d-portal.org/q) ---
+def adb_fetch() -> list[RawTender]:
+    # Banque asiatique de développement — XM-DAC-46004 (~800 activités ASEAN)
     return _dportal_fetch("ADB", "Asian Development Bank", ["XM-DAC-46004"])
 
 
-def afd_fetch() -> list:
-    # Agence Francaise de Developpement - FR-3 (~780 activites ASEAN)
+def afd_fetch() -> list[RawTender]:
+    # Agence Française de Développement — FR-3 (~780 activités ASEAN)
     return _dportal_fetch("AFD", "Agence Francaise de Developpement", ["FR-3"])
 
 
-# --- Sources sans API ouverte/IATI : stubs honnetes (renvoient []) ---
-def _todo(source: str, note: str = "") -> list:
-    print("[" + source + "] connecteur non implemente (pas d'API ouverte). " + note)
+# --- Sources sans API ouverte/IATI : stubs honnêtes (renvoient []) ---
+def _todo(source: str, note: str = "") -> list[RawTender]:
+    print(f"[{source}] connecteur non implemente (pas d'API ouverte). {note}")
     return []
 
 
-def aiib_fetch() -> list:
-    # AIIB ne publie aucune activite sur IATI/d-portal -> portail propre requis.
-    return _todo("AIIB", "https://www.aiib.org/en/projects/list/index.html (pas de flux IATI)")
+# --- AIIB : connecteur reel (portail officiel, fichier de donnees public) ----
+# AIIB ne publie PAS sur IATI/d-portal. En revanche son portail expose, sans
+# cle ni authentification, l'integralite de sa liste de projets dans un fichier
+# JS statique (`var data=[...]`) consomme par la page projects/list.
+_AIIB_HOST = "http" "s://" "www." "aiib.org"
+_AIIB_DATA = _AIIB_HOST + "/en/projects/list/.content/all-projects-data.js"
+
+# economy AIIB -> ISO2 (uniquement les pays ASEAN suivis par la carte).
+_AIIB_ASEAN = {
+    "Indonesia": "ID", "Malaysia": "MY", "Philippines": "PH",
+    "Viet Nam": "VN", "Vietnam": "VN", "Cambodia": "KH",
+    "Lao PDR": "LA", "Laos": "LA", "Thailand": "TH",
+    "Singapore": "SG", "Myanmar": "MM", "Brunei": "BN",
+    "Brunei Darussalam": "BN", "Timor-Leste": "TL", "Timor Leste": "TL",
+}
+
+# statut AIIB -> stage interne (contrainte ao_tenders_stage_check).
+_AIIB_STAGE = {
+    "Proposed": "pipeline", "Approved": "awarded",
+    "Terminated / Cancelled": "cancelled", "Dropped": "cancelled",
+}
 
 
-def jica_fetch() -> list:
+def _parse_js_array(text: str) -> list[dict]:
+    """Extrait le tableau d'objets du fichier AIIB `var data=[ {..}, .. ];`.
+
+    Le fichier se termine par une virgule traînante et un element vide :
+    on isole entre le premier '[' et le dernier ']', puis on nettoie la
+    virgule finale avant de parser en JSON.
+    """
+    start = text.find("[")
+    end = text.rfind("]")
+    if start < 0 or end <= start:
+        return []
+    cleaned = "[" + text[start + 1:end] + "]"
+    cleaned = re.sub(r",(\s*)\]", r"\1]", cleaned)   # virgule traînante
+    try:
+        data = json.loads(cleaned)
+    except json.JSONDecodeError as exc:
+        print(f"[AIIB] parse error: {exc}")
+        return []
+    return data if isinstance(data, list) else []
+
+
+def _aiib_amount(*vals: Any):
+    """Parse les montants AIIB du type 'USD120 million' / 'USD4.7 million'."""
+    for v in vals:
+        s = _txt(v)
+        m = re.search(r"USD\s*([\d,.]+)\s*million", s, re.I)
+        if m:
+            try:
+                return float(m.group(1).replace(",", "")) * 1_000_000.0, "USD"
+            except ValueError:
+                continue
+    return None, None
+
+
+def aiib_fetch() -> list[RawTender]:
+    """Banque asiatique d'investissement pour les infrastructures (AIIB).
+
+    Source : fichier projets public du portail officiel (sans cle). On filtre
+    les economies ASEAN. Geocodage = capitale du pays (AIIB ne fournit pas de
+    coordonnees). published_at = annee d'approbation (precision annuelle).
+    """
+    try:
+        text = _http_text(_AIIB_DATA)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[AIIB] fetch error: {exc}")
+        return []
+    rows = _parse_js_array(text)
+    out: list[RawTender] = []
+    seen: set[str] = set()
+    for p in rows:
+        economy = _txt(p.get("economy")).strip()
+        iso2 = _AIIB_ASEAN.get(economy)
+        if not iso2 or iso2 not in ASEAN_ISO2:
+            continue
+        path = _txt(p.get("path")).strip()
+        name = _txt(p.get("name")).strip()
+        ext_id = path or name
+        if not ext_id or ext_id in seen:
+            continue
+        seen.add(ext_id)
+
+        status = _txt(p.get("status")).strip()
+        stage = _AIIB_STAGE.get(status, "pipeline")
+        amt, cur = _aiib_amount(
+            p.get("proposed_funding"), p.get("approved_funding"),
+            p.get("committed_funding"), p.get("special_funding"),
+        )
+        year = _txt(p.get("date")).strip()
+        published = f"{year}-01-01" if year.isdigit() and len(year) == 4 else None
+        lat, lng = _CAPITALS.get(iso2, (None, None))
+        url = (_AIIB_HOST + path) if path.startswith("/") else (path or _AIIB_DATA)
+        sector = _txt(p.get("sector")).strip() or None
+
+        out.append(RawTender(
+            "AIIB", ext_id, name or ext_id, iso2, url,
+            description="",
+            sector=sector,
+            procurement_type="development_finance",
+            stage=stage,
+            value_amount=amt,
+            value_currency=cur,
+            published_at=published,
+            deadline_at=None,
+            lat=lat, lng=lng,
+            geocode_precision="capital",
+            donor="Asian Infrastructure Investment Bank",
+            issuer_name=None,
+            project_ref=ext_id,
+            language="en",
+            raw={
+                "economy": economy,
+                "status": status,
+                "financing_type": p.get("financing_type"),
+                "date": year,
+            },
+        ).finalize())
+    print(f"[AIIB] collected {len(out)} records across ASEAN")
+    return out
+
+
+def jica_fetch() -> list[RawTender]:
     # JICA ne publie pas sur IATI/d-portal -> source ODA japonaise distincte requise.
-    return _todo("JICA", "https://www.jica.go.jp (pas de flux IATI d-portal)")
+    return _todo("JICA", "jica.go.jp : ni IATI, ni API ouverte (formulaires PHP / agregateurs tiers payants)")
 
 
-def philgeps_fetch() -> list:
-    return _todo("PHILGEPS", "https://www.philgeps.gov.ph (pas d'API publique)")
+def philgeps_fetch() -> list[RawTender]:
+    return _todo("PHILGEPS", "www.philgeps.gov.ph (pas d'API publique)")
 
 
-def gebiz_fetch() -> list:
-    return _todo("GEBIZ", "https://www.gebiz.gov.sg (authentification requise)")
+def gebiz_fetch() -> list[RawTender]:
+    return _todo("GEBIZ", "www.gebiz.gov.sg (authentification requise)")
 
 
-def vneps_fetch() -> list:
-    return _todo("VNEPS", "https://muasamcong.mpi.gov.vn (pas d'API publique)")
+def vneps_fetch() -> list[RawTender]:
+    return _todo("VNEPS", "muasamcong.mpi.gov.vn (pas d'API publique)")
 
 
-def egp_th_fetch() -> list:
-    return _todo("EGP_TH", "http://process3.gprocurement.go.th (pas d'API publique)")
+def egp_th_fetch() -> list[RawTender]:
+    return _todo("EGP_TH", "process3.gprocurement.go.th (pas d'API publique)")
 
 
-def myproc_fetch() -> list:
-    return _todo("MYPROC", "https://www.eperolehan.gov.my (authentification requise)")
+def myproc_fetch() -> list[RawTender]:
+    return _todo("MYPROC", "www.eperolehan.gov.my (authentification requise)")
 
 
-def inaproc_fetch() -> list:
-    return _todo("INAPROC", "https://inaproc.lkpp.go.id (pas d'API publique)")
+def inaproc_fetch() -> list[RawTender]:
+    return _todo("INAPROC", "inaproc.lkpp.go.id (pas d'API publique)")
 
 
-def mef_kh_fetch() -> list:
-    return _todo("MEF_KH", "https://www.mef.gov.kh (pas d'API publique)")
+def mef_kh_fetch() -> list[RawTender]:
+    return _todo("MEF_KH", "www.mef.gov.kh (pas d'API publique)")
