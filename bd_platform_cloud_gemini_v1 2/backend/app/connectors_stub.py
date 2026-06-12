@@ -1,18 +1,3 @@
-"""
-Connecteurs AO (niveau 1 bailleurs multilateraux + niveau 2 portails nationaux).
-
-Niveau 1 (bailleurs) : implementes via l'API publique IATI d-portal
-(https://d-portal.org/q, sans cle). On recupere les activites par organisation
-declarante (reporting_ref) et pays beneficiaire ASEAN, puis on geocode sur la
-capitale du pays (meme principe que le connecteur World Bank). Parsing defensif
-(plusieurs noms de colonnes possibles) car le schema d-portal varie.
-
-Niveau 2 (portails e-procurement nationaux) : pas d'API ouverte sans compte ->
-stubs honnetes (retournent [] tant qu'un acces officiel n'est pas disponible).
-
-Chaque fonction respecte le contrat fetch() -> list[RawTender].
-SOURCES OFFICIELLES / DONNEES IATI UNIQUEMENT — pas d'agregateurs commerciaux.
-"""
 from __future__ import annotations
 
 import json
@@ -22,65 +7,68 @@ from typing import Any
 
 from .common import RawTender, ASEAN_ISO2
 
-# Capitales ASEAN (lat, lng) — geocodage par pays, precision "capital".
+# Capitales ASEAN (lat, lng) - geocodage par defaut.
+# Les flux IATI (d-portal) ne fournissent pas de coordonnees : on place le
+# marqueur sur la capitale du pays beneficiaire (precision = "capital").
 _CAPITALS = {
-    "KH": (11.5564, 104.9282), "VN": (21.0278, 105.8342),
-    "TH": (13.7563, 100.5018), "MM": (16.8409, 96.1735),
-    "LA": (17.9757, 102.6331), "ID": (-6.2088, 106.8456),
-    "MY": (3.1390, 101.6869), "PH": (14.5995, 120.9842),
-    "SG": (1.3521, 103.8198), "BN": (4.9031, 114.9398),
-    "TL": (-8.5569, 125.5603),
+    "KH": (11.5564, 104.9282), "VN": (21.0278, 105.8342), "TH": (13.7563, 100.5018),
+    "MM": (16.8409, 96.1735), "LA": (17.9757, 102.6331), "ID": (-6.2088, 106.8456),
+    "MY": (3.1390, 101.6869), "PH": (14.5995, 120.9842), "SG": (1.3521, 103.8198),
+    "BN": (4.9031, 114.9398), "TL": (-8.5569, 125.5603),
 }
 
 _DPORTAL = "https://d-portal.org/q"
 _UA = "Mozilla/5.0 (compatible; ArteliaBD/1.0; +https://bd-projects-map.vercel.app)"
 
+# IATI activity status_code -> stage interne
+_STATUS_STAGE = {
+    "1": "pipeline", "2": "active", "3": "closed", "4": "closed",
+    "5": "cancelled", "6": "suspended",
+}
 
-def _http_json(url: str, params: dict[str, Any]) -> dict:
-    qs = urllib.parse.urlencode(params)
+
+def _http_json(url: str, params: dict) -> dict:
+    full = url + "?" + urllib.parse.urlencode(params)
     req = urllib.request.Request(
-        url + "?" + qs,
-        headers={"User-Agent": _UA, "Accept": "application/json"},
+        full, headers={"User-Agent": _UA, "Accept": "application/json"}
     )
     with urllib.request.urlopen(req, timeout=45) as resp:
         return json.loads(resp.read().decode("utf-8", "replace"))
 
 
-def _first(row: dict, *keys):
-    for k in keys:
-        v = row.get(k)
-        if v not in (None, "", []):
-            return v
-    return None
-
-
-def _txt(v) -> str:
+def _txt(v: Any) -> str:
+    if v is None:
+        return ""
     if isinstance(v, list):
-        return " ".join(str(x) for x in v if x)
-    return "" if v is None else str(v)
+        return " ".join(_txt(x) for x in v if x)
+    return str(v)
 
 
-def _date_only(v):
+def _date_only(v: Any):
     s = _txt(v).strip()
     return s[:10] if s else None
 
 
-def _amount(v):
+def _amount(v: Any):
     try:
-        return float(v) if v not in (None, "") else None
+        f = float(v)
+        return f if f > 0 else None
     except (TypeError, ValueError):
         return None
 
 
-def _dportal_fetch(source_code: str, donor: str, reporting_refs: list[str],
-                   per_country: int = 60) -> list[RawTender]:
-    out: list[RawTender] = []
-    seen: set[str] = set()
+def _dportal_fetch(source_code: str, donor: str, reporting_refs: list,
+                   per_country: int = 150) -> list:
+    """Recupere les activites IATI d'un bailleur via d-portal.org/q.
+
+    Schema verifie (juin 2026) : reponse {"rows":[...], "count":N}.
+    Champs ligne : aid, reporting, reporting_ref, title, description,
+    status_code, day_start, day_end, commitment, commitment_eur, slug.
+    """
+    out = []
+    seen = set()
     for iso2 in sorted(ASEAN_ISO2):
-        latlng = _CAPITALS.get(iso2)
-        if not latlng:
-            continue
-        lat, lng = latlng
+        lat, lng = _CAPITALS.get(iso2, (None, None))
         for ref in reporting_refs:
             try:
                 payload = _http_json(_DPORTAL, {
@@ -88,110 +76,111 @@ def _dportal_fetch(source_code: str, donor: str, reporting_refs: list[str],
                     "reporting_ref": ref, "country_code": iso2,
                     "limit": per_country, "offset": 0,
                 })
-            except Exception as e:
-                print(f"[{source_code}] {iso2}/{ref} fetch error: {e}")
+            except Exception as exc:
+                print("[" + source_code + "] " + iso2 + "/" + ref + " fetch error: " + str(exc))
                 continue
-            rows = payload.get("list") or payload.get("rows") or []
-            if not isinstance(rows, list):
-                continue
+            rows = payload.get("rows") or payload.get("list") or []
             for row in rows:
-                if not isinstance(row, dict):
-                    continue
-                aid = _txt(_first(row, "aid", "iati_identifier", "iatiidentifier", "id"))
+                aid = _txt(row.get("aid") or row.get("iati_identifier")
+                           or row.get("slug")).strip()
                 if not aid:
                     continue
                 key = source_code + "|" + aid
                 if key in seen:
                     continue
                 seen.add(key)
-                title = (_txt(_first(row, "title_narrative", "title", "title_all")) or aid)[:480]
-                desc = _txt(_first(row, "description_narrative", "description"))[:2000]
-                sector = _txt(_first(row, "sector", "sector_code")) or None
-                d_start = _date_only(_first(row, "day_start", "start_planned", "start_actual"))
-                d_end = _date_only(_first(row, "day_end", "end_planned", "end_actual"))
-                amt = _amount(_first(row, "commitment_usd", "commitment_value", "value_usd"))
+
+                title = _txt(row.get("title")).strip() or aid
+                desc = _txt(row.get("description")).strip()
+                status = _txt(row.get("status_code")).strip()
+                stage = _STATUS_STAGE.get(status, "active")
+
+                amt_eur = _amount(row.get("commitment_eur"))
+                amt = amt_eur or _amount(row.get("commitment"))
+                cur = "EUR" if amt_eur else None
+
+                d_start = _date_only(row.get("day_start"))
+                d_end = _date_only(row.get("day_end"))
+                rep_name = _txt(row.get("reporting")).strip() or donor
+                url = (_DPORTAL.replace("/q", "/ctrack.html")
+                       + "#view=act&aid=" + urllib.parse.quote(aid))
+
                 out.append(RawTender(
-                    source_code=source_code,
-                    external_ref=aid,
-                    title=title,
-                    country_iso2=iso2,
-                    source_url="https://d-portal.org/ctrack.html#view=act&aid=" + urllib.parse.quote(aid),
+                    source_code, aid, title, iso2, url,
                     description=desc,
-                    sector=sector,
+                    sector=None,
                     procurement_type="development_finance",
-                    stage="active" if d_end else "pipeline",
+                    stage=stage,
                     value_amount=amt,
-                    value_currency="USD" if amt is not None else None,
+                    value_currency=cur,
                     published_at=d_start,
                     deadline_at=d_end,
-                    lat=lat, lng=lng, geocode_precision="capital",
-                    donor=donor, issuer_name=donor, project_ref=aid,
-                    raw={"reporting_ref": ref, "source": "iati/d-portal"},
+                    lat=lat, lng=lng,
+                    geocode_precision="capital",
+                    donor=donor,
+                    issuer_name=rep_name,
+                    project_ref=aid,
+                    language="en",
+                    raw={
+                        "reporting_ref": ref,
+                        "status_code": status,
+                        "commitment_eur": row.get("commitment_eur"),
+                    },
                 ).finalize())
+    print("[" + source_code + "] collected " + str(len(out)) + " records across ASEAN")
     return out
 
 
-# ----------------------- Niveau 1 : bailleurs multilateraux -----------------
-def adb_fetch() -> list[RawTender]:
-    """ADB — activites IATI (Asian Development Bank, reporting org 46004)."""
-    return _dportal_fetch("ADB", "Asian Development Bank", ["46004"])
+# --- Connecteurs IATI operationnels (refs verifiees sur d-portal.org/q) ---
+def adb_fetch() -> list:
+    # Banque asiatique de developpement - XM-DAC-46004 (~800 activites ASEAN)
+    return _dportal_fetch("ADB", "Asian Development Bank", ["XM-DAC-46004"])
 
 
-def aiib_fetch() -> list[RawTender]:
-    """AIIB — activites IATI (Asian Infrastructure Investment Bank)."""
-    return _dportal_fetch("AIIB", "Asian Infrastructure Investment Bank",
-                          ["XM-DAC-47137", "47137", "XI-IATI-AIIB"])
+def afd_fetch() -> list:
+    # Agence Francaise de Developpement - FR-3 (~780 activites ASEAN)
+    return _dportal_fetch("AFD", "Agence Francaise de Developpement", ["FR-3"])
 
 
-def afd_fetch() -> list[RawTender]:
-    """AFD — activites IATI (Agence Francaise de Developpement)."""
-    return _dportal_fetch("AFD", "Agence Francaise de Developpement",
-                          ["FR-3", "XM-DAC-1601", "FR-AFD"])
-
-
-def jica_fetch() -> list[RawTender]:
-    """JICA — activites IATI (Japan International Cooperation Agency)."""
-    return _dportal_fetch("JICA", "Japan International Cooperation Agency",
-                          ["JP-1", "XM-DAC-2102", "JP-JICA"])
-
-
-# ----------------------- Niveau 2 : portails e-procurement nationaux --------
-# Pas d'API publique ouverte sans compte/cle -> stubs honnetes (0 ligne).
-def _todo(source: str, note: str = "") -> list[RawTender]:
-    print(f"[{source}] connecteur prepare mais pas d'API ouverte ({note}) -> 0 ligne.")
+# --- Sources sans API ouverte/IATI : stubs honnetes (renvoient []) ---
+def _todo(source: str, note: str = "") -> list:
+    print("[" + source + "] connecteur non implemente (pas d'API ouverte). " + note)
     return []
 
 
-def philgeps_fetch() -> list[RawTender]:
-    """PHILGEPS (PH) — necessite compte/cle officielle."""
-    return _todo("PHILGEPS", "https://www.philgeps.gov.ph")
+def aiib_fetch() -> list:
+    # AIIB ne publie aucune activite sur IATI/d-portal -> portail propre requis.
+    return _todo("AIIB", "https://www.aiib.org/en/projects/list/index.html (pas de flux IATI)")
 
 
-def gebiz_fetch() -> list[RawTender]:
-    """GeBIZ (SG) — pas d'API ouverte."""
-    return _todo("GEBIZ", "https://www.gebiz.gov.sg")
+def jica_fetch() -> list:
+    # JICA ne publie pas sur IATI/d-portal -> source ODA japonaise distincte requise.
+    return _todo("JICA", "https://www.jica.go.jp (pas de flux IATI d-portal)")
 
 
-def vneps_fetch() -> list[RawTender]:
-    """VNEPS / muasamcong (VN) — pas d'API ouverte."""
-    return _todo("VNEPS", "https://muasamcong.mpi.gov.vn")
+def philgeps_fetch() -> list:
+    return _todo("PHILGEPS", "https://www.philgeps.gov.ph (pas d'API publique)")
 
 
-def egp_th_fetch() -> list[RawTender]:
-    """e-GP Thailande (GPROCUREMENT) — pas d'API ouverte."""
-    return _todo("EGP_TH", "http://process3.gprocurement.go.th")
+def gebiz_fetch() -> list:
+    return _todo("GEBIZ", "https://www.gebiz.gov.sg (authentification requise)")
 
 
-def myproc_fetch() -> list[RawTender]:
-    """ePerolehan (MY) — pas d'API ouverte."""
-    return _todo("MYPROC", "https://www.eperolehan.gov.my")
+def vneps_fetch() -> list:
+    return _todo("VNEPS", "https://muasamcong.mpi.gov.vn (pas d'API publique)")
 
 
-def inaproc_fetch() -> list[RawTender]:
-    """INAPROC / LPSE (ID) — pas d'API ouverte unifiee."""
-    return _todo("INAPROC", "https://inaproc.lkpp.go.id")
+def egp_th_fetch() -> list:
+    return _todo("EGP_TH", "http://process3.gprocurement.go.th (pas d'API publique)")
 
 
-def mef_kh_fetch() -> list[RawTender]:
-    """MEF / portail marches publics (KH) — pas d'API ouverte."""
-    return _todo("MEF_KH", "https://www.mef.gov.kh")
+def myproc_fetch() -> list:
+    return _todo("MYPROC", "https://www.eperolehan.gov.my (authentification requise)")
+
+
+def inaproc_fetch() -> list:
+    return _todo("INAPROC", "https://inaproc.lkpp.go.id (pas d'API publique)")
+
+
+def mef_kh_fetch() -> list:
+    return _todo("MEF_KH", "https://www.mef.gov.kh (pas d'API publique)")
