@@ -22,8 +22,8 @@ _UA = "Mozilla/5.0 (compatible; ArteliaBD/1.0; +https://bd-projects-map.vercel.a
 
 # IATI activity status_code -> stage interne
 _STATUS_STAGE = {
-    "1": "pipeline", "2": "active", "3": "closed", "4": "closed",
-    "5": "cancelled", "6": "suspended",
+    "1": "pipeline", "2": "open", "3": "closed", "4": "closed",
+    "5": "cancelled", "6": "open",
 }
 
 
@@ -93,7 +93,7 @@ def _dportal_fetch(source_code: str, donor: str, reporting_refs: list,
                 title = _txt(row.get("title")).strip() or aid
                 desc = _txt(row.get("description")).strip()
                 status = _txt(row.get("status_code")).strip()
-                stage = _STATUS_STAGE.get(status, "active")
+                stage = _STATUS_STAGE.get(status, "open")
 
                 amt_eur = _amount(row.get("commitment_eur"))
                 amt = amt_eur or _amount(row.get("commitment"))
