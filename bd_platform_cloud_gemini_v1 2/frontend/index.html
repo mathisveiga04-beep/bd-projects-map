@@ -6492,7 +6492,7 @@ function startProjectsRealtime(){
         console.log('Realtime DELETE project', payload);
         deleteRealtimeProject(payload.old);
       })
-      .subscribe(status=>console.log('Projects realtime status:',status));
+      .subscribe(status=>{if(status==='SUBSCRIBED')return;if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED'){try{if(projectsRealtimeChannel)sb.removeChannel(projectsRealtimeChannel);}catch(_){}}});
   }catch(e){
     console.warn('Realtime init skipped', e);
   }
