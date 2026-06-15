@@ -90,7 +90,8 @@ def _norm(s: str) -> str:
 # --- Scoring multi-criteres --------------------------------------------------
 def relevance(title: str, description: str = "", sector: str = "",
               amount: Optional[float] = None, donor: str = "",
-              authority: str = "", procurement_type: str = "") -> tuple[int, str]:
+              authority: str = "", procurement_type: str = "",
+              stage: str = "") -> tuple[int, str]:
     """Retourne (score 0-100, statut 'kept'|'filtered').
     Criteres : mots-cles (base) + montant + financeur + autorite + type marche."""
     hay = _norm(" ".join([title or "", description or "", sector or "",
@@ -132,8 +133,23 @@ def relevance(title: str, description: str = "", sector: str = "",
         elif amount >= 1_000_000:
             score += 3
 
-    score = min(score, 100)
-    status = "kept" if score >= 8 else "filtered"
+    # Stade pipeline : privilegie les AO actionnables (amont) vs deja attribues/clotures (classement)
+    base = score
+    st = _norm(stage)
+    if st:
+        if any(k in st for k in ["plan", "identif", "pipeline", "prospect", "concept", "feasib",
+                                 "prequalif", "pre-tender", "pretender", "tender", "bid", "procure",
+                                 "design", "eoi", "expression of interest", "rfp", "rfq", "appel",
+                                 "consultation", "soumission"]):
+            score += 12
+        elif any(k in st for k in ["award", "attribu", "contract", "signed", "ongoing",
+                                   "construction", "execution", "en cours", "works ongoing"]):
+            score -= 8
+        elif any(k in st for k in ["complete", "completed", "closed", "cancel", "terminated",
+                                   "acheve", "cloture", "annule", "abandonne"]):
+            score -= 20
+    score = max(0, min(score, 100))
+    status = "kept" if base >= 8 else "filtered"
     return score, status
 
 
@@ -267,6 +283,7 @@ class RawTender:
             amount=self.value_amount, donor=self.donor or "",
             authority=self.authority or self.issuer_name or "",
             procurement_type=self.procurement_type or "",
+            stage=self.stage or "",
         )
         self.discipline_v = discipline(self.title, self.description)
         self.sector = self.sector or sector_class(self.title, self.description)
