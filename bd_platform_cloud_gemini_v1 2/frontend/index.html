@@ -8005,7 +8005,7 @@ window.aiAnalyze = async function(item) {
       + '<span style="background:#E7F5EC;color:#14804A;border:1px solid #BFE6CC;border-radius:999px;padding:4px 10px;font-weight:800">Score '+score+'/10</span>'
       + '<span style="background:#EEF1FF;color:#172FA6;border:1px solid #BFCAFE;border-radius:999px;padding:4px 10px;font-weight:800">Priorite '+priority+'</span>'
       + '</div>'
-      + '<h4 style="color:#172FA6;margin:10px 0 4px">Resume IA</h4><p style="margin:3px 0">'+(d.summary||'Analyse indisponible.')+'</p>'
+      + '<h4 style="color:#172FA6;margin:10px 0 4px">Resume IA</h4><p style="margin:3px 0">'+((d.ai_error||((d.summary||'').indexOf('MVE-AI-GUIDE')>=0))?'Analyse IA momentanément indisponible — réessayez dans quelques secondes.':(d.summary||'Analyse indisponible.'))+'</p>'
       + (rows ? '<div style="margin:12px 0;background:#F8F9FC;border:1px solid #E2E4F0;border-radius:8px;padding:8px">'+rows+'</div>' : '')
       + '<h4 style="color:#172FA6;margin:10px 0 4px">Recommandation</h4><p style="margin:3px 0">'+(d.recommendation||'A qualifier manuellement.')+'</p>'
       + '<h4 style="color:#172FA6;margin:10px 0 4px">Scope technique</h4><p style="margin:3px 0">'+(d.artelia_scope||'Etudes, supervision, assistance technique et project management selon le cahier des charges.')+'</p>'
