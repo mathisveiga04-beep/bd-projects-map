@@ -14167,3 +14167,34 @@ if(window.renderDPBody){
 })();
 </script>
 
+
+<script>
+/* MVE pertinence panel v4 */
+(function(){
+  function fire(e){ e.dispatchEvent(new Event("input",{bubbles:true})); e.dispatchEvent(new Event("change",{bubbles:true})); }
+  function setRange(id,v){ var e=document.getElementById(id); if(!e)return; var s=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,"value").set; s.call(e,String(v)); fire(e); }
+  function setChk(id,c){ var e=document.getElementById(id); if(!e)return; if(e.checked!==c) e.click(); }
+  function setSelMatch(id,re){ var e=document.getElementById(id); if(!e)return; var o=Array.prototype.find.call(e.options,function(x){return re.test(x.value)||re.test(x.textContent);}); if(!o)return; var s=Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype,"value").set; s.call(e,o.value); e.dispatchEvent(new Event("change",{bubbles:true})); }
+  function setSel(id,v){ var e=document.getElementById(id); if(!e)return; var s=Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype,"value").set; s.call(e,v); e.dispatchEvent(new Event("change",{bubbles:true})); }
+  function syncUI(){ var sl=document.getElementById("mve-score-sl"), lab=document.getElementById("mve-score-lab"); var af=document.getElementById("af-score-min"); if(sl&&af){ sl.value=af.value; if(lab) lab.textContent=af.value; } var oc=document.getElementById("mve-opps"), ao=document.getElementById("af-opps-only"); if(oc&&ao) oc.checked=ao.checked; var vc=document.getElementById("mve-verif"), av=document.getElementById("af-verified-only"); if(vc&&av) vc.checked=av.checked; }
+  function preset(){ setRange("af-score-min",50); setChk("af-opps-only",true); setSelMatch("af-company-type",/ing.{0,2}nierie/i); syncUI(); }
+  function reset(){ setRange("af-score-min",0); setChk("af-opps-only",false); setChk("af-verified-only",false); setSel("af-company-type",""); setSel("af-sector",""); setSel("af-phase",""); syncUI(); }
+  function go(){
+    var anchor=document.getElementById("mve-country-wrap")||document.getElementById("adv-filters-wrap");
+    if(!anchor) return;
+    if(!document.getElementById("mve-pert-wrap")){
+      var w=document.createElement("div"); w.id="mve-pert-wrap"; w.style.cssText="margin:4px 0 12px;padding:10px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;";
+      var t=document.createElement("div"); t.textContent="PERTINENCE"; t.style.cssText="font-size:10px;font-weight:700;color:#64748b;margin-bottom:8px;letter-spacing:.05em;"; w.appendChild(t);
+      var b=document.createElement("button"); b.type="button"; b.textContent="Mode pertinence Artelia"; b.style.cssText="width:100%;padding:8px 10px;border:0;border-radius:8px;font-size:13px;font-weight:600;background:#0f766e;color:#fff;cursor:pointer;margin-bottom:10px;"; b.addEventListener("click",preset); w.appendChild(b);
+      var sr=document.createElement("div"); sr.style.cssText="font-size:12px;color:#334155;margin-bottom:4px;"; sr.innerHTML="Score minimum: <b id=\"mve-score-lab\">0</b>/100"; w.appendChild(sr);
+      var sl=document.createElement("input"); sl.type="range"; sl.id="mve-score-sl"; sl.min=0; sl.max=100; sl.step=5; sl.value=0; sl.style.cssText="width:100%;margin:0 0 10px;cursor:pointer;"; sl.addEventListener("input",function(){ var lab=document.getElementById("mve-score-lab"); if(lab) lab.textContent=sl.value; setRange("af-score-min",sl.value); }); w.appendChild(sl);
+      var o=document.createElement("label"); o.style.cssText="display:flex;align-items:center;gap:7px;font-size:12px;color:#334155;margin-bottom:6px;cursor:pointer;"; var oc=document.createElement("input"); oc.type="checkbox"; oc.id="mve-opps"; oc.addEventListener("change",function(){ setChk("af-opps-only",oc.checked); }); o.appendChild(oc); o.appendChild(document.createTextNode("Opportunites uniquement")); w.appendChild(o);
+      var v=document.createElement("label"); v.style.cssText="display:flex;align-items:center;gap:7px;font-size:12px;color:#334155;margin-bottom:10px;cursor:pointer;"; var vc=document.createElement("input"); vc.type="checkbox"; vc.id="mve-verif"; vc.addEventListener("change",function(){ setChk("af-verified-only",vc.checked); }); v.appendChild(vc); v.appendChild(document.createTextNode("Verifies uniquement")); w.appendChild(v);
+      var r=document.createElement("button"); r.type="button"; r.textContent="Reinitialiser"; r.style.cssText="width:100%;padding:6px 10px;border:1px solid #cbd5e1;border-radius:8px;font-size:12px;background:#fff;color:#475569;cursor:pointer;"; r.addEventListener("click",reset); w.appendChild(r);
+      anchor.parentElement.insertBefore(w, anchor.nextSibling);
+    }
+    syncUI();
+  }
+  setInterval(go,1200); go();
+})();
+</script>
