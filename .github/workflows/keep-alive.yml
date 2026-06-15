@@ -1,4 +1,9 @@
 name: Keep Render backend warm
+# NB: ping pointe sur /health (200) — l'ancien /keep-alive renvoyait 404.
+# Timeout porte a 90s pour couvrir un demarrage a froid (~50s) + 2 retries.
+# Limite: la planification GitHub Actions est best-effort et peut etre fortement
+# espacee sur un depot peu actif; fix 100% fiable = plan Render payant ou un
+# pinger externe (ex. UptimeRobot / cron-job.org) qui respecte l'intervalle.
 on:
   schedule:
     - cron: "*/14 * * * *"
@@ -7,6 +12,12 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping keep-alive endpoint
+      - name: Ping health endpoint
         run: |
-          curl -fsS --max-time 30 "${{ secrets.RENDER_URL }}/keep-alive" || echo "ping failed (non-blocking)"
+          for i in 1 2 3; do
+            if curl -fsS --max-time 90 "${{ secrets.RENDER_URL }}/health"; then
+              echo "OK (tentative $i)"; exit 0
+            fi
+            echo "echec tentative $i (cold start probable), retry..."; sleep 20
+          done
+          echo "ping echoue apres 3 tentatives (non bloquant)"
