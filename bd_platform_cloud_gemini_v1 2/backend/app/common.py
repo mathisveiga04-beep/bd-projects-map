@@ -234,6 +234,177 @@ def role_uid(role: str, tender_ref: str, party_uid: str) -> str:
     return _det_uuid("ROLE", role, tender_ref, party_uid)
 
 
+# --- Geocodage par toponyme (villes/provinces ASEAN) -------------------------
+# Upgrade le geocodage "pays" (centroide capitale) vers une precision "city"
+# quand un toponyme reel figure dans le texte de l'AO. Aucune donnee inventee :
+# uniquement des lieux deja presents dans les champs source, geocodes via une
+# table de coordonnees verifiees, retenus seulement si le lieu appartient au
+# pays de l'AO (anti faux-positif transfrontalier).
+import re as _re_geo
+
+ASEAN_GAZETTEER = {
+    "jakarta": (-6.2, 106.82, "ID"),
+    "surabaya": (-7.25, 112.75, "ID"),
+    "bandung": (-6.91, 107.61, "ID"),
+    "medan": (3.59, 98.67, "ID"),
+    "semarang": (-6.97, 110.42, "ID"),
+    "makassar": (-5.13, 119.42, "ID"),
+    "palembang": (-2.98, 104.76, "ID"),
+    "yogyakarta": (-7.8, 110.36, "ID"),
+    "denpasar": (-8.65, 115.22, "ID"),
+    "bali": (-8.34, 115.09, "ID"),
+    "sulawesi": (-1.85, 120.5, "ID"),
+    "sumatra": (-0.59, 101.34, "ID"),
+    "sumatera": (-0.59, 101.34, "ID"),
+    "kalimantan": (-1.68, 113.38, "ID"),
+    "papua": (-4.27, 138.08, "ID"),
+    "lombok": (-8.65, 116.32, "ID"),
+    "aceh": (4.7, 96.75, "ID"),
+    "batam": (1.13, 104.05, "ID"),
+    "west java": (-6.9, 107.6, "ID"),
+    "east java": (-7.5, 112.5, "ID"),
+    "central java": (-7.3, 110, "ID"),
+    "java": (-7.5, 110, "ID"),
+    "bekasi": (-6.24, 107, "ID"),
+    "tangerang": (-6.18, 106.63, "ID"),
+    "bogor": (-6.6, 106.8, "ID"),
+    "padang": (-0.95, 100.35, "ID"),
+    "banjarmasin": (-3.32, 114.59, "ID"),
+    "pontianak": (-0.03, 109.34, "ID"),
+    "manado": (1.49, 124.84, "ID"),
+    "balikpapan": (-1.27, 116.83, "ID"),
+    "pekanbaru": (0.51, 101.45, "ID"),
+    "lampung": (-5.45, 105.27, "ID"),
+    "nusa tenggara": (-8.65, 117.36, "ID"),
+    "maluku": (-3.24, 130.15, "ID"),
+    "jambi": (-1.61, 103.61, "ID"),
+    "bengkulu": (-3.8, 102.27, "ID"),
+    "flores": (-8.66, 121.08, "ID"),
+    "manila": (14.6, 120.98, "PH"),
+    "metro manila": (14.6, 121, "PH"),
+    "cebu": (10.32, 123.9, "PH"),
+    "davao": (7.07, 125.61, "PH"),
+    "quezon city": (14.68, 121.05, "PH"),
+    "mindanao": (7.9, 125, "PH"),
+    "luzon": (16, 121, "PH"),
+    "visayas": (11, 123.5, "PH"),
+    "iloilo": (10.72, 122.56, "PH"),
+    "baguio": (16.4, 120.6, "PH"),
+    "cagayan de oro": (8.48, 124.65, "PH"),
+    "zamboanga": (6.92, 122.08, "PH"),
+    "bicol": (13.42, 123.41, "PH"),
+    "palawan": (9.5, 118.5, "PH"),
+    "leyte": (10.8, 124.8, "PH"),
+    "negros": (10, 123, "PH"),
+    "bohol": (9.85, 124.14, "PH"),
+    "cavite": (14.28, 120.87, "PH"),
+    "laguna": (14.17, 121.33, "PH"),
+    "batangas": (13.76, 121.06, "PH"),
+    "pampanga": (15.08, 120.66, "PH"),
+    "bulacan": (14.79, 120.88, "PH"),
+    "cotabato": (7.22, 124.25, "PH"),
+    "general santos": (6.11, 125.17, "PH"),
+    "bacolod": (10.67, 122.95, "PH"),
+    "hanoi": (21.03, 105.85, "VN"),
+    "ho chi minh": (10.82, 106.63, "VN"),
+    "da nang": (16.05, 108.21, "VN"),
+    "danang": (16.05, 108.21, "VN"),
+    "haiphong": (20.86, 106.68, "VN"),
+    "can tho": (10.04, 105.78, "VN"),
+    "hue": (16.46, 107.59, "VN"),
+    "nha trang": (12.24, 109.19, "VN"),
+    "mekong delta": (10, 105.7, "VN"),
+    "mekong": (10, 105.7, "VN"),
+    "halong": (20.95, 107.08, "VN"),
+    "vinh": (18.68, 105.68, "VN"),
+    "quang ninh": (21, 107.3, "VN"),
+    "binh duong": (11.18, 106.65, "VN"),
+    "dong nai": (11, 107, "VN"),
+    "thanh hoa": (19.8, 105.78, "VN"),
+    "nghe an": (19, 104.9, "VN"),
+    "quang nam": (15.57, 108, "VN"),
+    "lao cai": (22.34, 103.84, "VN"),
+    "ben tre": (10.24, 106.38, "VN"),
+    "ca mau": (9.18, 105.15, "VN"),
+    "binh dinh": (14.17, 109, "VN"),
+    "kien giang": (10, 105.08, "VN"),
+    "long an": (10.7, 106.24, "VN"),
+    "bangkok": (13.76, 100.5, "TH"),
+    "chiang mai": (18.79, 98.99, "TH"),
+    "phuket": (7.88, 98.39, "TH"),
+    "pattaya": (12.93, 100.88, "TH"),
+    "khon kaen": (16.44, 102.83, "TH"),
+    "nakhon ratchasima": (14.97, 102.1, "TH"),
+    "hat yai": (7.01, 100.47, "TH"),
+    "rayong": (12.68, 101.27, "TH"),
+    "udon thani": (17.41, 102.79, "TH"),
+    "surat thani": (9.14, 99.33, "TH"),
+    "chonburi": (13.36, 100.98, "TH"),
+    "ayutthaya": (14.35, 100.58, "TH"),
+    "songkhla": (7.2, 100.6, "TH"),
+    "krabi": (8.09, 98.91, "TH"),
+    "phnom penh": (11.56, 104.92, "KH"),
+    "siem reap": (13.36, 103.86, "KH"),
+    "sihanoukville": (10.63, 103.5, "KH"),
+    "battambang": (13.1, 103.2, "KH"),
+    "kampong cham": (12, 105.45, "KH"),
+    "kampot": (10.6, 104.18, "KH"),
+    "koh kong": (11.62, 103, "KH"),
+    "vientiane": (17.97, 102.6, "LA"),
+    "luang prabang": (19.88, 102.13, "LA"),
+    "luangprabang": (19.88, 102.13, "LA"),
+    "savannakhet": (16.56, 104.75, "LA"),
+    "pakse": (15.12, 105.8, "LA"),
+    "champasak": (14.9, 105.87, "LA"),
+    "yangon": (16.85, 96.19, "MM"),
+    "mandalay": (21.95, 96.09, "MM"),
+    "naypyidaw": (19.75, 96.1, "MM"),
+    "bago": (17.34, 96.48, "MM"),
+    "mawlamyine": (16.49, 97.63, "MM"),
+    "shan": (21.5, 98, "MM"),
+    "ayeyarwady": (17, 95.2, "MM"),
+    "rakhine": (20, 93.5, "MM"),
+    "magway": (20.15, 94.93, "MM"),
+    "sagaing": (21.88, 95.98, "MM"),
+    "kuala lumpur": (3.14, 101.69, "MY"),
+    "penang": (5.41, 100.33, "MY"),
+    "johor": (1.49, 103.74, "MY"),
+    "sabah": (5.98, 116.07, "MY"),
+    "sarawak": (1.55, 110.34, "MY"),
+    "ipoh": (4.6, 101.07, "MY"),
+    "malacca": (2.2, 102.25, "MY"),
+    "melaka": (2.2, 102.25, "MY"),
+    "kuching": (1.55, 110.34, "MY"),
+    "kota kinabalu": (5.98, 116.07, "MY"),
+    "selangor": (3.07, 101.52, "MY"),
+    "perak": (4.6, 101.07, "MY"),
+    "kedah": (6.12, 100.37, "MY"),
+    "pahang": (3.81, 103.33, "MY"),
+    "kelantan": (6.13, 102.24, "MY"),
+    "putrajaya": (2.93, 101.69, "MY"),
+    "singapore": (1.35, 103.82, "SG"),
+    "bandar seri begawan": (4.9, 114.94, "BN"),
+    "dili": (-8.56, 125.56, "TL"),
+    "timor": (-8.8, 125.7, "TL"),
+}
+
+_GAZ_PATTERNS = [
+    (name, data, _re_geo.compile("(?:^|[^a-z])" + name.replace(" ", "[ ]") + "(?:$|[^a-z])"))
+    for name, data in sorted(ASEAN_GAZETTEER.items(), key=lambda kv: len(kv[0]), reverse=True)
+]
+
+
+def geocode_from_text(text: str, iso2: str):
+    """(lat, lng, nom_lieu) si un toponyme du pays iso2 figure dans text, sinon None."""
+    if not text or not iso2:
+        return None
+    hay = _norm(text)
+    for name, (lat, lng, gi), pat in _GAZ_PATTERNS:
+        if gi == iso2 and pat.search(hay):
+            return (lat, lng, name.title())
+    return None
+
+
 # --- Schema normalise --------------------------------------------------------
 @dataclass
 class RawTender:
@@ -287,6 +458,19 @@ class RawTender:
         )
         self.discipline_v = discipline(self.title, self.description)
         self.sector = self.sector or sector_class(self.title, self.description)
+        # Geocodage fin : upgrade capitale -> ville si un toponyme reel est present
+        if (self.geocode_precision or "none") in ("none", "country", "capital", ""):
+            _hit = geocode_from_text(
+                " | ".join(p for p in (
+                    self.title, self.project_name, self.location_text,
+                    self.authority, self.ministry, self.issuer_name,
+                ) if p),
+                self.country_iso2,
+            )
+            if _hit:
+                self.lat, self.lng, _city = _hit
+                self.city = self.city or _city
+                self.geocode_precision = "city"
         # 100% verifie : source_url officiel obligatoire + pays ASEAN
         if self.source_url and self.country_iso2 in ASEAN_ISO2:
             self.verification_status = "verified"
