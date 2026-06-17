@@ -14198,3 +14198,17 @@ if(window.renderDPBody){
   setInterval(go,1200); go();
 })();
 </script>
+<script>/* MVE PATCH: filtre pays + pings carte multi-pays */
+(function(){
+  var CC={Cambodia:[11.9,104.9],Thailand:[13.75,100.5],Vietnam:[16,107.8],Laos:[19.9,102.5],Myanmar:[19.7,96.1],Singapore:[1.35,103.82],Philippines:[12.9,121.8],Indonesia:[-2.5,118],Malaysia:[4.2,101.9],Brunei:[4.5,114.7]};
+  var FR={cambodge:"Cambodia",thailande:"Thailand",vietnam:"Vietnam",laos:"Laos",birmanie:"Myanmar",myanmar:"Myanmar",singapour:"Singapore",philippines:"Philippines",indonesie:"Indonesia",malaisie:"Malaysia",brunei:"Brunei"};
+  function nrm(c){if(!c)return "";var k=String(c).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();if(FR[k])return FR[k];var e=k.charAt(0).toUpperCase()+k.slice(1);return CC[e]?e:String(c);}
+  function pays(p){return p.country||p.country_name||p.pays||"";}
+  var _pfa=window.projectFromApi;if(typeof _pfa==="function"){window.projectFromApi=function(p){var b=_pfa.call(this,p);var c=nrm(pays(p));b.country=c;if((b.lat==null||b.lng==null)&&CC[c]){b.lat=CC[c][0];b.lng=CC[c][1];b.approxLoc=true;}return b;};}
+  var _ntw=window.nonLocalizedProjectToWatch;if(typeof _ntw==="function"){window.nonLocalizedProjectToWatch=function(p){var w=_ntw.call(this,p);w.country=nrm(pays(p));return w;};}
+  function liveCountry(){var el=document.getElementById("af-country");return el?nrm(el.value||""):"";}
+  var _aaf=window.applyAdvFilters;if(typeof _aaf==="function"){window.applyAdvFilters=function(){_aaf.apply(this,arguments);if(window._advFilters)window._advFilters.country="";if(typeof window.filterList==="function")window.filterList();};}
+  var _ap=window.allPings;window.allPings=function(){var pings=(typeof _ap==="function")?_ap.apply(this,arguments):[];var want=liveCountry();if(!want)return pings;return pings.filter(function(p){var co="";if(p.source==="watch"){var w=(window.watchItems||[]).find(function(x){return x&&x.id===p.id;});co=w?w.country:"";}else{var b=(window.buildings||[]).find(function(x){return x&&x.id===p.id;});co=b?b.country:"";}co=nrm(co)||"Cambodia";return co===want;});};
+  var _rav=window.refreshAppViews;window.refreshAppViews=function(){try{(window.watchItems||[]).forEach(function(w){if(w&&w.sourceType==="Backend non-localized project"&&w.country&&CC[w.country]){if(!(window.buildings||[]).some(function(b){return b&&b.apiId===w.apiId;})){var c=CC[w.country];window.buildings.push({id:"nl-"+w.apiId,apiId:w.apiId,name:w.title,type:"Projet",zone:w.country+" multi-site",country:w.country,lat:c[0],lng:c[1],approxLoc:true,pot:"med",status:w.status||"not_visited"});}}});}catch(e){}return (typeof _rav==="function")?_rav.apply(this,arguments):undefined;};
+})();
+</script>
