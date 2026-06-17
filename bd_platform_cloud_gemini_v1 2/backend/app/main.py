@@ -18,7 +18,7 @@ Base.metadata.create_all(bind=engine)
 
 SCRAPER_API_KEY = os.getenv("SCRAPER_API_KEY", "").strip()
 APP_SECRET = os.getenv("APP_SECRET", "").strip()
-APP_LOGIN_TOKEN = os.getenv("APP_LOGIN_TOKEN", "MVE2026").strip()
+# APP_LOGIN_TOKEN supprime: plus de token partage admin (securite)
 
 # --- In-memory rate limiter for AI routes (no extra deps, fail-safe) ---
 import time as _time
@@ -64,8 +64,7 @@ def get_projects(db: Session = Depends(get_db)):
 
 
 def verify_app_or_jwt(authorization: str | None = Header(default=None), x_app_token: str | None = Header(default=None)) -> dict:
-    if (APP_SECRET and x_app_token == APP_SECRET) or (APP_LOGIN_TOKEN and x_app_token == APP_LOGIN_TOKEN):
-        return {"sub": "app-token", "email": "app-token", "app_metadata": {"role": "admin"}}
+    # SECURITE: bypass par token partage supprime - JWT Supabase obligatoire.
     return verify_supabase_jwt(authorization)
 
 
