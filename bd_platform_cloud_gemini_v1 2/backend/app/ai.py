@@ -7,23 +7,34 @@ from .sources import source_keyword_context
 
 load_dotenv()
 
-SYSTEM_PROMPT = """You are a business development analyst for MVE in Cambodia.
+SYSTEM_PROMPT = """You are a CRITICAL business development analyst for MVE in Cambodia and the ASEAN region.
 Analyze project management, architecture, energy, construction, infrastructure, water,
 environment, urban planning and building opportunities.
+Be selective: only surface opportunities where MVE can realistically still win and add value.
 Return ONLY valid JSON with these keys:
 summary, sector, project_type, city, country, funder, estimated_budget, deadline,
 confidence, opportunity_size, priority, recommendation, scope_summary, score, message_fr.
-
 score: integer 1-10 measuring relevance for MVE (10 = perfect match).
+recommendation: one of "pursue", "watch", "discard".
+CRITICAL FILTERING RULES (be strict):
+- TENDERS / APPELS D'OFFRE (project_type mentioning tender, EOI, REOI, RFP, expression of interest):
+  ONLY treat as a real opportunity if the work is NOT yet launched. If the project is already
+  launched, ongoing, under construction, awarded, started, or has been running since 2022 or earlier,
+  it is NOT a tender opportunity for MVE: set score to 1, priority to "low",
+  recommendation to "discard", and state in scope_summary that it is already launched/ongoing.
+- RENOVATION: ONLY include EXISTING buildings/assets where a renovation, refurbishment, retrofit,
+  "reprise" or advisory on existing installations is actually possible. If it is a greenfield /
+  brand-new build with no existing asset to renovate, do NOT classify or propose it as renovation:
+  set score to 2 or less, priority to "low", recommendation to "discard", and explain why in
+  scope_summary. Always make the launch status and whether an existing building is involved explicit
+  inside summary and scope_summary.
 message_fr: a 3-sentence professional French email proposing MVE's services
-  for this specific opportunity. Mention project management, architecture, energy,
-  sustainability, technical engineering or infrastructure expertise when relevant.
+for this specific opportunity. Mention project management, architecture, energy,
+sustainability, technical engineering or infrastructure expertise when relevant.
 Use concise English for all fields except message_fr. If unknown, use empty string or 'unknown'.
-
 Default Cambodia opportunity sources and keywords to prioritize:
 {source_keywords}
 """.format(source_keywords=source_keyword_context())
-
 
 def _fallback(title: str, text: str) -> Dict[str, Any]:
     joined = f"{title}\n{text}".lower()
@@ -61,6 +72,58 @@ def _fallback(title: str, text: str) -> Dict[str, Any]:
         "message_fr": message_fr,
     }
 
+def _enforce_criticality(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Safety net: drop already-launched tenders and non-existing-building renovations.
+
+    Works only on the existing JSON keys, so it never changes the data schema.
+    """
+    rec = str(data.get("recommendation", "")).lower()
+    blob = " ".join(
+        str(data.get(k, "")) for k in ("project_type", "scope_summary", "summary", "priority")
+    ).lower()
+
+    is_tender = any(
+        k in blob
+        for k in ["tender", "appel d'offre", "appel d offre", "eoi", "reoi", "rfp", "expression of interest"]
+    )
+    launched = any(
+        k in blob
+        for k in [
+            "already launched",
+            "under construction",
+            "works ongoing",
+            "ongoing construction",
+            "construction started",
+            "contract awarded",
+            "already awarded",
+            "in progress",
+            "launched in 2022",
+            "launched since 2022",
+            "started in 2022",
+            "ongoing since",
+        ]
+    )
+    is_renovation = any(
+        k in blob for k in ["renovation", "refurbish", "retrofit", "reprise", "rehabilitation"]
+    )
+    no_existing = any(
+        k in blob for k in ["greenfield", "new build", "new-build", "no existing building", "brand new"]
+    )
+
+    drop = rec in ("discard", "skip", "ignore", "reject")
+    if is_tender and launched:
+        drop = True
+    if is_renovation and no_existing:
+        drop = True
+
+    if drop:
+        try:
+            data["score"] = min(int(data.get("score", 5) or 5), 2)
+        except (ValueError, TypeError):
+            data["score"] = 2
+        data["priority"] = "low"
+        data["recommendation"] = "discard"
+    return data
 
 def analyze_with_gemini(title: str, text: str, source_url: str = "") -> Dict[str, Any]:
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
@@ -91,12 +154,12 @@ def analyze_with_gemini(title: str, text: str, source_url: str = "") -> Dict[str
                 data["score"] = int(data["score"])
             except (ValueError, TypeError):
                 data["score"] = 5
+        data = _enforce_criticality(data)
         return data
     except Exception as exc:
         data = _fallback(title, text)
         data["ai_error"] = f"Gemini fallback: {last_error or exc}"
         return data
-
 
 def _fallback_generate(prompt: str, mode: str = "general") -> str:
     compact = " ".join(prompt.split())
@@ -115,7 +178,6 @@ def _fallback_generate(prompt: str, mode: str = "general") -> str:
             f"Contexte analyse localement: {compact[:500]}"
         )
     return f"Synthese IA locale: {compact[:800]}"
-
 
 def generate_with_gemini(prompt: str, max_tokens: int = 700, mode: str = "general") -> Dict[str, Any]:
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
