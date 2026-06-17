@@ -14212,3 +14212,12 @@ if(window.renderDPBody){
   var _rav=window.refreshAppViews;window.refreshAppViews=function(){try{(window.watchItems||[]).forEach(function(w){if(w&&w.sourceType==="Backend non-localized project"&&w.country&&CC[w.country]){if(!(window.buildings||[]).some(function(b){return b&&b.apiId===w.apiId;})){var c=CC[w.country];window.buildings.push({id:"nl-"+w.apiId,apiId:w.apiId,name:w.title,type:"Projet",zone:w.country+" multi-site",country:w.country,lat:c[0],lng:c[1],approxLoc:true,pot:"med",status:w.status||"not_visited"});}}});}catch(e){}return (typeof _rav==="function")?_rav.apply(this,arguments):undefined;};
 })();
 </script>
+<script>/* MVE PATCH: range la barre PERTINENCE dans Filtres avances */
+(function(){
+  setInterval(function(){
+    var pert=document.getElementById("mve-pert-wrap");
+    var panel=document.getElementById("adv-filters-panel");
+    if(pert&&panel&&pert.parentElement!==panel){ panel.appendChild(pert); }
+  },400);
+})();
+</script>
