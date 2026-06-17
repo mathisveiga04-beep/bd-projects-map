@@ -53,7 +53,7 @@ app.add_middleware(
 )
 
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health():
     return {"status": "ok", "database": "connected", "version": "v1-cloud-gemini-production-ready"}
 
