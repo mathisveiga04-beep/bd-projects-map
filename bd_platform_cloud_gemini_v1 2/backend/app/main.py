@@ -228,6 +228,7 @@ def scraper_run(
     if getattr(payload, "limit", 0) and payload.limit > 0:
         opportunities = opportunities[: payload.limit]
     if not payload.dry_run:
+        errors = []
         for item in opportunities:
             try:
                 ai = analyze_with_gemini(item.title, item.text, item.source_url)
@@ -268,6 +269,8 @@ def scraper_run(
             except Exception as exc:
                 db.rollback()
                 failed += 1
+                if len(errors) < 3:
+                    errors.append(f"{type(exc).__name__}: {str(exc)[:300]}")
 
     run.status = "finished"
     run.items_found = len(opportunities)
@@ -281,6 +284,7 @@ def scraper_run(
         "items_saved": saved,
         "items_skipped": skipped,
         "items_failed": failed,
+        "errors": errors,
     }
 
 
