@@ -33,13 +33,20 @@ def _find_project_match(db: Session, data: schemas.ProjectCreate):
 find_project_match = _find_project_match
 
 
+def _sanitize_project_payload(payload: dict) -> dict:
+    # owner_id est une colonne UUID en base : "" n'est pas un UUID valide -> NULL
+    if not payload.get("owner_id"):
+        payload["owner_id"] = None
+    return payload
+
+
 def create_or_update_project(db: Session, data: schemas.ProjectCreate):
     """Retourne (projet, created) ; created=False si fusion dans un projet existant."""
     existing = _find_project_match(db, data)
     if existing:
-        update_project(db, existing.id, schemas.ProjectUpdate(**data.model_dump()))
+        update_project(db, existing.id, schemas.ProjectUpdate(**_sanitize_project_payload(data.model_dump())))
         return db.get(models.Project, existing.id), False
-    obj = models.Project(**data.model_dump())
+    obj = models.Project(**_sanitize_project_payload(data.model_dump()))
     db.add(obj)
     db.commit()
     db.refresh(obj)
