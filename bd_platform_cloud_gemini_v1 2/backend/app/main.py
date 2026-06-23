@@ -225,6 +225,7 @@ def scraper_run(
     saved = 0
     skipped = 0
     failed = 0
+    expired = 0
     opportunities = []
     if payload.source in (None, "all", "worldbank"):
         opportunities.extend(scrape_world_bank_cambodia())
@@ -244,7 +245,7 @@ def scraper_run(
                 # Filtre de pertinence: ignorer les appels d'offre dont la date limite est depassee
                 # (date du jour dynamique). Les prospects de renovation sans date sont conserves.
                 if _is_past_deadline(str(ai.get("deadline") or "")):
-                    skipped += 1
+                    expired += 1
                     continue
                 project = schemas.ProjectCreate(
                     title=item.title,
@@ -293,6 +294,7 @@ def scraper_run(
         "items_saved": saved,
         "items_skipped": skipped,
         "items_failed": failed,
+        "items_expired": expired,
         "errors": errors,
     }
 
