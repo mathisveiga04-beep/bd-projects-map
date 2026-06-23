@@ -36,7 +36,7 @@ find_project_match = _find_project_match
 def _sanitize_project_payload(payload: dict) -> dict:
     # owner_id est une colonne UUID en base : "" n'est pas un UUID valide -> NULL
     if not payload.get("owner_id"):
-        payload["owner_id"] = None
+        payload.pop("owner_id", None)
     return payload
 
 
