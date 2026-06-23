@@ -1,6 +1,6 @@
 from __future__ import annotations
 import secrets as _secrets
-from datetime import datetime
+from datetime import datetime, date
 import os
 import requests
 from fastapi import Depends, FastAPI, Header, HTTPException
@@ -147,6 +147,48 @@ def scraper_sources():
     return {"sources": active_sources()}
 
 
+def _is_past_deadline(deadline_str: str) -> bool:
+    """True si la date limite (deadline) est strictement anterieure a aujourd'hui.
+    Date du jour dynamique via date.today(). Chaine vide / non datable -> False (conservee)."""
+    import re as _re
+    s = (deadline_str or "").strip()
+    if not s:
+        return False
+    today = date.today()
+    m = _re.search(r"(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})", s)
+    if m:
+        try:
+            return date(int(m.group(1)), int(m.group(2)), int(m.group(3))) < today
+        except ValueError:
+            return False
+    m = _re.search(r"(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})", s)
+    if m:
+        try:
+            return date(int(m.group(3)), int(m.group(2)), int(m.group(1))) < today
+        except ValueError:
+            return False
+    months = {"jan":1,"feb":2,"mar":3,"apr":4,"may":5,"jun":6,"jul":7,"aug":8,"sep":9,"oct":10,"nov":11,"dec":12,
+              "janv":1,"fevr":2,"mars":3,"avr":4,"mai":5,"juin":6,"juil":7,"aout":8,"sept":9,"octo":10,"nove":11,"dece":12}
+    low = s.lower()
+    ym = _re.search(r"(20\d{2})", low)
+    if ym:
+        year = int(ym.group(1))
+        mon = None
+        for k, v in months.items():
+            if k in low:
+                mon = v
+                break
+        if mon is None:
+            return year < today.year
+        try:
+            from calendar import monthrange
+            last_day = monthrange(year, mon)[1]
+            return date(year, mon, last_day) < today
+        except ValueError:
+            return year < today.year
+    return False
+
+
 @app.post("/scraper/run")
 def scraper_run(
     payload: schemas.ScraperRequest,
@@ -176,6 +218,11 @@ def scraper_run(
         for item in opportunities:
             try:
                 ai = analyze_with_gemini(item.title, item.text, item.source_url)
+                # Filtre de pertinence: ignorer les appels d'offre dont la date limite est depassee
+                # (date du jour dynamique). Les prospects de renovation sans date sont conserves.
+                if _is_past_deadline(str(ai.get("deadline") or "")):
+                    skipped += 1
+                    continue
                 project = schemas.ProjectCreate(
                     title=item.title,
                     description=item.text,
@@ -185,6 +232,7 @@ def scraper_run(
                     sector=str(ai.get("sector") or ""),
                     project_type=str(ai.get("project_type") or "Opportunity"),
                     status="identified",
+                    project_status=str(ai.get("project_status") or ""),
                     priority=str(ai.get("priority") or "medium").lower(),
                     source=item.source,
                     source_url=item.source_url,
