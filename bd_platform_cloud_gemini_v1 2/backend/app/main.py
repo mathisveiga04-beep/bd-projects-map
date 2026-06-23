@@ -1,4 +1,5 @@
 from __future__ import annotations
+import secrets as _secrets
 from datetime import datetime
 import os
 import requests
@@ -86,10 +87,14 @@ def ensure_project_access(project: models.Project | None, token: dict) -> None:
 
 @app.post("/projects", response_model=schemas.ProjectOut)
 def post_project(payload: schemas.ProjectCreate, db: Session = Depends(get_db), token: dict = Depends(verify_app_or_jwt)):
-    if not payload.owner_id:
-        payload.owner_id = get_user_id(token)
-    if not payload.owner_email:
-        payload.owner_email = token.get("email", "")
+    # Si la creation correspond a un projet existant, c est une modification deguisee :
+    # on exige les memes droits que sur PATCH (proprietaire ou admin).
+    existing = crud.find_project_match(db, payload)
+    if existing:
+        ensure_project_access(existing, token)
+    # Propriete definie cote serveur (anti-usurpation) : on ignore toute valeur client.
+    payload.owner_id = get_user_id(token)
+    payload.owner_email = token.get("email", "") or payload.owner_email
     payload.is_localized = bool(payload.latitude is not None and payload.longitude is not None)
     return crud.create_project(db, payload)
 
@@ -150,7 +155,7 @@ def scraper_run(
     x_api_key: str | None = Header(default=None),
     x_app_token: str | None = Header(default=None),
 ):
-    has_scraper_key = SCRAPER_API_KEY and x_api_key == SCRAPER_API_KEY
+    has_scraper_key = bool(SCRAPER_API_KEY) and _secrets.compare_digest(x_api_key or "", SCRAPER_API_KEY)
     if not has_scraper_key:
         require_admin_token(verify_app_or_jwt(authorization, x_app_token))
     run = models.ScraperRun(source=payload.source or "all", status="started")
@@ -194,10 +199,8 @@ def scraper_run(
                     ai_recommendation=str(ai.get("recommendation") or "watch"),
                     contributor="scraper+gemini",
                 )
-                before_count = db.query(models.Project).count()
-                crud.create_project(db, project)
-                after_count = db.query(models.Project).count()
-                if after_count > before_count:
+                _obj, created = crud.create_or_update_project(db, project)
+                if created:
                     saved += 1
                 else:
                     skipped += 1
@@ -239,9 +242,14 @@ def admin_list_users(token: dict = Depends(verify_app_or_jwt)):
     return r.json()
 
 
+ALLOWED_ROLES = {"user", "admin"}
+
+
 @app.post("/admin/users/{user_id}/set-role")
 def admin_set_role(user_id: str, role: str, token: dict = Depends(verify_app_or_jwt)):
     require_admin_token(token)
+    if role not in ALLOWED_ROLES:
+        raise HTTPException(400, f"Role invalide. Valeurs autorisees: {sorted(ALLOWED_ROLES)}")
     if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
         raise HTTPException(503, "Supabase admin config missing: set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY")
     url = f"{SUPABASE_URL}/auth/v1/admin/users/{user_id}"

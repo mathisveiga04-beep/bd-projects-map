@@ -1,3 +1,4 @@
+import logging
 import requests
 from .common import Opportunity
 
@@ -16,5 +17,5 @@ def scrape_world_bank_cambodia(limit: int = 25):
             source_url = p.get("url") or "https://projects.worldbank.org/"
             items.append(Opportunity(title=title, text=text, source="World Bank", source_url=source_url, funder="World Bank"))
     except Exception as exc:
-        print(f"World Bank scraper failed: {exc}")
+        logging.getLogger(__name__).warning("World Bank scraper failed: %s", exc)
     return items

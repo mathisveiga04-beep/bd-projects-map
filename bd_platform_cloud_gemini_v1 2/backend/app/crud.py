@@ -30,15 +30,24 @@ def _find_project_match(db: Session, data: schemas.ProjectCreate):
     return None
 
 
-def create_project(db: Session, data: schemas.ProjectCreate):
+find_project_match = _find_project_match
+
+
+def create_or_update_project(db: Session, data: schemas.ProjectCreate):
+    """Retourne (projet, created) ; created=False si fusion dans un projet existant."""
     existing = _find_project_match(db, data)
     if existing:
         update_project(db, existing.id, schemas.ProjectUpdate(**data.model_dump()))
-        return db.get(models.Project, existing.id)
+        return db.get(models.Project, existing.id), False
     obj = models.Project(**data.model_dump())
     db.add(obj)
     db.commit()
     db.refresh(obj)
+    return obj, True
+
+
+def create_project(db: Session, data: schemas.ProjectCreate):
+    obj, _created = create_or_update_project(db, data)
     return obj
 
 

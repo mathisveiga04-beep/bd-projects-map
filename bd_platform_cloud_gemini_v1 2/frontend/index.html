@@ -3427,9 +3427,9 @@ async function generateBrief(){
   const activePipe=buildings.filter(b=>['contacted','meeting','proposal'].includes(b.status));
   try{
     const txt=await callGemini(`Tu es responsable de la veille projets. Génère un brief hebdomadaire BD en français, structuré, pour l'équipe. Inclus : (1) TOP 3 actions prioritaires cette semaine, (2) analyse du pipeline actuel, (3) 2-3 actifs à contacter en urgence, (4) recommandations stratégiques pour les 30 prochains jours. Données : ${buildings.length} actifs mappés | Suivi actif: ${activePipe.map(b=>b.name).join(', ')||'aucun'} | Top opportunités: ${top5.map(b=>b.name).join(', ')} | Priorité haute non contactés: ${hot.map(b=>b.name).join(', ')||'aucun'} | Actions en retard: ${overdue.map(a=>a.desc).join(', ')||'aucune'} | Tenders actifs: ${tenders.filter(t=>t.fit==='high').length} à fort potentiel. Sois concret, actionnable, 200 mots max.`,700,'brief');
-    document.getElementById('brief-content').innerHTML=`<div class="brief-txt">${txt||'Génération échouée.'}</div>`;
+    document.getElementById('brief-content').innerHTML=`<div class="brief-txt">${escapeHtml(txt||'Génération échouée.')}</div>`;
     window._briefTxt=txt;
-  }catch(e){document.getElementById('brief-content').innerHTML=`<div style="color:var(--red);font-size:12px">Erreur: ${e.message}</div>`;}
+  }catch(e){document.getElementById('brief-content').innerHTML=`<div style="color:var(--red);font-size:12px">Erreur: ${escapeHtml(e.message)}</div>`;}
   btn.innerHTML='Générer le brief';
 }
 function copyBrief(){if(window._briefTxt){navigator.clipboard.writeText(window._briefTxt).then(()=>toast(t('toast.copied')));}}
@@ -6616,7 +6616,6 @@ async function loadProjectsFromSupabase(){try{if(typeof sb==='undefined'||!sb)re
     ].forEach(function(name){
       try{
         if(typeof window[name] === 'function') window[name]();
-        else if(typeof eval(name) === 'function') eval(name)();
       }catch(e){
         console.warn('BD repair:', name, 'skipped', e);
       }
