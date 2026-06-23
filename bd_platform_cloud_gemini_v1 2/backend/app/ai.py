@@ -13,7 +13,8 @@ environment, urban planning and building opportunities.
 Be selective: only surface opportunities where MVE can realistically still win and add value.
 Return ONLY valid JSON with these keys:
 summary, sector, project_type, city, country, funder, estimated_budget, deadline,
-confidence, opportunity_size, priority, recommendation, scope_summary, score, message_fr.
+confidence, opportunity_size, priority, recommendation, scope_summary, score, message_fr, project_status.
+project_status: lifecycle status, EXACTLY one of these five French values: "Démarré" (work started / construction underway), "En attente" (planned or pending, not yet started), "En cours" (actively ongoing / in progress), "Terminé" (completed / delivered), "Annulé" (cancelled / abandoned). Infer it from the source text; if unclear use "En attente".
 score: integer 1-10 measuring relevance for MVE (10 = perfect match).
 recommendation: one of "pursue", "watch", "discard".
 CRITICAL FILTERING RULES (be strict):
@@ -70,6 +71,7 @@ def _fallback(title: str, text: str) -> Dict[str, Any]:
         "scope_summary": "Review source and qualify MVE scope.",
         "score": score,
         "message_fr": message_fr,
+        "project_status": "En attente",
     }
 
 def _enforce_criticality(data: Dict[str, Any]) -> Dict[str, Any]:
@@ -125,6 +127,24 @@ def _enforce_criticality(data: Dict[str, Any]) -> Dict[str, Any]:
         data["recommendation"] = "discard"
     return data
 
+def _normalize_project_status(value: Any) -> str:
+    """Coerce any value to one of the 5 canonical French lifecycle statuses."""
+    import unicodedata
+    raw = ("" if value is None else str(value)).strip().lower()
+    raw = "".join(c for c in unicodedata.normalize("NFD", raw) if unicodedata.category(c) != "Mn")
+    if not raw:
+        return "En attente"
+    if any(k in raw for k in ("annul", "cancel", "abandon", "withdraw")):
+        return "Annulé"
+    if any(k in raw for k in ("termin", "complet", "deliver", "finish", "closed", "awarded", "done", "achev")):
+        return "Terminé"
+    if any(k in raw for k in ("en cours", "ongoing", "in progress", "underway", "running", "execution", "active")):
+        return "En cours"
+    if any(k in raw for k in ("demarr", "start", "launch", "construction", "kickoff", "kick-off", "commenc", "began", "begun")):
+        return "Démarré"
+    return "En attente"
+
+
 def analyze_with_gemini(title: str, text: str, source_url: str = "") -> Dict[str, Any]:
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
     model_name = os.getenv("GEMINI_MODEL", "gemini-2.0-flash").strip()
@@ -154,6 +174,7 @@ def analyze_with_gemini(title: str, text: str, source_url: str = "") -> Dict[str
                 data["score"] = int(data["score"])
             except (ValueError, TypeError):
                 data["score"] = 5
+        data["project_status"] = _normalize_project_status(data.get("project_status"))
         data = _enforce_criticality(data)
         return data
     except Exception as exc:
