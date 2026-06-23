@@ -2453,6 +2453,14 @@ function load(){
   const tn=localStorage.getItem('artelia_team');if(tn)document.getElementById('team-name').value=tn;
   const bu=localStorage.getItem('bd_backend_url');if(bu&&document.getElementById('backend-url'))document.getElementById('backend-url').value=bu;
 }
+function __bdDeadlineExpired(s){
+  s=(s==null?"":String(s)).trim();if(!s)return false;
+  var t=new Date();t.setHours(0,0,0,0);var m;
+  if((m=s.match(/(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/))){var d1=new Date(+m[1],+m[2]-1,+m[3]);return !isNaN(d1)&&d1<t;}
+  if((m=s.match(/(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/))){var d2=new Date(+m[3],+m[2]-1,+m[1]);return !isNaN(d2)&&d2<t;}
+  if((m=s.match(/(20\d{2})/))){return (+m[1])<t.getFullYear();}
+  return false;
+}
 async function loadProjectsFromSupabase(){
 
   if(!window.currentUser){
@@ -2475,7 +2483,7 @@ async function loadProjectsFromSupabase(){
     return;
   }
 
-  data.forEach(p=>{    if(!PRESETS.some(b=>String(b.id)===String(p.id)))return;
+  data.forEach(p=>{    if(__bdDeadlineExpired(p.deadline))return;if(!PRESETS.some(b=>String(b.id)===String(p.id)))return;
 
     const exists =
       buildings.some(b=>String(b.id)===String(p.id));
@@ -2494,7 +2502,9 @@ async function loadProjectsFromSupabase(){
         status:p.status || 'identify',
         pot:p.priority || 'med',
         zone:p.zone || '',
-        year:p.year || ''
+        year:p.year || '',
+        deadline:p.deadline || '',
+        project_status:p.project_status || ''
       });
 
     }
@@ -3090,7 +3100,7 @@ function openDP(id){
   document.getElementById('dp').classList.remove('hide');
   document.getElementById('dp-type').textContent=b.type+' · '+b.zone;
   document.getElementById('dp-name').textContent=b.name;
-  document.getElementById('dp-zone').textContent=(b.year?b.year+' · ':'')+SL[b.status];
+  document.getElementById('dp-zone').textContent=(b.year?b.year+' · ':'')+SL[b.status]+(b.project_status?' · '+b.project_status:'');
   const sc=calcScore(b);
   const scoreFill=document.getElementById('dp-score-fill'); if(scoreFill) scoreFill.style.width=sc+'%';
   renderDPBody(b);filterList();
@@ -3107,6 +3117,7 @@ function renderDPBody(b){
     <div class="dp-grid">
       <div><div class="dp-k">Type</div><div class="dp-v">${b.type}</div></div>
       <div><div class="dp-k">Année</div><div class="dp-v">${b.year||'—'}</div></div>
+      <div><div class="dp-k">Statut projet</div><div class="dp-v">${b.project_status||'—'}</div></div>
       <div><div class="dp-k">Étages</div><div class="dp-v">${b.floors||'—'}</div></div>
       <div><div class="dp-k">Budget estimé</div><div class="dp-v">${b.budget?'$'+parseInt(b.budget).toLocaleString():'—'}</div></div>
       <div><div class="dp-k">Priorité</div><div class="dp-v">${b.pot==='high'?t('pot.high'):b.pot==='med'?t('pot.med'):t('pot.low')}</div></div>
@@ -6498,7 +6509,7 @@ function startProjectsRealtime(){
   }
 }
 
-async function loadProjectsFromSupabase(){try{if(typeof sb==='undefined'||!sb)return false;const{data,error}=await sb.from('projects').select('*').order('created_at',{ascending:false});if(error){console.warn('Supabase load:',error);return false;}if(data&&data.length>0){buildings=((typeof PRESETS!=='undefined'&&Array.isArray(PRESETS))?PRESETS:[]).map(function(p){return Object.assign({activity:[],aiCache:'',liCache:'',email:'',phone:'',competitor:''},p);});try{if(typeof filterList==='function')filterList();if(typeof renderMarkers==='function'&&typeof mapObj!=='undefined'&&mapObj)renderMarkers();if(typeof updateStats==='function')updateStats();if(typeof renderDashboard==='function')renderDashboard();}catch(re){}return true;}return false;}catch(e){console.warn('loadFromSupabase:',e);return false;}}async function migrateLocalToSupabase(){try{const raw=localStorage.getItem('artelia_bld_v2');if(!raw)return;const ld=JSON.parse(raw);if(!Array.isArray(ld)||!ld.length)return;const tm=ld.filter(b=>!b.id||String(b.id).startsWith('local_')||b.source==='local');if(!tm.length)return;let ok=0,fail=0;for(const b of tm){const{aiCache,liCache,activity,...p}=b;delete p.id;p.source='local_migrated';p.updated_at=new Date().toISOString();const{error}=await sb.from('projects').insert(p);if(error)fail++;else ok++;}console.log('Migration:',ok,'ok,',fail,'failed');if(ok>0)localStorage.removeItem('artelia_bld_v2');}catch(e){console.warn('migrate:',e);}}async function syncToSupabase(project){try{if(!project||typeof sb==='undefined'||!sb)return;const{data:{session}}=await sb.auth.getSession();if(!session){if(typeof toast==='function')toast('Connecte-toi pour enregistrer');return;}const{aiCache,liCache,activity,...p}=project;if(p.id&&String(p.id).startsWith('local_'))delete p.id;const{error}=await sb.from('projects').upsert(p,{onConflict:'id'});if(error){console.warn('syncToSupabase:',error);if(typeof toast==='function')toast('Echec enregistrement');}}catch(e){console.warn('syncToSupabase:',e);}}async function initSupabaseData(){try{if(typeof sb==='undefined'||!sb)return;const ok=await loadProjectsFromSupabase();if(ok)await migrateLocalToSupabase();else{try{const r=localStorage.getItem('artelia_bld_v2');if(r)buildings=JSON.parse(r)||[];}catch(e){}}}catch(e){console.warn('initSupabase:',e);}}startProjectsRealtime();initSupabaseData().catch(e=>console.warn('initSupabase:',e));
+async function loadProjectsFromSupabase(){try{if(typeof sb==='undefined'||!sb)return false;const{data,error}=await sb.from('projects').select('*').order('created_at',{ascending:false});if(error){console.warn('Supabase load:',error);return false;}if(data&&data.length>0){buildings=((typeof PRESETS!=='undefined'&&Array.isArray(PRESETS))?PRESETS:[]).map(function(p){return Object.assign({activity:[],aiCache:'',liCache:'',email:'',phone:'',competitor:''},p);});try{data.forEach(function(p){if(__bdDeadlineExpired(p.deadline))return;if(buildings.some(function(b){return String(b.id)===String(p.id);}))return;buildings.push({id:p.id,owner_id:p.owner_id,name:p.title,lat:(p.lat!=null?p.lat:p.latitude),lng:(p.lng!=null?p.lng:p.longitude),notes:p.notes||'',services:p.services||'',type:p.type||p.project_type||'Projet',status:p.status||'identify',pot:p.priority||'med',zone:p.zone||p.city||'',year:p.year||'',deadline:p.deadline||'',project_status:p.project_status||'',activity:[],aiCache:'',liCache:'',email:'',phone:'',competitor:''});});}catch(__me){console.warn("merge projects:",__me);}try{if(typeof filterList==='function')filterList();if(typeof renderMarkers==='function'&&typeof mapObj!=='undefined'&&mapObj)renderMarkers();if(typeof updateStats==='function')updateStats();if(typeof renderDashboard==='function')renderDashboard();}catch(re){}return true;}return false;}catch(e){console.warn('loadFromSupabase:',e);return false;}}async function migrateLocalToSupabase(){try{const raw=localStorage.getItem('artelia_bld_v2');if(!raw)return;const ld=JSON.parse(raw);if(!Array.isArray(ld)||!ld.length)return;const tm=ld.filter(b=>!b.id||String(b.id).startsWith('local_')||b.source==='local');if(!tm.length)return;let ok=0,fail=0;for(const b of tm){const{aiCache,liCache,activity,...p}=b;delete p.id;p.source='local_migrated';p.updated_at=new Date().toISOString();const{error}=await sb.from('projects').insert(p);if(error)fail++;else ok++;}console.log('Migration:',ok,'ok,',fail,'failed');if(ok>0)localStorage.removeItem('artelia_bld_v2');}catch(e){console.warn('migrate:',e);}}async function syncToSupabase(project){try{if(!project||typeof sb==='undefined'||!sb)return;const{data:{session}}=await sb.auth.getSession();if(!session){if(typeof toast==='function')toast('Connecte-toi pour enregistrer');return;}const{aiCache,liCache,activity,...p}=project;if(p.id&&String(p.id).startsWith('local_'))delete p.id;const{error}=await sb.from('projects').upsert(p,{onConflict:'id'});if(error){console.warn('syncToSupabase:',error);if(typeof toast==='function')toast('Echec enregistrement');}}catch(e){console.warn('syncToSupabase:',e);}}async function initSupabaseData(){try{if(typeof sb==='undefined'||!sb)return;const ok=await loadProjectsFromSupabase();if(ok)await migrateLocalToSupabase();else{try{const r=localStorage.getItem('artelia_bld_v2');if(r)buildings=JSON.parse(r)||[];}catch(e){}}}catch(e){console.warn('initSupabase:',e);}}startProjectsRealtime();initSupabaseData().catch(e=>console.warn('initSupabase:',e));
 </script>
 <script>
 /* FINAL REPAIR PATCH — stable login/map/projects baseline */
