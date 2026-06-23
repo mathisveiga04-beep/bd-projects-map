@@ -21,6 +21,7 @@ class Project(Base):
     sector = Column(String(180), default="")
     project_type = Column(String(120), default="Project")
     status = Column(String(80), default="identified")
+    project_status = Column(String(40), default="")  # statut cycle de vie (detecte par IA)
     priority = Column(String(40), default="medium")
     color = Column(String(30), default="#F59E0B")
     source = Column(String(180), default="Manual")
@@ -71,3 +72,27 @@ class ScraperRun(Base):
     message = Column(Text, default="")
     started_at = Column(DateTime, default=datetime.utcnow)
     finished_at = Column(DateTime, nullable=True)
+
+
+# -- Micro-migration idempotente -------------------------------------------------
+# Garantit la presence de la colonne project_status sur la table "projects".
+# Statut de cycle de vie detecte par l IA: Demarre / En attente / En cours /
+# Termine / Annule. Sans effet si la colonne existe deja. N altere aucune donnee.
+try:
+    from .database import engine as _bd_engine
+    from sqlalchemy import text as _bd_text
+    with _bd_engine.begin() as _bd_conn:
+        if _bd_engine.dialect.name == "postgresql":
+            _bd_conn.execute(_bd_text(
+                "ALTER TABLE projects ADD COLUMN IF NOT EXISTS project_status VARCHAR(40) DEFAULT ''"
+            ))
+        else:
+            try:
+                _bd_conn.execute(_bd_text(
+                    "ALTER TABLE projects ADD COLUMN project_status VARCHAR(40) DEFAULT ''"
+                ))
+            except Exception:
+                pass
+except Exception:
+    # Base indisponible a l import: create_all creera la colonne pour une base neuve.
+    pass
