@@ -16,6 +16,7 @@ class ProjectBase(BaseModel):
     sector: str = ""
     project_type: str = "Project"
     status: str = "identified"
+    project_status: str = ""  # statut cycle de vie (IA): Demarre/En attente/En cours/Termine/Annule
     priority: str = "medium"
     color: str = "#F59E0B"
     source: str = "Manual"
