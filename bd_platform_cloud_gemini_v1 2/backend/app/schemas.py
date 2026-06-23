@@ -89,3 +89,4 @@ class GenerateRequest(BaseModel):
 class ScraperRequest(BaseModel):
     source: Optional[str] = None
     dry_run: bool = False
+    limit: int = 10  # nb max d opportunites analysees par run (evite les timeouts Render)
