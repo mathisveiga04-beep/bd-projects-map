@@ -17,15 +17,24 @@ from .scrapers.source_watchlist import scrape_default_source_watchlist
 
 Base.metadata.create_all(bind=engine)
 
-# Migration legere et idempotente : garantit la colonne project_status
+# Migration legere et idempotente : synchronise les colonnes manquantes
 # sur les bases deja existantes (create_all n'ajoute jamais de colonne).
 try:
-    with engine.begin() as _mig_conn:
-        _mig_conn.exec_driver_sql(
-            "ALTER TABLE projects ADD COLUMN IF NOT EXISTS project_status VARCHAR DEFAULT ''"
-        )
+    from sqlalchemy import inspect as _sa_inspect
+    _insp = _sa_inspect(engine)
+    _models_to_sync = [m for m in (getattr(models, "Project", None), getattr(models, "Tender", None)) if m is not None]
+    for _model in _models_to_sync:
+        _table = _model.__tablename__
+        _existing = {col["name"] for col in _insp.get_columns(_table)}
+        with engine.begin() as _mig_conn:
+            for _col in _model.__table__.columns:
+                if _col.name not in _existing:
+                    _type_sql = _col.type.compile(dialect=engine.dialect)
+                    _mig_conn.exec_driver_sql(
+                        f'ALTER TABLE "{_table}" ADD COLUMN IF NOT EXISTS "{_col.name}" {_type_sql}'
+                    )
 except Exception as _mig_err:  # pragma: no cover
-    print(f"[migration] project_status: {_mig_err}")
+    print(f"[migration] column sync: {_mig_err}")
 
 SCRAPER_API_KEY = os.getenv("SCRAPER_API_KEY", "").strip()
 APP_SECRET = os.getenv("APP_SECRET", "").strip()
