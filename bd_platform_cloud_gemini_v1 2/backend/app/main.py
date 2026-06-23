@@ -214,6 +214,9 @@ def scraper_run(
     if payload.source in (None, "all", "sources", "watchlist"):
         opportunities.extend(scrape_default_source_watchlist())
 
+    # Borne le travail par run pour rester sous le timeout de la passerelle Render.
+    if getattr(payload, "limit", 0) and payload.limit > 0:
+        opportunities = opportunities[: payload.limit]
     if not payload.dry_run:
         for item in opportunities:
             try:
