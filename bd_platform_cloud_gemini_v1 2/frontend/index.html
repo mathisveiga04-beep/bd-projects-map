@@ -1455,7 +1455,7 @@ html.dm .leaflet-tile { filter:invert(1) hue-rotate(180deg) brightness(.82) satu
     </div>
     <div class="lc-tabs-new" id="auth-tabs">
       <button class="lc-tab-new active" id="tab-login" onclick="showAuthTab('login')">Connexion</button>
-      <button class="lc-tab-new" id="tab-signup" onclick="showAuthTab('signup')">Créer un compte</button>
+      <button class="lc-tab-new" id="tab-signup" style="display:none;" onclick="showAuthTab('signup')">Créer un compte</button>
       <button class="lc-tab-new" id="tab-reset" onclick="showAuthTab('reset')">Mot de passe oublié</button>
     </div>
     <div id="auth-login-form">
@@ -6235,7 +6235,7 @@ function priorityColorClass(priority){
 })();
 </script>
 <style>.city-dd-wrap,#city-select{display:none!important;visibility:hidden!important;pointer-events:none!important;}</style>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>/* v68-capture */if(window.supabase&&window.supabase.createClient){(function(orig){window.supabase.createClient=function(){var c=orig.apply(this,arguments);window._sbCapture=c;return c;};})(window.supabase.createClient);}</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>/* v68-capture */window.__authUrlHash=window.location.hash||'';if(window.supabase&&window.supabase.createClient){(function(orig){window.supabase.createClient=function(){var c=orig.apply(this,arguments);window._sbCapture=c;return c;};})(window.supabase.createClient);}</script>
 
 <script>
 const SUPABASE_URL = "https://xyvsfkalaeatwmcobwrg.supabase.co";
@@ -13796,6 +13796,67 @@ if(window.renderDPBody){
   window.__authRepairV1 = true;
   var ADMIN_EMAILS = ['mathis.veiga@outlook.fr'];
   function getClient(){ if(window._sbCapture && window._sbCapture.auth) return window._sbCapture; return null; }
+  function ensureSetPwField(){
+    var ls=document.getElementById('ls'); if(!ls) return null;
+    if(document.getElementById('setpw-form')) return document.getElementById('setpw-form');
+    var pwdRef=document.getElementById('pwd-input');
+    var cls=pwdRef?pwdRef.className:'lc-inp';
+    var btnRef=document.getElementById('login-btn');
+    var bcls=btnRef?btnRef.className:'lc-btn';
+    var wrap=document.createElement('div'); wrap.id='setpw-form';
+    var title=document.createElement('div'); title.className='lc-project-sub'; title.style.marginBottom='10px'; title.textContent='Definissez votre mot de passe';
+    var p1=document.createElement('input'); p1.type='password'; p1.id='setpw-1'; p1.className=cls; p1.placeholder='Nouveau mot de passe (min. 6 caracteres)';
+    var p2=document.createElement('input'); p2.type='password'; p2.id='setpw-2'; p2.className=cls; p2.placeholder='Confirmer le mot de passe';
+    var b=document.createElement('button'); b.id='setpw-btn'; b.className=bcls; b.textContent='Valider mon mot de passe';
+    var msg=document.createElement('div'); msg.id='setpw-msg'; msg.className='lc-err'; msg.style.display='none';
+    b.addEventListener('click', doSetNewPassword);
+    p2.addEventListener('keydown', function(e){ if(e.key==='Enter') doSetNewPassword(); });
+    wrap.appendChild(title); wrap.appendChild(p1); wrap.appendChild(p2); wrap.appendChild(b); wrap.appendChild(msg);
+    var anchor=document.getElementById('auth-login-form');
+    if(anchor && anchor.parentNode) anchor.parentNode.insertBefore(wrap, anchor); else ls.appendChild(wrap);
+    return wrap;
+  }
+  function showSetPasswordForm(){
+    try{
+      var ls=document.getElementById('ls'); var app=document.getElementById('app');
+      if(ls) ls.style.display='flex'; if(app) app.style.display='none';
+      ['auth-login-form','auth-signup-form','auth-reset-form'].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; });
+      ['tab-login','tab-signup','tab-reset'].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; });
+      var f=ensureSetPwField(); if(f) f.style.display='block';
+      var p1=document.getElementById('setpw-1'); if(p1) p1.focus();
+    }catch(e){ console.warn('showSetPasswordForm', e); }
+  }
+  async function doSetNewPassword(){
+    var p1=document.getElementById('setpw-1'); var p2=document.getElementById('setpw-2');
+    var msg=document.getElementById('setpw-msg');
+    function m(t,ok){ if(msg){ msg.style.display='block'; msg.style.color=ok?'#4caf50':'#ff5252'; msg.textContent=t; } }
+    var v1=p1?p1.value:''; var v2=p2?p2.value:'';
+    if(!v1 || v1.length<6){ m('Mot de passe : 6 caracteres minimum.'); return; }
+    if(v1!==v2){ m('Les deux mots de passe ne correspondent pas.'); return; }
+    var client=getClient(); if(!client){ m('Service indisponible, reessayez dans un instant.'); return; }
+    try{
+      var r=await client.auth.updateUser({ password: v1 });
+      if(r.error){ m(r.error.message); return; }
+      m('Mot de passe defini ! Connexion en cours...', true);
+      window.__authUrlHash='';
+      try{ history.replaceState(null,'',location.pathname+location.search); }catch(e){}
+      setTimeout(function(){ location.reload(); }, 1200);
+    }catch(e){ m('Erreur : '+(e&&e.message?e.message:e)); }
+  }
+  function checkRecoveryFlow(){
+    try{
+      var h=window.__authUrlHash||window.location.hash||'';
+      if(/type=(recovery|invite)/.test(h)){ window.__authUrlHash=''; showSetPasswordForm(); return true; }
+    }catch(e){}
+    return false;
+  }
+  try{
+    var _rc=getClient();
+    if(_rc && _rc.auth && _rc.auth.onAuthStateChange){ _rc.auth.onAuthStateChange(function(ev){ if(ev==='PASSWORD_RECOVERY') showSetPasswordForm(); }); }
+  }catch(e){}
+  function _runRC(){ checkRecoveryFlow(); setTimeout(checkRecoveryFlow, 600); }
+  if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', function(){ setTimeout(_runRC,50); }); } else { setTimeout(_runRC,50); }
+
   function ensureEmailField(){
     var form=document.getElementById('auth-login-form'); if(!form) return;
     if(document.getElementById('email-input')) return;
