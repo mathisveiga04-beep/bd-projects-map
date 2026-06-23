@@ -17,6 +17,16 @@ from .scrapers.source_watchlist import scrape_default_source_watchlist
 
 Base.metadata.create_all(bind=engine)
 
+# Migration legere et idempotente : garantit la colonne project_status
+# sur les bases deja existantes (create_all n'ajoute jamais de colonne).
+try:
+    with engine.begin() as _mig_conn:
+        _mig_conn.exec_driver_sql(
+            "ALTER TABLE projects ADD COLUMN IF NOT EXISTS project_status VARCHAR DEFAULT ''"
+        )
+except Exception as _mig_err:  # pragma: no cover
+    print(f"[migration] project_status: {_mig_err}")
+
 SCRAPER_API_KEY = os.getenv("SCRAPER_API_KEY", "").strip()
 APP_SECRET = os.getenv("APP_SECRET", "").strip()
 # APP_LOGIN_TOKEN supprime: plus de token partage admin (securite)
