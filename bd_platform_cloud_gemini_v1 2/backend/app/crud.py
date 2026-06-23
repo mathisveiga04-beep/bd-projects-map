@@ -40,13 +40,46 @@ def _sanitize_project_payload(payload: dict) -> dict:
     return payload
 
 
+def _normalize_project_status(payload: dict) -> dict:
+    """Ramene project_status vers l'une des 5 valeurs canoniques FR."""
+    raw = payload.get("project_status")
+    if raw is None or str(raw).strip() == "":
+        return payload
+    import unicodedata
+    canonical = {"Démarré", "En attente", "En cours", "Terminé", "Annulé"}
+    if str(raw).strip() in canonical:
+        return payload
+    key = "".join(
+        c for c in unicodedata.normalize("NFKD", str(raw).strip().lower())
+        if not unicodedata.combining(c)
+    )
+    mapping = {
+        "demarre": "Démarré", "demarree": "Démarré", "started": "Démarré",
+        "lance": "Démarré", "lancee": "Démarré", "demarrage": "Démarré", "kickoff": "Démarré",
+        "en attente": "En attente", "attente": "En attente", "pending": "En attente",
+        "on hold": "En attente", "hold": "En attente", "a venir": "En attente",
+        "planifie": "En attente", "prevu": "En attente", "identified": "En attente",
+        "identifie": "En attente", "draft": "En attente", "ouvert": "En attente",
+        "en cours": "En cours", "in progress": "En cours", "in_progress": "En cours",
+        "ongoing": "En cours", "active": "En cours", "actif": "En cours",
+        "running": "En cours", "construction": "En cours", "travaux": "En cours",
+        "termine": "Terminé", "terminee": "Terminé", "completed": "Terminé",
+        "complete": "Terminé", "done": "Terminé", "fini": "Terminé",
+        "acheve": "Terminé", "achevee": "Terminé", "livre": "Terminé", "finished": "Terminé",
+        "annule": "Annulé", "annulee": "Annulé", "cancelled": "Annulé",
+        "canceled": "Annulé", "abandonne": "Annulé", "suspendu": "Annulé", "clos": "Annulé",
+    }
+    payload["project_status"] = mapping.get(key, "En attente")
+    return payload
+
+
 def create_or_update_project(db: Session, data: schemas.ProjectCreate):
     """Retourne (projet, created) ; created=False si fusion dans un projet existant."""
     existing = _find_project_match(db, data)
     if existing:
-        update_project(db, existing.id, schemas.ProjectUpdate(**_sanitize_project_payload(data.model_dump())))
+        update_project(db, existing.id, schemas.ProjectUpdate(**_normalize_project_status(_sanitize_project_payload(data.model_dump()))))
         return db.get(models.Project, existing.id), False
-    obj = models.Project(**_sanitize_project_payload(data.model_dump()))
+    obj = models.Project(**_normalize_project_status(_sanitize_project_payload(data.model_dump())))
     db.add(obj)
     db.commit()
     db.refresh(obj)
