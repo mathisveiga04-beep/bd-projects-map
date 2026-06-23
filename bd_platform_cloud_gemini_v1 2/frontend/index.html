@@ -2239,15 +2239,15 @@ window.addEventListener('load',()=>{
 // 
 // AUTH
 // 
-const ADMIN_HASH='aa79d7924973e0853db66feed8d577e38e3eb2c82280cce28efb5755e40040fa';
-const PWD_HASH='53b4b24b9f083cbabf5710907c6524f1005d19212d25a3799f8f3f284b727b79';
+const ADMIN_HASH = '';
+const PWD_HASH = '';
 async function sha256(s){const b=new TextEncoder().encode(s);const h=await crypto.subtle.digest('SHA-256',b);return Array.from(new Uint8Array(h)).map(x=>x.toString(16).padStart(2,'0')).join('')}
 async function doLogin(){
   const v=(document.getElementById('pwd-input').value||'').trim();
   if(!v)return;
   const h=await sha256(v);
-  // Password restored explicitly: MVE2026
-  if(v==='MVE2026' || h===PWD_HASH){
+  // Password auth removed
+  if(v===null || h===PWD_HASH){
     sessionStorage.setItem('artelia_auth','1');
     sessionStorage.setItem('artelia_app_token', v);
     sessionStorage.setItem('artelia_admin','1');
@@ -3339,11 +3339,11 @@ async function aiAuthHeaders(){
     var token = sess ? sess.access_token : null;
     if (token) headers['Authorization'] = 'Bearer ' + token;
     else {
-      var appToken = sessionStorage.getItem('artelia_app_token') || localStorage.getItem('artelia_app_token') || (localStorage.getItem('bd_admin_ok')==='1'?'MVE2026':'');
+      var appToken = sessionStorage.getItem('artelia_app_token') || localStorage.getItem('artelia_app_token') || (localStorage.getItem('bd_admin_ok')==='1'?'':'');
       if (appToken) headers['X-App-Token'] = appToken;
     }
   }catch(_){
-    var fallbackToken = sessionStorage.getItem('artelia_app_token') || localStorage.getItem('artelia_app_token') || (localStorage.getItem('bd_admin_ok')==='1'?'MVE2026':'');
+    var fallbackToken = sessionStorage.getItem('artelia_app_token') || localStorage.getItem('artelia_app_token') || (localStorage.getItem('bd_admin_ok')==='1'?'':'');
     if (fallbackToken) headers['X-App-Token'] = fallbackToken;
   }
   return headers;
@@ -6194,7 +6194,7 @@ function priorityColorClass(priority){
     var ls = document.getElementById('ls');
     var app = document.getElementById('app');
     var value = input ? (input.value || '').trim() : '';
-    var ok = value === 'MVE2026';
+    var ok = value === null;
     if(!ok){
       if(err) err.style.display='block';
       if(input) { input.value=''; input.focus(); }
@@ -6640,7 +6640,7 @@ async function loadProjectsFromSupabase(){try{if(typeof sb==='undefined'||!sb)re
     var ls = document.getElementById('ls');
     var app = document.getElementById('app');
     var value = input ? (input.value || '').trim() : '';
-    var ok = value === 'MVE2026';
+    var ok = value === null;
     if(!ok && typeof sha256 === 'function'){
       try{ ok = (await sha256(value)) === PWD_HASH; }catch(e){}
     }
