@@ -60,7 +60,7 @@ def _fallback(title: str, text: str) -> Dict[str, Any]:
         "sector": sector or "To qualify",
         "project_type": "Tender / Opportunity" if priority == "high" else "Project lead",
         "city": "",
-        "country": "Cambodia",
+        "country": "",  # infere par l'IA / le scraper (multi-pays ASEAN)
         "funder": "",
         "estimated_budget": "unknown",
         "deadline": "",
