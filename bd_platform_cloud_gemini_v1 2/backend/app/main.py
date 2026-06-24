@@ -12,6 +12,7 @@ from .ai import analyze_with_gemini, generate_with_gemini
 from .auth import get_user_id, get_user_role, verify_supabase_jwt
 from .sources import active_sources
 from .scrapers.worldbank import scrape_world_bank_cambodia
+from .scrapers.geo import geocode
 from .scrapers.rss import scrape_rss_sources
 from .scrapers.source_watchlist import scrape_default_source_watchlist
 
@@ -247,12 +248,15 @@ def scraper_run(
                 if _is_past_deadline(str(ai.get("deadline") or "")):
                     expired += 1
                     continue
+                _geo = geocode(str(ai.get("country") or item.country or "Cambodia"), str(ai.get("city") or ""))
                 project = schemas.ProjectCreate(
                     title=item.title,
                     description=item.text,
                     country=str(ai.get("country") or item.country or "Cambodia"),
                     city=str(ai.get("city") or ""),
-                    is_localized=False,
+                    latitude=_geo[0],
+                    longitude=_geo[1],
+                    is_localized=bool(_geo[0] is not None and _geo[1] is not None),
                     sector=str(ai.get("sector") or ""),
                     project_type=str(ai.get("project_type") or "Opportunity"),
                     status="identified",
