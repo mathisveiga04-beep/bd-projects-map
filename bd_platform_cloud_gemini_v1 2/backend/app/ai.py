@@ -156,15 +156,26 @@ def analyze_with_gemini(title: str, text: str, source_url: str = "") -> Dict[str
         from google import genai
         client = genai.Client(api_key=api_key)
         prompt = f"{SYSTEM_PROMPT}\n\nTitle: {title}\nSource URL: {source_url}\nText:\n{text[:12000]}"
-        for attempt in range(3):
-            try:
-                response = client.models.generate_content(model=model_name, contents=prompt)
+        _models = []
+        for _m in (model_name, "gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"):
+            _m = (_m or "").strip()
+            if _m and _m not in _models:
+                _models.append(_m)
+        response = None
+        for _mdl in _models:
+            _ok = False
+            for attempt in range(2):
+                try:
+                    response = client.models.generate_content(model=_mdl, contents=prompt)
+                    _ok = True
+                    break
+                except Exception as exc:
+                    last_error = exc
+                    time.sleep(0.6 * (attempt + 1))
+            if _ok:
                 break
-            except Exception as exc:
-                last_error = exc
-                if attempt == 2:
-                    raise
-                time.sleep(0.8 * (attempt + 1))
+        if response is None:
+            raise last_error or RuntimeError("Gemini: aucun modele disponible")
         raw = (response.text or "").strip()
         raw = raw.removeprefix("```json").removesuffix("```").strip()
         data = json.loads(raw)
