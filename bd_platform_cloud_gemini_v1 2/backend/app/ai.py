@@ -147,7 +147,7 @@ def _normalize_project_status(value: Any) -> str:
 
 def analyze_with_gemini(title: str, text: str, source_url: str = "") -> Dict[str, Any]:
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
-    model_name = os.getenv("GEMINI_MODEL", "gemini-2.0-flash").strip()
+    model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
     if not api_key:
         return _fallback(title, text)
 
@@ -157,7 +157,7 @@ def analyze_with_gemini(title: str, text: str, source_url: str = "") -> Dict[str
         client = genai.Client(api_key=api_key)
         prompt = f"{SYSTEM_PROMPT}\n\nTitle: {title}\nSource URL: {source_url}\nText:\n{text[:12000]}"
         _models = []
-        for _m in (model_name, "gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"):
+        for _m in (model_name, "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-flash-latest"):
             _m = (_m or "").strip()
             if _m and _m not in _models:
                 _models.append(_m)
@@ -213,7 +213,7 @@ def _fallback_generate(prompt: str, mode: str = "general") -> str:
 
 def generate_with_gemini(prompt: str, max_tokens: int = 700, mode: str = "general") -> Dict[str, Any]:
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
-    model_name = os.getenv("GEMINI_MODEL", "gemini-2.0-flash").strip()
+    model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
     if not api_key:
         return {"text": _fallback_generate(prompt, mode), "provider": "local-fallback"}
 
