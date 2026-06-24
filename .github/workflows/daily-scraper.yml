@@ -16,7 +16,7 @@ jobs:
             -X POST https://bd-projects-map-akh.onrender.com/scraper/run \
             -H "X-API-Key: ${{ secrets.SCRAPER_API_KEY }}" \
             -H "Content-Type: application/json" \
-            --data '{"source":"all","dry_run":false,"limit":10}' \
+            --data '{"source":"all","dry_run":false,"limit":20}' \
             --connect-timeout 30 --retry 6 --retry-delay 20 --retry-all-errors --retry-max-time 600)
           echo "HTTP status: $HTTP_STATUS"
           cat /tmp/response.json
