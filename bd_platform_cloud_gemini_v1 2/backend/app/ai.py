@@ -164,14 +164,14 @@ def analyze_with_gemini(title: str, text: str, source_url: str = "") -> Dict[str
         response = None
         for _mdl in _models:
             _ok = False
-            for attempt in range(2):
+            for attempt in range(4):
                 try:
                     response = client.models.generate_content(model=_mdl, contents=prompt)
                     _ok = True
                     break
                 except Exception as exc:
                     last_error = exc
-                    time.sleep(0.6 * (attempt + 1))
+                    time.sleep(min(8.0, 1.5 * (2 ** attempt)))
             if _ok:
                 break
         if response is None:
