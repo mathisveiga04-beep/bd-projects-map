@@ -227,6 +227,8 @@ def scraper_run(
     skipped = 0
     failed = 0
     expired = 0
+    ai_errors = 0
+    ai_error_sample = []
     opportunities = []
     _buckets = []
     if payload.source in (None, "all", "worldbank"):
@@ -263,6 +265,10 @@ def scraper_run(
         for item in opportunities:
             try:
                 ai = analyze_with_gemini(item.title, item.text, item.source_url)
+                if ai.get("ai_error"):
+                    ai_errors += 1
+                    if len(ai_error_sample) < 3:
+                        ai_error_sample.append(str(ai.get("ai_error"))[:300])
                 # Filtre de pertinence: ignorer les appels d'offre dont la date limite est depassee
                 # (date du jour dynamique). Les prospects de renovation sans date sont conserves.
                 if _is_past_deadline(str(ai.get("deadline") or "")):
@@ -319,6 +325,8 @@ def scraper_run(
         "items_skipped": skipped,
         "items_failed": failed,
         "items_expired": expired,
+        "ai_errors": ai_errors,
+        "ai_error_sample": ai_error_sample,
         "errors": errors,
     }
 
