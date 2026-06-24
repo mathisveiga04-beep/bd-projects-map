@@ -6235,7 +6235,7 @@ function priorityColorClass(priority){
 })();
 </script>
 <style>.city-dd-wrap,#city-select{display:none!important;visibility:hidden!important;pointer-events:none!important;}</style>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>/* v68-capture */window.__authUrlHash=window.location.hash||'';if(window.supabase&&window.supabase.createClient){(function(orig){window.supabase.createClient=function(){var c=orig.apply(this,arguments);window._sbCapture=c;return c;};})(window.supabase.createClient);}</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>/* v68-capture */window.__authUrlHash=window.location.hash||'';window.__needSetPw=/type=(recovery|invite)/.test((window.location.hash||'')+(window.location.search||''));if(window.supabase&&window.supabase.createClient){(function(orig){window.supabase.createClient=function(){var c=orig.apply(this,arguments);window._sbCapture=c;return c;};})(window.supabase.createClient);}</script>
 
 <script>
 const SUPABASE_URL = "https://xyvsfkalaeatwmcobwrg.supabase.co";
@@ -13918,7 +13918,7 @@ if(window.renderDPBody){
     if(r.error){ m(r.error.message); return; }
     m('Si un compte existe pour cet email, un lien de reinitialisation a ete envoye.');
   };
-  try{ var c=getClient(); if(c){ c.auth.getSession().then(function(rr){ if(rr&&rr.data&&rr.data.session&&rr.data.session.user){ var ls=document.getElementById('ls'); if(ls && ls.style.display!=='none'){ window.currentUser=rr.data.session.user; sessionStorage.setItem('artelia_auth','1'); applyRole(rr.data.session.user.email).then(enterApp); } } }); } }catch(e){}
+  try{ var c=getClient(); if(c){ c.auth.getSession().then(function(rr){ if(rr&&rr.data&&rr.data.session&&rr.data.session.user){ var ls=document.getElementById('ls'); if(ls && ls.style.display !== 'none' && !window.__needSetPw){ window.currentUser=rr.data.session.user; sessionStorage.setItem('artelia_auth','1'); applyRole(rr.data.session.user.email).then(enterApp); } } }); } }catch(e){}
   ensureEmailField();
 })();
 </script>
@@ -14117,7 +14117,7 @@ if(window.renderDPBody){
         var j=JSON.parse(raw); var s=j.currentSession||j; if(!s||!s.access_token)return false;
         var now=Math.floor(Date.now()/1000); if(s.expires_at&&now>=s.expires_at)return false; return true;}catch(e){return false;}
     }
-    function setOverlay(show){try{var ls=document.getElementById("ls"); if(!ls)return; ls.style.display=show?"flex":"none";}catch(e){}}
+    function setOverlay(show){try{if(window.__needSetPw){show=true;}var ls=document.getElementById("ls"); if(!ls)return; ls.style.display=show?"flex":"none";}catch(e){}}
     function sync(){try{if(hasValidSession())setOverlay(false);}catch(e){}}
     sync();
     document.addEventListener("DOMContentLoaded",sync);
