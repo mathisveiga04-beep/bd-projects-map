@@ -179,6 +179,10 @@ def analyze_with_gemini(title: str, text: str, source_url: str = "") -> Dict[str
         raw = (response.text or "").strip()
         raw = raw.removeprefix("```json").removesuffix("```").strip()
         data = json.loads(raw)
+        if isinstance(data, list):
+            data = next((x for x in data if isinstance(x, dict)), None)
+        if not isinstance(data, dict):
+            raise ValueError("Gemini: JSON inattendu (liste/objet absent)")
         # ensure score is int
         if "score" in data:
             try:
