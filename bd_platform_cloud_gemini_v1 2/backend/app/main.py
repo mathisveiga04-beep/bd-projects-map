@@ -228,12 +228,32 @@ def scraper_run(
     failed = 0
     expired = 0
     opportunities = []
+    _buckets = []
     if payload.source in (None, "all", "worldbank"):
-        opportunities.extend(scrape_world_bank_cambodia())
+        _buckets.append(scrape_world_bank_cambodia())
     if payload.source in (None, "all", "rss"):
-        opportunities.extend(scrape_rss_sources())
+        _buckets.append(scrape_rss_sources())
     if payload.source in (None, "all", "sources", "watchlist"):
-        opportunities.extend(scrape_default_source_watchlist())
+        _wl = scrape_default_source_watchlist()
+        # Rotation par run : chaque execution decale la fenetre de la watchlist
+        # afin de couvrir TOUS les emetteurs au fil des runs (le plafond borne le travail par run).
+        if _wl:
+            _off = (getattr(run, "id", 0) or 0) % len(_wl)
+            _wl = _wl[_off:] + _wl[:_off]
+        _buckets.append(_wl)
+
+    # Entrelacement round-robin : aucune source ne monopolise le plafond ;
+    # toutes les sources (Banque mondiale, RSS, watchlist) sont representees.
+    _idx = 0
+    while True:
+        _added = False
+        for _b in _buckets:
+            if _idx < len(_b):
+                opportunities.append(_b[_idx])
+                _added = True
+        if not _added:
+            break
+        _idx += 1
 
     # Borne le travail par run pour rester sous le timeout de la passerelle Render.
     if getattr(payload, "limit", 0) and payload.limit > 0:
