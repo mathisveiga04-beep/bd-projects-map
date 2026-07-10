@@ -258,12 +258,20 @@ def scraper_run(
         _idx += 1
 
     # Borne le travail par run pour rester sous le timeout de la passerelle Render.
-    if getattr(payload, "limit", 0) and payload.limit > 0:
-        opportunities = opportunities[: payload.limit]
+    # Budget d'appels IA par run (au lieu de tronquer la liste): on scanne large et on ne
+    # depense du quota Gemini que sur les items reellement nouveaux.
+    _ai_budget = payload.limit if (getattr(payload, "limit", 0) and payload.limit > 0) else 20
+    opportunities = opportunities[:400]  # borne de securite sur le nombre d'items scannes / run
     if not payload.dry_run:
         errors = []
         for item in opportunities:
             try:
+                if crud.project_exists(db, item.title, item.source_url):
+                    skipped += 1
+                    continue
+                if _ai_budget <= 0:
+                    break
+                _ai_budget -= 1
                 ai = analyze_with_gemini(item.title, item.text, item.source_url)
                 if ai.get("ai_error"):
                     ai_errors += 1
