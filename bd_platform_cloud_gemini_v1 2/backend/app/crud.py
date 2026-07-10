@@ -73,6 +73,18 @@ def _normalize_project_status(payload: dict) -> dict:
     return payload
 
 
+def project_exists(db: Session, title, source_url) -> bool:
+    """Pre-check de doublon (title + source_url) execute AVANT tout appel IA, pour ne pas gaspiller le quota Gemini."""
+    if not _clean_key(source_url):
+        return False
+    return (
+        db.query(models.Project)
+        .filter(models.Project.title == title, models.Project.source_url == source_url)
+        .first()
+        is not None
+    )
+
+
 def create_or_update_project(db: Session, data: schemas.ProjectCreate):
     """Retourne (projet, created) ; created=False si fusion dans un projet existant."""
     existing = _find_project_match(db, data)
