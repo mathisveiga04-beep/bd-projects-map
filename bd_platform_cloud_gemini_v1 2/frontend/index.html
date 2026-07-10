@@ -14292,3 +14292,33 @@ if(window.renderDPBody){
   },400);
 })();
 </script>
+<script>
+/* PATCH v69 — Filet de securite: bandeau si la carte reste vide (additif, non-intrusif) */
+(function(){
+  try{
+    if(window.__bdEmptyGuard) return; window.__bdEmptyGuard=true;
+    function t(fr,en){try{return (typeof currentLang==='function'&&currentLang()==='en')?en:fr;}catch(e){return fr;}}
+    function count(){try{return (window.buildings&&window.buildings.length)?window.buildings.length:0;}catch(e){return 0;}}
+    var banner=null, startedAt=Date.now();
+    function ensureBanner(){
+      if(banner) return banner;
+      banner=document.createElement('div'); banner.id='bd-empty-guard';
+      banner.style.cssText='position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:100000;background:#7f1d1d;color:#fff;font:600 13px/1.3 system-ui,sans-serif;padding:10px 14px;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.25);display:none;align-items:center;gap:12px;max-width:92vw';
+      var msg=document.createElement('span'); msg.textContent=t('Aucun projet charge sur la carte. Verifiez votre connexion.','No projects loaded on the map. Check your connection.');
+      var btn=document.createElement('button'); btn.textContent=t('Recharger','Reload'); btn.style.cssText='background:#fff;color:#7f1d1d;border:0;border-radius:8px;padding:6px 10px;font-weight:700;cursor:pointer'; btn.onclick=function(){location.reload();};
+      var x=document.createElement('span'); x.textContent='\u00d7'; x.style.cssText='cursor:pointer;font-size:18px;line-height:1;opacity:.8'; x.onclick=function(){banner.style.display='none'; banner.__dismissed=true;};
+      banner.appendChild(msg); banner.appendChild(btn); banner.appendChild(x); document.body.appendChild(banner); return banner;
+    }
+    function tick(){
+      try{
+        var n=count();
+        if(n>0){ if(banner) banner.style.display='none'; return; }
+        if(Date.now()-startedAt < 20000) return;
+        var b=ensureBanner(); if(!b.__dismissed) b.style.display='flex';
+      }catch(e){}
+    }
+    setInterval(tick, 3000);
+  }catch(e){ try{console.warn('[PATCH v69 emptyGuard]',e);}catch(_){} }
+})();
+</script>
+
