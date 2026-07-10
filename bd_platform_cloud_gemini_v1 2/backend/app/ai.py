@@ -18,6 +18,19 @@ project_status: lifecycle status, EXACTLY one of these five French values: "Dém
 score: integer 1-10 measuring relevance for MVE (10 = perfect match).
 recommendation: one of "pursue", "watch", "discard".
 CRITICAL FILTERING RULES (be strict):
+- ELIGIBILITE STRICTE (regle absolue): ne retenir un projet QUE s'il est soit "en attente de
+  reponse" (appel d'offre encore ouvert, reponse non remise ni attribuee), soit en phase de
+  PREPARATION PRELIMINAIRE (projet en cours de montage, pas encore lance). Dans ce cas
+  project_status DOIT valoir "En attente". Si le projet est demarre, en cours, attribue, termine,
+  annule, ou trop avance pour qu'un bureau d'etudes puisse encore apporter de la valeur
+  AUJOURD'HUI: score 1, priority "low", recommendation "discard", et l'expliquer dans scope_summary.
+- VALEUR AJOUTEE AU JOUR J: si a la date du jour une entreprise d'ingenierie n'aurait plus aucune
+  valeur ajoutee (marche deja attribue, delais depasses, chantier avance), recommendation "discard".
+- CORPS D'ETAT COUVERTS uniquement: eau/assainissement/drainage/hydraulique; transport/
+  infrastructure/mobilite; energie/reseaux/renouvelables/resilience climatique; batiment/
+  environnement/PMO-PMC/ingenierie conseil. Tout projet clairement hors de ces corps d'etat
+  (fournitures pures, materiel medical, alimentaire, informatique pure, prestations RH):
+  recommendation "discard".
 - TENDERS / APPELS D'OFFRE (project_type mentioning tender, EOI, REOI, RFP, expression of interest):
   ONLY treat as a real opportunity if the work is NOT yet launched. If the project is already
   launched, ongoing, under construction, awarded, started, or has been running since 2022 or earlier,
