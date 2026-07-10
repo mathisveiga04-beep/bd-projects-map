@@ -80,8 +80,13 @@ def health():
 
 
 @app.get("/projects", response_model=list[schemas.ProjectOut])
-def get_projects(db: Session = Depends(get_db)):
-    return crud.list_projects(db)
+def get_projects(include_archived: bool = False, db: Session = Depends(get_db)):
+    # Par defaut on masque les projets archives par le re-audit (perimes / hors corps d etat /
+    # cycle de vie lance ou termine). include_archived=true pour les recuperer si besoin.
+    items = crud.list_projects(db)
+    if not include_archived:
+        items = [p for p in items if getattr(p, "status", "") != "archived"]
+    return items
 
 
 def verify_app_or_jwt(authorization: str | None = Header(default=None), x_app_token: str | None = Header(default=None)) -> dict:
