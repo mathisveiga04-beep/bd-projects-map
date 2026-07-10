@@ -2,15 +2,15 @@ name: Opportunity Scraper
 
 on:
   schedule:
-    # Every 4 hours. GitHub Actions schedules are UTC.
-    - cron: '0 */4 * * *'
+    # Every 12 hours. GitHub Actions schedules are UTC.
+    - cron: '0 */12 * * *'
   workflow_dispatch:  # allow manual trigger
 
 jobs:
   run-scraper:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger scraper on Render every 4 hours
+      - name: Trigger scraper on Render every 12 hours
         run: |
           HTTP_STATUS=$(curl -s -o /tmp/response.json -w "%{http_code}" \
             -X POST https://bd-projects-map-akh.onrender.com/scraper/run \
