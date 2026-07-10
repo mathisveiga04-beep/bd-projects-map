@@ -162,6 +162,7 @@ def analyze_with_gemini(title: str, text: str, source_url: str = "") -> Dict[str
             if _m and _m not in _models:
                 _models.append(_m)
         response = None
+        _quota = False
         for _mdl in _models:
             _ok = False
             for attempt in range(3):
@@ -171,8 +172,11 @@ def analyze_with_gemini(title: str, text: str, source_url: str = "") -> Dict[str
                     break
                 except Exception as exc:
                     last_error = exc
+                    if "RESOURCE_EXHAUSTED" in str(exc) or "429" in str(exc):
+                        _quota = True
+                        break
                     time.sleep(min(3.0, 1.0 * (attempt + 1)))
-            if _ok:
+            if _ok or _quota:
                 break
         if response is None:
             raise last_error or RuntimeError("Gemini: aucun modele disponible")
