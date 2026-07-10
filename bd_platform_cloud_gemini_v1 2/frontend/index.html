@@ -10340,7 +10340,7 @@ window.exportPingsPDF=function(){
     var mp=null;
     try{mp=(typeof mapObj!=='undefined'&&mapObj)||window.mapObj;}catch(e){mp=window.mapObj;}
     if(!mp || !window.L) return;
-    try{mp.eachLayer(function(layer){if(layer instanceof L.Marker){try{mp.removeLayer(layer);}catch(e){}}});}catch(e){}
+    try{mp.eachLayer(function(layer){if(layer instanceof L.Marker && !(layer.options && layer.options.pane==='aoPane')){try{mp.removeLayer(layer);}catch(e){}}});}catch(e){}
     try{markers={};}catch(e){window.markers={};}
     var ms={};
     curatedMarkerProjects().forEach(function(b){
@@ -14152,11 +14152,11 @@ if(window.renderDPBody){
 </script>
 
 <script>
-/* === AO tenders layer v1 — appels d'offre (World Bank) clusters par capitale === */
+/* === AO tenders layer v2 — bulles clusterisees zoom-aware + bascule des pings === */
 (function(){
-  if(window.__aoLayerV1) return; window.__aoLayerV1 = true;
+  if(window.__aoLayerV2) return; window.__aoLayerV2 = true;
   var API='https://bd-projects-map-akh.onrender.com';
-  var COUNTRY={KH:'Cambodge',VN:'Vietnam',TH:'Thaïlande',MM:'Myanmar',LA:'Laos',ID:'Indonésie',MY:'Malaisie',PH:'Philippines',SG:'Singapour'};
+  var COUNTRY={KH:'Cambodge',VN:'Vietnam',TH:'Thaïlande',MM:'Myanmar',LA:'Laos',ID:'Indonésie',MY:'Malaisie',PH:'Philippines',SG:'Singapour',BN:'Brunei',TL:'Timor-Leste'};
   function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
   function fetchAll(){
     var all=[];
@@ -14170,41 +14170,101 @@ if(window.renderDPBody){
     }
     return next(0);
   }
+  function popupFor(items,country){
+    var n=items.length;
+    var rows=items.slice().sort(function(a,b){return (b.relevance_score||0)-(a.relevance_score||0);}).slice(0,40).map(function(t){
+      var link=t.source_url?'<a href="'+esc(t.source_url)+'" target="_blank" rel="noopener" style="color:#3447AA;text-decoration:none">'+esc(t.title)+'</a>':esc(t.title);
+      var meta=[t.sector,t.stage,t.donor].filter(Boolean).map(esc).join(' · ');
+      return '<div style="padding:6px 0;border-bottom:1px solid #ECDADF"><div style="font-weight:600;font-size:12px">'+link+'</div><div style="color:#5A5470;font-size:11px">'+meta+(t.project_ref?' · '+esc(t.project_ref):'')+'</div></div>';
+    }).join('');
+    var more=n>40?'<div style="color:#5A5470;font-size:11px;padding-top:6px">… +'+(n-40)+' autres</div>':'';
+    return '<div style="max-width:320px;font-family:Calibri,Segoe UI,Arial"><div style="font-weight:700;color:#202859;font-size:14px;margin-bottom:4px">'+esc(country)+' — '+n+' appels d’offre</div><div style="max-height:280px;overflow:auto">'+rows+more+'</div></div>';
+  }
+  function makeIcon(L,n){
+    var r=Math.min(40,13+Math.round(Math.sqrt(n)*2.2));
+    var html='<div style="display:flex;align-items:center;justify-content:center;width:'+(r*2)+'px;height:'+(r*2)+'px;border-radius:50%;background:rgba(52,71,170,.92);color:#fff;font:700 13px/1 Calibri,Segoe UI,Arial;border:2px solid #FBEAEB;box-shadow:0 2px 8px rgba(32,40,89,.45)">'+n+'</div>';
+    return L.divIcon({className:'ao-cluster',html:html,iconSize:[r*2,r*2],iconAnchor:[r,r]});
+  }
+  function ensurePlugin(cb){
+    if(window.L && window.L.markerClusterGroup){ cb(true); return; }
+    try{
+      var css=document.createElement('link');css.rel='stylesheet';css.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css';document.head.appendChild(css);
+      var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js';
+      s.onload=function(){cb(!!(window.L&&window.L.markerClusterGroup));};
+      s.onerror=function(){cb(false);};
+      document.head.appendChild(s);
+    }catch(e){cb(false);}
+  }
   function build(L, map){
+    if(!map.getPane('aoPane')){ map.createPane('aoPane'); map.getPane('aoPane').style.zIndex=650; }
     fetchAll().then(function(all){
+      var pts=all.filter(function(t){return typeof t.lat==='number'&&typeof t.lng==='number';});
+      window.__aoCount=pts.length;
       var groups={};
-      all.forEach(function(t){ if(typeof t.lat!=='number'||typeof t.lng!=='number')return; var k=t.lat.toFixed(4)+','+t.lng.toFixed(4); (groups[k]=groups[k]||{lat:t.lat,lng:t.lng,items:[]}).items.push(t); });
-      var layer=L.layerGroup();
-      Object.keys(groups).forEach(function(k){
-        var g=groups[k], n=g.items.length;
-        var r=Math.min(34, 13+Math.round(Math.sqrt(n)*2.2));
-        var html='<div style="display:flex;align-items:center;justify-content:center;width:'+(r*2)+'px;height:'+(r*2)+'px;border-radius:50%;background:rgba(52,71,170,.92);color:#fff;font:700 13px/1 Calibri,Segoe UI,Arial;border:2px solid #FBEAEB;box-shadow:0 2px 8px rgba(32,40,89,.45)">'+n+'</div>';
-        var icon=L.divIcon({className:'ao-cluster',html:html,iconSize:[r*2,r*2],iconAnchor:[r,r]});
-        var country=g.items[0].country_name||COUNTRY[g.items[0].country_iso2]||g.items[0].country_iso2||'';
-        var rows=g.items.slice().sort(function(a,b){return (b.relevance_score||0)-(a.relevance_score||0);}).slice(0,40).map(function(t){
-          var link=t.source_url?'<a href="'+esc(t.source_url)+'" target="_blank" rel="noopener" style="color:#3447AA;text-decoration:none">'+esc(t.title)+'</a>':esc(t.title);
-          var meta=[t.sector,t.stage,t.donor].filter(Boolean).map(esc).join(' · ');
-          return '<div style="padding:6px 0;border-bottom:1px solid #ECDADF"><div style="font-weight:600;font-size:12px">'+link+'</div><div style="color:#5A5470;font-size:11px">'+meta+(t.project_ref?' · '+esc(t.project_ref):'')+'</div></div>';
-        }).join('');
-        var more=n>40?'<div style="color:#5A5470;font-size:11px;padding-top:6px">… +'+(n-40)+' autres</div>':'';
-        var popup='<div style="max-width:320px;font-family:Calibri,Segoe UI,Arial"><div style="font-weight:700;color:#202859;font-size:14px;margin-bottom:4px">'+esc(country)+' — '+n+' appels d’offre</div><div style="max-height:280px;overflow:auto">'+rows+more+'</div></div>';
-        L.marker([g.lat,g.lng],{icon:icon,zIndexOffset:1000}).bindPopup(popup,{maxWidth:340}).addTo(layer);
-      });
-      window.__aoLayer=layer; window.__aoVisible=true; layer.addTo(map);
-      var Ctl=L.Control.extend({options:{position:'topright'},onAdd:function(){
-        var btn=L.DomUtil.create('div','');
-        btn.style.cssText='background:#3447AA;color:#fff;font:700 12px/1 Calibri,Segoe UI,Arial;padding:8px 12px;border-radius:8px;cursor:pointer;box-shadow:0 2px 8px rgba(32,40,89,.45);border:2px solid #FBEAEB;user-select:none;opacity:1';
-        btn.title='Afficher / masquer les appels d’offre';
-        btn.innerHTML='AO ('+all.length+')';
-        L.DomEvent.disableClickPropagation(btn);
-        L.DomEvent.on(btn,'click',function(){
-          if(window.__aoVisible){ map.removeLayer(layer); window.__aoVisible=false; btn.style.opacity='.55'; }
-          else { layer.addTo(map); window.__aoVisible=true; btn.style.opacity='1'; }
+      pts.forEach(function(t){ var k=t.lat.toFixed(4)+','+t.lng.toFixed(4); (groups[k]=groups[k]||{lat:t.lat,lng:t.lng,items:[]}).items.push(t); });
+      function buildMarkers(){
+        return Object.keys(groups).map(function(k){
+          var g=groups[k], n=g.items.length;
+          var country=g.items[0].country_name||COUNTRY[g.items[0].country_iso2]||g.items[0].country_iso2||'';
+          var m=L.marker([g.lat,g.lng],{icon:makeIcon(L,n),pane:'aoPane',zIndexOffset:1000,aoCount:n});
+          m.bindPopup(popupFor(g.items,country),{maxWidth:340});
+          return m;
         });
-        return btn;
-      }});
-      try{ map.addControl(new Ctl()); }catch(e){}
+      }
+      ensurePlugin(function(ok){
+        var group;
+        if(ok){
+          group=L.markerClusterGroup({
+            clusterPane:'aoPane',
+            maxClusterRadius:function(z){ return z<=4?200:(z<=6?120:70); },
+            spiderfyOnMaxZoom:false,
+            showCoverageOnHover:false,
+            zoomToBoundsOnClick:true,
+            iconCreateFunction:function(cluster){
+              var kids=cluster.getAllChildMarkers(), tot=0;
+              kids.forEach(function(mk){ tot += (mk.options.aoCount||1); });
+              return makeIcon(L, tot);
+            }
+          });
+          group.addLayers(buildMarkers());
+        } else {
+          group=L.layerGroup(buildMarkers());
+        }
+        window.__aoLayer=group;
+        window.__aoVisible=false;
+        installButton(L,map);
+      });
     }).catch(function(e){ console.warn('AO layer failed', e); });
+  }
+  function pingPane(map){ try{return map.getPane('markerPane');}catch(e){return null;} }
+  function setAO(map, on){
+    var g=window.__aoLayer; if(!g) return;
+    var mp=pingPane(map);
+    if(on){
+      if(mp) mp.style.display='none';
+      if(!map.hasLayer(g)) g.addTo(map);
+      window.__aoVisible=true;
+    } else {
+      if(map.hasLayer(g)) map.removeLayer(g);
+      if(mp) mp.style.display='';
+      window.__aoVisible=false;
+    }
+  }
+  function installButton(L, map){
+    var Ctl=L.Control.extend({options:{position:'topright'},onAdd:function(){
+      var btn=L.DomUtil.create('div','');
+      btn.style.cssText='background:#3447AA;color:#fff;font:700 12px/1 Calibri,Segoe UI,Arial;padding:8px 12px;border-radius:8px;cursor:pointer;box-shadow:0 2px 8px rgba(32,40,89,.45);border:2px solid #FBEAEB;user-select:none;opacity:.55';
+      btn.title='Afficher les appels d’offre en bulles / revenir aux pings détaillés';
+      btn.innerHTML='AO ('+(window.__aoCount||0)+')';
+      L.DomEvent.disableClickPropagation(btn);
+      L.DomEvent.on(btn,'click',function(){
+        var on=!window.__aoVisible;
+        setAO(map,on);
+        btn.style.opacity=on?'1':'.55';
+      });
+      return btn;
+    }});
+    try{ map.addControl(new Ctl()); }catch(e){}
   }
   var tries=0;
   var iv=setInterval(function(){
@@ -14271,8 +14331,8 @@ if(window.renderDPBody){
 </script>
 <script>/* MVE PATCH: filtre pays + pings carte multi-pays */
 (function(){
-  var CC={Cambodia:[11.9,104.9],Thailand:[13.75,100.5],Vietnam:[16,107.8],Laos:[19.9,102.5],Myanmar:[19.7,96.1],Singapore:[1.35,103.82],Philippines:[12.9,121.8],Indonesia:[-2.5,118],Malaysia:[4.2,101.9],Brunei:[4.5,114.7]};
-  var FR={cambodge:"Cambodia",thailande:"Thailand",vietnam:"Vietnam",laos:"Laos",birmanie:"Myanmar",myanmar:"Myanmar",singapour:"Singapore",philippines:"Philippines",indonesie:"Indonesia",malaisie:"Malaysia",brunei:"Brunei"};
+  var CC={Cambodia:[11.9,104.9],Thailand:[13.75,100.5],Vietnam:[16,107.8],Laos:[19.9,102.5],Myanmar:[19.7,96.1],Singapore:[1.35,103.82],Philippines:[12.9,121.8],Indonesia:[-2.5,118],Malaysia:[4.2,101.9],Brunei:[4.5,114.7],"Timor-Leste":[-8.8,125.7]};
+  var FR={cambodge:"Cambodia",thailande:"Thailand",vietnam:"Vietnam",laos:"Laos",birmanie:"Myanmar",myanmar:"Myanmar",singapour:"Singapore",philippines:"Philippines",indonesie:"Indonesia",malaisie:"Malaysia",brunei:"Brunei",timor:"Timor-Leste","timor-leste":"Timor-Leste"};
   function nrm(c){if(!c)return "";var k=String(c).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();if(FR[k])return FR[k];var e=k.charAt(0).toUpperCase()+k.slice(1);return CC[e]?e:String(c);}
   function pays(p){return p.country||p.country_name||p.pays||"";}
   var _pfa=window.projectFromApi;if(typeof _pfa==="function"){window.projectFromApi=function(p){var b=_pfa.call(this,p);var c=nrm(pays(p));b.country=c;if((b.lat==null||b.lng==null)&&CC[c]){b.lat=CC[c][0];b.lng=CC[c][1];b.approxLoc=true;}return b;};}
