@@ -277,6 +277,12 @@ def scraper_run(
                     ai_errors += 1
                     if len(ai_error_sample) < 3:
                         ai_error_sample.append(str(ai.get("ai_error"))[:300])
+                    _err = str(ai.get("ai_error"))
+                    if "RESOURCE_EXHAUSTED" in _err or "429" in _err or "quota" in _err.lower():
+                        # Quota Gemini epuise: on N'ENREGISTRE PAS l'item (enrichissement vide)
+                        # pour qu'il soit re-tente et enrichi lors d'un run futur. Tous les
+                        # modeles partagent le meme quota => inutile de poursuivre ce run.
+                        break
                 # Filtre de pertinence: ignorer les appels d'offre dont la date limite est depassee
                 # (date du jour dynamique). Les prospects de renovation sans date sont conserves.
                 if _is_past_deadline(str(ai.get("deadline") or "")):
