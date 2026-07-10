@@ -264,6 +264,26 @@ def _is_eligible_opportunity(ai: dict) -> bool:
     return True
 
 
+_STALE_YEAR_GAP = 2
+
+
+def _text_has_stale_year(*values) -> bool:
+    """True si un titre/description contient une annee clairement passee (<= annee courante -
+    _STALE_YEAR_GAP), signal d un vieil appel d offre meme sans deadline datee (ex: AO 1988)."""
+    import re as _re
+    cutoff = date.today().year - _STALE_YEAR_GAP
+    for value in values:
+        raw = "" if value is None else str(value)
+        for m in _re.findall(r"\b(19\d{2}|20\d{2})\b", raw):
+            try:
+                y = int(m)
+            except ValueError:
+                continue
+            if 1980 <= y <= cutoff:
+                return True
+    return False
+
+
 def _project_is_stale(project) -> bool:
     """Re-audit: True si un projet existant n est plus pertinent aujourd hui
     (deadline depassee, cycle de vie lance/termine/annule, ou hors corps d etat)."""
@@ -273,6 +293,9 @@ def _project_is_stale(project) -> bool:
         if not _status_is_pending(getattr(project, "project_status", "")):
             return True
         if not _sector_in_scope(getattr(project, "sector", "")):
+            return True
+        if _text_has_stale_year(getattr(project, "title", ""), getattr(project, "description", ""),
+                                getattr(project, "summary", ""), getattr(project, "scope_summary", "")):
             return True
     except Exception:
         return False
