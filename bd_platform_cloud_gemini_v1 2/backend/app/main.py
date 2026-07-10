@@ -295,7 +295,7 @@ def _project_is_stale(project) -> bool:
         if not _sector_in_scope(getattr(project, "sector", "")):
             return True
         if _text_has_stale_year(getattr(project, "title", ""), getattr(project, "description", ""),
-                                getattr(project, "summary", ""), getattr(project, "scope_summary", "")):
+                                getattr(project, "ai_summary", ""), getattr(project, "scope_summary", "")):
             return True
     except Exception:
         return False
