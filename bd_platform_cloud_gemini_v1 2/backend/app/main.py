@@ -209,6 +209,71 @@ def _is_past_deadline(deadline_str: str) -> bool:
     return False
 
 
+def _status_is_pending(value) -> bool:
+    """True uniquement si le statut cycle de vie correspond a en attente / preparation preliminaire."""
+    import unicodedata
+    raw = ("" if value is None else str(value)).strip().lower()
+    raw = "".join(c for c in unicodedata.normalize("NFD", raw) if unicodedata.category(c) != "Mn")
+    if not raw:
+        return True
+    launched = ("demarr", "en cours", "termin", "annul", "started", "ongoing",
+                "completed", "cancelled", "awarded", "in progress", "underway")
+    if any(k in raw for k in launched):
+        return False
+    return ("attente" in raw or "pending" in raw or "prepar" in raw
+            or "preliminaire" in raw or "planned" in raw or "identif" in raw)
+
+
+_INSCOPE_SECTOR_KEYWORDS = (
+    "water", "eau", "wastewater", "assainissement", "drainage", "flood", "hydraulic", "hydraulique",
+    "sanitation", "sewer", "irrigation",
+    "road", "route", "bridge", "pont", "transport", "mobilit", "rail", "port", "airport", "infrastructure",
+    "energy", "energie", "power", "grid", "reseau", "renewable", "renouvelable", "solar", "wind",
+    "electric", "climate", "resilience", "resilienc",
+    "building", "batiment", "construction", "architecture", "environment", "environnement",
+    "urban", "urbain", "pmo", "pmc", "supervision", "engineering", "ingenierie", "consultanc", "conseil",
+    "drain", "dam", "barrage", "treatment", "traitement",
+)
+
+
+def _sector_in_scope(value) -> bool:
+    """True si le secteur est dans l un des 4 corps d etat couverts (sinon hors perimetre)."""
+    import unicodedata
+    raw = ("" if value is None else str(value)).strip().lower()
+    raw = "".join(c for c in unicodedata.normalize("NFD", raw) if unicodedata.category(c) != "Mn")
+    if not raw:
+        return True
+    return any(k in raw for k in _INSCOPE_SECTOR_KEYWORDS)
+
+
+def _is_eligible_opportunity(ai: dict) -> bool:
+    """Consigne stricte: ne garder que les opportunites en attente/preparation, a valeur
+    ajoutee aujourd hui, dans les corps d etat couverts. Sinon on n enregistre pas."""
+    rec = str((ai or {}).get("recommendation") or "").strip().lower()
+    if rec in ("discard", "skip", "ignore", "reject"):
+        return False
+    if not _status_is_pending((ai or {}).get("project_status")):
+        return False
+    if not _sector_in_scope((ai or {}).get("sector")):
+        return False
+    return True
+
+
+def _project_is_stale(project) -> bool:
+    """Re-audit: True si un projet existant n est plus pertinent aujourd hui
+    (deadline depassee, cycle de vie lance/termine/annule, ou hors corps d etat)."""
+    try:
+        if _is_past_deadline(str(getattr(project, "deadline", "") or "")):
+            return True
+        if not _status_is_pending(getattr(project, "project_status", "")):
+            return True
+        if not _sector_in_scope(getattr(project, "sector", "")):
+            return True
+    except Exception:
+        return False
+    return False
+
+
 @app.post("/scraper/run")
 def scraper_run(
     payload: schemas.ScraperRequest,
@@ -223,6 +288,24 @@ def scraper_run(
     run = models.ScraperRun(source=payload.source or "all", status="started")
     db.add(run)
     db.commit()
+    # Re-audit quotidien (verification integree au scraper): on archive les projets
+    # existants devenus non pertinents (deadline depassee, cycle de vie lance/termine/
+    # annule, ou hors corps d etat) au lieu de les supprimer (reversible).
+    audited = 0
+    archived = 0
+    try:
+        for _p in crud.list_projects(db):
+            if getattr(_p, "status", "") == "archived":
+                continue
+            if _project_is_stale(_p):
+                _p.status = "archived"
+                _p.watch_status = "archived"
+                archived += 1
+            audited += 1
+        if archived:
+            db.commit()
+    except Exception:
+        db.rollback()
     saved = 0
     skipped = 0
     failed = 0
@@ -288,6 +371,9 @@ def scraper_run(
                 if _is_past_deadline(str(ai.get("deadline") or "")):
                     expired += 1
                     continue
+                if not _is_eligible_opportunity(ai):
+                    skipped += 1
+                    continue
                 _geo = geocode(str(ai.get("country") or item.country or "Cambodia"), str(ai.get("city") or ""))
                 project = schemas.ProjectCreate(
                     title=item.title,
@@ -334,6 +420,8 @@ def scraper_run(
     db.commit()
     return {
         "ok": True,
+        "audited": audited,
+        "archived": archived,
         "items_found": len(opportunities),
         "items_saved": saved,
         "items_skipped": skipped,
