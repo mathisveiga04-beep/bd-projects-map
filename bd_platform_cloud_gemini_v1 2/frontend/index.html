@@ -14406,7 +14406,7 @@ if(window.renderDPBody){
     function aoTerminated(t){
       try{
         var st = aoNorm(t.stage) + " " + aoNorm(t.status);
-        if(/clos|clot|termin|complet|finalis|cancel|annul|achev|expir|abandon|drop|legacy|inactif|inactive/.test(st)) return true;
+        if(/clos|clot|termin|complet|finalis|cancel|annul|achev|expir|abandon|drop|legacy|inactif|inactive|execution|ongoing|construction|awarded|en cours|implementation/.test(st)) return true;
         var d = t.deadline || t.end_date || t.closing_date || t.date_fin;
         if(d){ var dt = new Date(d); if(!isNaN(dt.getTime()) && dt.getTime() < Date.now() - 86400000) return true; }
       }catch(_){}
