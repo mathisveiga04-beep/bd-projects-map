@@ -14391,3 +14391,128 @@ if(window.renderDPBody){
 <script>document.addEventListener('change',function(e){try{if(e&&e.target&&e.target.id==='af-country'&&window.__aoRefilter){window.__aoRefilter(e.target.value||'');}}catch(_){}} ,true);</script>
 
 <script>document.addEventListener('input',function(e){try{var t=e&&e.target;if(!t||!t.classList||!t.classList.contains('mve-ao-q'))return;var root=t.parentElement;if(!root)return;var q=(t.value||'').toLowerCase().trim();var it=root.querySelectorAll('.mve-ao-i');var sh=0;for(var i=0;i<it.length;i++){var ok=!q||(it[i].getAttribute('data-q')||'').indexOf(q)>=0;it[i].style.display=ok?'':'none';if(ok)sh++;}var ne=root.querySelector('.mve-ao-n');if(ne)ne.textContent=String(sh);}catch(_){}} ,true);</script>
+
+
+<script>
+/* MVE: filtre archive (masque AO termines/expires) + panneau gauche par pays */
+(function(){
+  try{
+    function aoNorm(x){ return String(x==null?"":x).toLowerCase().normalize("NFD").replace(/[^ -~]/g,""); }
+    function aoCanon(x){
+      x = aoNorm(x).trim();
+      var A = {cambodge:"cambodia",cambodia:"cambodia",thailande:"thailand",thailand:"thailand",vietnam:"vietnam",laos:"laos",myanmar:"myanmar",birmanie:"myanmar",singapour:"singapore",singapore:"singapore",philippines:"philippines",indonesie:"indonesia",indonesia:"indonesia",malaisie:"malaysia",malaysia:"malaysia",brunei:"brunei","timor-leste":"timor-leste",kh:"cambodia",th:"thailand",vn:"vietnam",la:"laos",mm:"myanmar",sg:"singapore",ph:"philippines",id:"indonesia",my:"malaysia",bn:"brunei",tl:"timor-leste"};
+      return A[x] || x;
+    }
+    function aoTerminated(t){
+      try{
+        var st = aoNorm(t.stage) + " " + aoNorm(t.status);
+        if(/clos|clot|termin|complet|finalis|cancel|annul|achev|expir|abandon|drop|legacy|inactif|inactive/.test(st)) return true;
+        var d = t.deadline || t.end_date || t.closing_date || t.date_fin;
+        if(d){ var dt = new Date(d); if(!isNaN(dt.getTime()) && dt.getTime() < Date.now() - 86400000) return true; }
+      }catch(_){}
+      return false;
+    }
+    window.__aoIsTerminated = aoTerminated;
+
+    function purge(){
+      try{
+        var pts = window.__aoPts;
+        if(!pts || !pts.length) return false;
+        var before = pts.length;
+        for(var i = pts.length - 1; i >= 0; i--){ if(aoTerminated(pts[i])) pts.splice(i,1); }
+        return before !== pts.length;
+      }catch(_){ return false; }
+    }
+
+    function renderAO(){
+      try{
+        var list = document.getElementById("blist");
+        if(!list) return;
+        Array.prototype.slice.call(list.querySelectorAll(".mve-ao-row")).forEach(function(r){ r.remove(); });
+        var pts = window.__aoPts || [];
+        if(!pts.length) return;
+        var sel = document.getElementById("af-country");
+        var want = sel ? (sel.value || "") : "";
+        var w = aoCanon(want);
+        if(!w) return;
+        var sub = pts.filter(function(t){
+          if(aoTerminated(t)) return false;
+          return aoCanon(t.country) === w || aoCanon(t.country_iso2) === w;
+        });
+        if(!sub.length) return;
+        if(!list.querySelector(".ping-row")) list.innerHTML = "";
+        sub.sort(function(a,b){ return String(a.title||"").localeCompare(String(b.title||"")); });
+        var frag = document.createDocumentFragment();
+        sub.forEach(function(t){
+          var row = document.createElement("div");
+          row.className = "ping-row mve-ao-row";
+          row.innerHTML = '<div class="ping-dot status-identify kind-tender"></div>'
+            + '<div class="ping-main">'
+            + '<div class="ping-header-row"><div class="ping-name"></div></div>'
+            + '<div class="ping-meta"></div>'
+            + '<div class="ping-tags"><span class="ping-tag kind-tender">AO</span> <span class="ping-tag asset"></span></div>'
+            + '</div>';
+          row.querySelector(".ping-name").textContent = t.title || "(sans titre)";
+          var meta = [t.sector, t.funder || t.donor].filter(Boolean).join(" - ");
+          row.querySelector(".ping-meta").textContent = meta || "Appel offre";
+          row.querySelector(".ping-tag.asset").textContent = t.country || "";
+          row.style.cursor = "pointer";
+          row.onclick = function(){ try{ if(t.source_url) window.open(t.source_url, "_blank", "noopener"); }catch(_){} };
+          frag.appendChild(row);
+        });
+        list.appendChild(frag);
+        var n = list.querySelectorAll(".ping-row").length;
+        var c1 = document.getElementById("filter-result-count");
+        if(c1) c1.textContent = n + " projet" + (n > 1 ? "s" : "");
+        var c2 = document.getElementById("filter-count");
+        if(c2) c2.textContent = n + " projet" + (n > 1 ? "s" : "");
+      }catch(_){}
+    }
+    window.__renderAOList = renderAO;
+
+    function wrapRefilter(){
+      if(window.__aoRefilter && !window.__aoRefilter.__mveWrapped){
+        var orig = window.__aoRefilter;
+        var f = function(){ purge(); var r = orig.apply(this, arguments); renderAO(); return r; };
+        f.__mveWrapped = true;
+        window.__aoRefilter = f;
+        return true;
+      }
+      return false;
+    }
+    function wrapFilterList(){
+      if(typeof window.filterList === "function" && !window.filterList.__mveAO){
+        var orig = window.filterList;
+        var f = function(){ var r = orig.apply(this, arguments); renderAO(); return r; };
+        f.__mveAO = true;
+        window.filterList = f;
+        return true;
+      }
+      return false;
+    }
+
+    var tries = 0, done = false;
+    var iv = setInterval(function(){
+      tries++;
+      var okR = wrapRefilter();
+      wrapFilterList();
+      if(window.__aoPts && window.__aoPts.length){
+        var changed = purge();
+        var sel = document.getElementById("af-country");
+        var val = sel ? (sel.value || "") : "";
+        if(!done){
+          done = true;
+          try{ if(window.__aoRefilter) window.__aoRefilter(val); else renderAO(); }catch(_){}
+        } else if(changed){
+          try{ if(window.__aoRefilter) window.__aoRefilter(val); }catch(_){}
+        }
+      }
+      if((done && okR) || tries > 120) clearInterval(iv);
+    }, 500);
+
+    document.addEventListener("change", function(e){
+      try{ if(e && e.target && e.target.id === "af-country"){ setTimeout(function(){ purge(); renderAO(); }, 80); } }catch(_){}
+    }, true);
+  }catch(_){}
+})();
+</script>
