@@ -146,6 +146,7 @@ def relevance(title: str, description: str = "", sector: str = "",
         elif any(k in st for k in ["award", "attribu", "contract", "signed", "ongoing",
                                    "construction", "execution", "en cours", "works ongoing"]):
             score -= 8
+            _terminated = True
         elif any(k in st for k in ["complete", "completed", "closed", "cancel", "terminated",
                                    "acheve", "cloture", "annule", "abandonne"]):
             score -= 20
