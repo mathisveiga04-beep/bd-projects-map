@@ -118,7 +118,7 @@ def parse_projects(payload: dict, iso2_hint: str | None = None) -> list[RawTende
             lat=lat, lng=lng, geocode_precision=prec,
             # parties -> alimentent le graphe relationnel
             donor="World Bank",
-            stage=p.get("projectstatusdisplay") or "",
+            stage=("execution" if (p.get("projectstatusdisplay") or "").strip().lower() == "active" else (p.get("projectstatusdisplay") or "")),
             project_name=p.get("project_name") or None,
             project_ref=ext,
             raw=p,
