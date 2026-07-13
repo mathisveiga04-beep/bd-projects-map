@@ -136,6 +136,7 @@ def relevance(title: str, description: str = "", sector: str = "",
     # Stade pipeline : privilegie les AO actionnables (amont) vs deja attribues/clotures (classement)
     base = score
     st = _norm(stage)
+    _terminated = False
     if st:
         if any(k in st for k in ["plan", "identif", "pipeline", "prospect", "concept", "feasib",
                                  "prequalif", "pre-tender", "pretender", "tender", "bid", "procure",
@@ -148,8 +149,9 @@ def relevance(title: str, description: str = "", sector: str = "",
         elif any(k in st for k in ["complete", "completed", "closed", "cancel", "terminated",
                                    "acheve", "cloture", "annule", "abandonne"]):
             score -= 20
+            _terminated = True
     score = max(0, min(score, 100))
-    status = "kept" if base >= 8 else "filtered"
+    status = "filtered" if _terminated else ("kept" if base >= 8 else "filtered")
     return score, status
 
 
