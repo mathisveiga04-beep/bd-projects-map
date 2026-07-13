@@ -2454,7 +2454,7 @@ function load(){
   const bu=localStorage.getItem('bd_backend_url');if(bu&&document.getElementById('backend-url'))document.getElementById('backend-url').value=bu;
 }
 function __bdStaleYearInText(s){s=(s==null?"":String(s));var m,re=/\b(19\d{2}|20\d{2})\b/g,cutoff=(new Date().getFullYear())-2;while((m=re.exec(s))){var y=parseInt(m[1],10);if(y>=1980&&y<=cutoff)return true;}return false;}
-function __bdSkipProject(p){if(!p)return false;if(p.status==='archived')return true;if(__bdDeadlineExpired(p.deadline))return true;if(__bdStaleYearInText(p.title))return true;return false;}
+function __bdSkipProject(p){if(!p)return false;if(p.status==='archived')return true;if(__bdDeadlineExpired(p.deadline))return true;if(__bdStaleYearInText(p.title)||__bdStaleYearInText(p.name))return true;return false;}
 function __bdDeadlineExpired(s){
   s=(s==null?"":String(s)).trim();if(!s)return false;
   var t=new Date();t.setHours(0,0,0,0);var m;
@@ -2633,6 +2633,7 @@ function mkIcon(b){
 function renderMarkers(){
   Object.values(markers).forEach(m=>mapObj.removeLayer(m));markers={};
   buildings.forEach(b=>{
+    if(__bdSkipProject(b))return;
     if(!b.lat||!b.lng)return;
     const sc=calcScore(b);
     const m=L.marker([b.lat,b.lng],{icon:mkIcon(b)}).addTo(mapObj);
