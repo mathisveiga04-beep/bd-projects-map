@@ -266,7 +266,7 @@ def aiib_fetch() -> list[RawTender]:
         seen.add(ext_id)
 
         status = _txt(p.get("status")).strip()
-        stage = _AIIB_STAGE.get(status, "pipeline")
+        stage = _AIIB_STAGE.get(status, "closed")
         amt, cur = _aiib_amount(
             p.get("proposed_funding"), p.get("approved_funding"),
             p.get("committed_funding"), p.get("special_funding"),
