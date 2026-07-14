@@ -25,3 +25,16 @@ jobs:
             exit 1
           fi
           echo "Scraper completed successfully"
+
+      - name: Verifier le commit deploye sur Render (detecte un deploiement obsolete)
+        run: |
+          DEPLOYED=$(curl -s https://bd-projects-map-akh.onrender.com/ao/version | python3 -c "import sys, json; print(json.load(sys.stdin).get('commit', ''))" 2>/dev/null || echo "")
+          echo "Commit attendu (github.sha) : ${{ github.sha }}"
+          echo "Commit deploye sur Render   : $DEPLOYED"
+          if [ -z "$DEPLOYED" ] || [ "$DEPLOYED" = "unknown" ]; then
+            echo "::warning::Impossible de lire le commit deploye (/ao/version indisponible ou RENDER_GIT_COMMIT absente)."
+          elif [ "$DEPLOYED" != "${{ github.sha }}" ]; then
+            echo "::warning::Render sert un commit different de main : le scrape a peut-etre tourne sur du code obsolete. Verifier le deploiement Render."
+          else
+            echo "OK : Render execute bien le dernier commit de main."
+          fi
