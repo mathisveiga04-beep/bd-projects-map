@@ -15,6 +15,7 @@ import urllib.request
 from typing import Any, Iterable
 
 from .common import RawTender, ASEAN_ISO2
+from .stage_map import map_wb_stage
 
 SOURCE_CODE = "WB"
 PROJECTS_API = "https://search.worldbank.org/api/v3/projects"
@@ -155,16 +156,8 @@ def _date_only(v: Any) -> str | None:
     return str(v)[:10]
 
 def _map_stage(status: Any) -> str:
-    s = (status or "").lower()
-    if "pipeline" in s or "concept" in s or "identif" in s or "prepar" in s:
-        return "pipeline"
-    if "active" in s or "implementation" in s or "execution" in s:
-        return "execution"
-    if "closed" in s or "completed" in s:
-        return "closed"
-    if "dropped" in s or "cancel" in s or "legacy" in s:
-        return "cancelled"
-    return "closed"
+    # Delegue a stage_map (source unique de verite, couverte par tests).
+    return map_wb_stage(status)
 
 def _geocode_country(iso2: str):
     c = COUNTRY_CENTROID.get(iso2)
