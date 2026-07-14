@@ -3,7 +3,12 @@ from . import models, schemas
 
 
 def list_projects(db: Session):
-    return db.query(models.Project).order_by(models.Project.updated_at.desc()).all()
+    return (
+        db.query(models.Project)
+        .filter(models.Project.project_status.in_(("En attente", "Démarré", "En cours")))
+        .order_by(models.Project.updated_at.desc())
+        .all()
+    )
 
 
 def _clean_key(value: str | None) -> str:
