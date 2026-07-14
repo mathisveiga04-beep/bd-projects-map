@@ -14,5 +14,7 @@ jobs:
           python-version: "3.11"
       - name: Install pytest
         run: pip install pytest
-      - name: Run stage-map tests
+      - name: Compile backend (detecte toute erreur de syntaxe/import)
+        run: python -m compileall -q "bd_platform_cloud_gemini_v1 2/backend/app"
+      - name: Run tests
         run: python -m pytest tests/ -q
