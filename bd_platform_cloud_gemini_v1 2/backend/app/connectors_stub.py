@@ -12,6 +12,10 @@ from typing import Any
 _EPOCH = datetime.date(1970, 1, 1)
 
 from .common import RawTender, ASEAN_ISO2
+from .stage_map import (
+    IATI_STATUS_STAGE, IATI_STAGE_DEFAULT,
+    AIIB_STATUS_STAGE, AIIB_STAGE_DEFAULT,
+)
 
 # Capitales ASEAN (lat, lng) — géocodage par défaut.
 # Les flux IATI (d-portal) ne fournissent pas de coordonnées : on place le
@@ -30,10 +34,7 @@ _UA = ("Mozilla/5.0 (compatible; ArteliaBD/1.0; +http" "s://"
 # IATI activity status_code -> stage interne.
 # Valeurs autorisees par la contrainte ao_tenders_stage_check :
 # pipeline | open | closed | awarded | cancelled
-_STATUS_STAGE = {
-    "1": "pipeline", "2": "execution", "3": "closed", "4": "closed",
-    "5": "cancelled", "6": "execution",
-}
+_STATUS_STAGE = IATI_STATUS_STAGE  # source unique : stage_map.py
 
 
 def _http_json(url: str, params: dict) -> dict:
@@ -126,7 +127,7 @@ def _dportal_fetch(source_code: str, donor: str, reporting_refs: list[str],
                 title = _txt(row.get("title")).strip() or aid
                 desc = _txt(row.get("description")).strip()
                 status = _txt(row.get("status_code")).strip()
-                stage = _STATUS_STAGE.get(status, "open")
+                stage = _STATUS_STAGE.get(status, IATI_STAGE_DEFAULT)
 
                 amt_eur = _amount(row.get("commitment_eur"))
                 amt = amt_eur or _amount(row.get("commitment"))
@@ -198,10 +199,7 @@ _AIIB_ASEAN = {
 }
 
 # statut AIIB -> stage interne (contrainte ao_tenders_stage_check).
-_AIIB_STAGE = {
-    "Proposed": "pipeline", "Approved": "awarded",
-    "Terminated / Cancelled": "cancelled", "Dropped": "cancelled",
-}
+_AIIB_STAGE = AIIB_STATUS_STAGE  # source unique : stage_map.py
 
 
 def _parse_js_array(text: str) -> list[dict]:
@@ -266,7 +264,7 @@ def aiib_fetch() -> list[RawTender]:
         seen.add(ext_id)
 
         status = _txt(p.get("status")).strip()
-        stage = _AIIB_STAGE.get(status, "closed")
+        stage = _AIIB_STAGE.get(status, AIIB_STAGE_DEFAULT)
         amt, cur = _aiib_amount(
             p.get("proposed_funding"), p.get("approved_funding"),
             p.get("committed_funding"), p.get("special_funding"),
