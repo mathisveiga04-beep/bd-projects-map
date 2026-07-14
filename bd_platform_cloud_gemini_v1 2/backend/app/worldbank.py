@@ -156,15 +156,15 @@ def _date_only(v: Any) -> str | None:
 
 def _map_stage(status: Any) -> str:
     s = (status or "").lower()
-    if "active" in s or "implementation" in s:
-        return "open"
-    if "pipeline" in s or "concept" in s:
+    if "pipeline" in s or "concept" in s or "identif" in s or "prepar" in s:
         return "pipeline"
+    if "active" in s or "implementation" in s or "execution" in s:
+        return "execution"
     if "closed" in s or "completed" in s:
         return "closed"
-    if "dropped" in s or "cancel" in s:
+    if "dropped" in s or "cancel" in s or "legacy" in s:
         return "cancelled"
-    return "open"
+    return "closed"
 
 def _geocode_country(iso2: str):
     c = COUNTRY_CENTROID.get(iso2)
