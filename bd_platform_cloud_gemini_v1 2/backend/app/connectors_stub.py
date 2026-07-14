@@ -305,8 +305,8 @@ def aiib_fetch() -> list[RawTender]:
 
 
 def jica_fetch() -> list[RawTender]:
-    # JICA ne publie pas sur IATI/d-portal -> source ODA japonaise distincte requise.
-    return _todo("JICA", "jica.go.jp : ni IATI, ni API ouverte (formulaires PHP / agregateurs tiers payants)")
+    # Agence japonaise de cooperation internationale — XM-DAC-701-8 (IATI depuis 2014)
+    return _dportal_fetch("JICA", "Japan International Cooperation Agency", ["XM-DAC-701-8"])
 
 
 def philgeps_fetch() -> list[RawTender]:
