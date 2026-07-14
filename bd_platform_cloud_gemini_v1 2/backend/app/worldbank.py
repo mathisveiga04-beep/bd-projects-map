@@ -87,43 +87,47 @@ def parse_projects(payload: dict, iso2_hint: str | None = None) -> list[RawTende
 
     results: list[RawTender] = []
     for p in items:
-        iso2 = iso2_hint
-        cc = _country_code_iso2(p.get("countrycode"))
-        if cc in WB_ISO2:
-            iso2 = cc
-        if iso2 not in ASEAN_ISO2:
+        try:
+            iso2 = iso2_hint
+            cc = _country_code_iso2(p.get("countrycode"))
+            if cc in WB_ISO2:
+                iso2 = cc
+            if iso2 not in ASEAN_ISO2:
+                continue
+
+            sector = _sector_str(p.get("sector"))
+            url = p.get("url") or f"https://projects.worldbank.org/en/projects-operations/project-detail/{p.get('id','')}"
+            amount = _to_float(p.get("totalcommamount"))
+            lat, lng, prec = _geocode_country(iso2)
+
+            ext = str(p.get("id") or "")
+            rt = RawTender(
+                source_code=SOURCE_CODE,
+                external_ref=ext,
+                source_id=ext,
+                title=p.get("project_name") or "(sans titre)",
+                description=sector,
+                country_iso2=iso2,
+                country_name=p.get("countryshortname"),
+                source_url=url,
+                sector=sector,
+                procurement_type="project_financing",
+                stage=_map_stage(p.get("projectstatusdisplay")),
+                value_amount=amount,
+                value_currency="USD" if amount else None,
+                published_at=_date_only(p.get("boardapprovaldate")),
+                location_text=p.get("countryshortname"),
+                lat=lat, lng=lng, geocode_precision=prec,
+                # parties -> alimentent le graphe relationnel
+                donor="World Bank",
+                project_name=p.get("project_name") or None,
+                project_ref=ext,
+                raw=p,
+            ).finalize()
+            results.append(rt)
+        except Exception as _e:
+            print(f"[WB] parse: enregistrement ignore ({_e})")
             continue
-
-        sector = _sector_str(p.get("sector"))
-        url = p.get("url") or f"https://projects.worldbank.org/en/projects-operations/project-detail/{p.get('id','')}"
-        amount = _to_float(p.get("totalcommamount"))
-        lat, lng, prec = _geocode_country(iso2)
-
-        ext = str(p.get("id") or "")
-        rt = RawTender(
-            source_code=SOURCE_CODE,
-            external_ref=ext,
-            source_id=ext,
-            title=p.get("project_name") or "(sans titre)",
-            description=sector,
-            country_iso2=iso2,
-            country_name=p.get("countryshortname"),
-            source_url=url,
-            sector=sector,
-            procurement_type="project_financing",
-            stage=_map_stage(p.get("projectstatusdisplay")),
-            value_amount=amount,
-            value_currency="USD" if amount else None,
-            published_at=_date_only(p.get("boardapprovaldate")),
-            location_text=p.get("countryshortname"),
-            lat=lat, lng=lng, geocode_precision=prec,
-            # parties -> alimentent le graphe relationnel
-            donor="World Bank",
-            project_name=p.get("project_name") or None,
-            project_ref=ext,
-            raw=p,
-        ).finalize()
-        results.append(rt)
     return results
 
 def _sector_str(sector_field: Any) -> str:
