@@ -31,8 +31,8 @@ _UA = ("Mozilla/5.0 (compatible; ArteliaBD/1.0; +http" "s://"
 # Valeurs autorisees par la contrainte ao_tenders_stage_check :
 # pipeline | open | closed | awarded | cancelled
 _STATUS_STAGE = {
-    "1": "pipeline", "2": "open", "3": "closed", "4": "closed",
-    "5": "cancelled", "6": "open",
+    "1": "pipeline", "2": "execution", "3": "closed", "4": "closed",
+    "5": "cancelled", "6": "execution",
 }
 
 
