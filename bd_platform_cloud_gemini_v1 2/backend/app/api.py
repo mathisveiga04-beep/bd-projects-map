@@ -227,3 +227,12 @@ def list_connectors():
     """Liste les sources branchees (debug/observabilite ; non protege)."""
     from .run import CONNECTORS
     return {"connectors": sorted(CONNECTORS.keys())}
+
+
+@router.get("/version")
+def deployed_version():
+    """Expose le commit Git deploye (RENDER_GIT_COMMIT) pour detecter un deploiement obsolete (debug/observabilite ; non protege)."""
+    return {
+        "commit": os.getenv("RENDER_GIT_COMMIT") or os.getenv("GIT_COMMIT") or "unknown",
+        "branch": os.getenv("RENDER_GIT_BRANCH") or "unknown",
+    }
