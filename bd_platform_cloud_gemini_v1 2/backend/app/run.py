@@ -166,6 +166,11 @@ def run_source(source: str) -> dict:
         status = "error"
         err = str(e)
         print(f"[run] {source} ERROR: {e}")
+    _up = counts.get("tenders", 0)
+    if status == "ok" and _up == 0:
+        print(f"[SCRAPER][WARN] {source} : 0 opportunite retenue (fetched={fetched}, rejected={rejected}) -- source potentiellement cassee ou filtree a 100%")
+    else:
+        print(f"[SCRAPER] {source} : fetched={fetched} upserted={_up} rejected={rejected} status={status}")
     log_run(source, status, fetched, counts.get("tenders", 0), rejected, err)
     return {"source": source, "status": status, "fetched": fetched,
             "rejected": rejected, "upserted": counts,
