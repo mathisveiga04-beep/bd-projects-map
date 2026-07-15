@@ -2,6 +2,7 @@ from __future__ import annotations
 import secrets as _secrets
 from datetime import datetime, date
 import os
+import logging
 import requests
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,6 +16,7 @@ from .scrapers.worldbank import scrape_world_bank_cambodia
 from .scrapers.geo import geocode
 from .scrapers.rss import scrape_rss_sources
 from .scrapers.source_watchlist import scrape_default_source_watchlist
+from .official_status import official_status_to_fr
 
 Base.metadata.create_all(bind=engine)
 
@@ -229,24 +231,7 @@ def _status_is_pending(value) -> bool:
             or "preliminaire" in raw or "planned" in raw or "identif" in raw)
 
 
-def _official_status_to_fr(value):
-    """Traduit un statut OFFICIEL de source (World Bank projectstatusdisplay, etc.)
-    vers l'une des 5 valeurs FR canoniques. Retourne vide si inconnu/absent,
-    auquel cas on retombe sur l'analyse IA."""
-    import unicodedata
-    raw = ("" if value is None else str(value)).strip().lower()
-    raw = "".join(c for c in unicodedata.normalize("NFD", raw) if unicodedata.category(c) != "Mn")
-    if not raw:
-        return ""
-    if any(k in raw for k in ("pipeline", "concept", "identif", "prepar", "proposed", "planned", "en attente")):
-        return "En attente"
-    if any(k in raw for k in ("active", "implementation", "execution", "ongoing", "disburs", "en cours")):
-        return "En cours"
-    if any(k in raw for k in ("closed", "completed", "complete", "terminated", "termine")):
-        return "Terminé"
-    if any(k in raw for k in ("dropped", "cancel", "abandon", "annul")):
-        return "Annulé"
-    return ""
+_official_status_to_fr = official_status_to_fr
 
 
 _INSCOPE_SECTOR_KEYWORDS = (
@@ -414,9 +399,15 @@ def scraper_run(
                         # pour qu'il soit re-tente et enrichi lors d'un run futur. Tous les
                         # modeles partagent le meme quota => inutile de poursuivre ce run.
                         break
-                _official = _official_status_to_fr(getattr(item, "official_status", ""))
+                _raw_official = getattr(item, "official_status", "")
+                _official = _official_status_to_fr(_raw_official)
                 if _official:
                     ai["project_status"] = _official
+                elif str(_raw_official or "").strip():
+                    logging.warning(
+                        "Statut officiel non reconnu (repli IA) : %r [source=%s]",
+                        _raw_official, getattr(item, "source", ""),
+                    )
                 # Filtre de pertinence: ignorer les appels d'offre dont la date limite est depassee
                 # (date du jour dynamique). Les prospects de renovation sans date sont conserves.
                 if _is_past_deadline(str(ai.get("deadline") or "")):
