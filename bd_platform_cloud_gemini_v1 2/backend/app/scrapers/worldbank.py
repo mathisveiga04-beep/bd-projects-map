@@ -30,7 +30,7 @@ def _scrape_country(iso2: str, country_name: str, limit: int = 5):
             title = p.get("project_name") or p.get("project_abstract") or "World Bank project"
             text = "\n".join(str(p.get(k, "")) for k in ["project_abstract", "projectdocs", "theme_namecode", "sector_namecode"])
             source_url = p.get("url") or "https://projects.worldbank.org/"
-            items.append(Opportunity(title=title, text=text, source="World Bank", source_url=source_url, funder="World Bank", country=country_name))
+            items.append(Opportunity(title=title, text=text, source="World Bank", source_url=source_url, funder="World Bank", country=country_name, official_status=str(p.get("projectstatusdisplay") or "")))
     except Exception as exc:
         logging.getLogger(__name__).warning("World Bank scraper failed for %s: %s", iso2, exc)
     return items

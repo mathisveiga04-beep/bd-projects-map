@@ -13,3 +13,4 @@ class Opportunity:
     city: str = ""
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+    official_status: str = ""
