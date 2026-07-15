@@ -229,6 +229,26 @@ def _status_is_pending(value) -> bool:
             or "preliminaire" in raw or "planned" in raw or "identif" in raw)
 
 
+def _official_status_to_fr(value):
+    """Traduit un statut OFFICIEL de source (World Bank projectstatusdisplay, etc.)
+    vers l'une des 5 valeurs FR canoniques. Retourne vide si inconnu/absent,
+    auquel cas on retombe sur l'analyse IA."""
+    import unicodedata
+    raw = ("" if value is None else str(value)).strip().lower()
+    raw = "".join(c for c in unicodedata.normalize("NFD", raw) if unicodedata.category(c) != "Mn")
+    if not raw:
+        return ""
+    if any(k in raw for k in ("pipeline", "concept", "identif", "prepar", "proposed", "planned", "en attente")):
+        return "En attente"
+    if any(k in raw for k in ("active", "implementation", "execution", "ongoing", "disburs", "en cours")):
+        return "En cours"
+    if any(k in raw for k in ("closed", "completed", "complete", "terminated", "termine")):
+        return "Terminé"
+    if any(k in raw for k in ("dropped", "cancel", "abandon", "annul")):
+        return "Annulé"
+    return ""
+
+
 _INSCOPE_SECTOR_KEYWORDS = (
     "water", "eau", "wastewater", "assainissement", "drainage", "flood", "hydraulic", "hydraulique",
     "sanitation", "sewer", "irrigation",
@@ -394,6 +414,9 @@ def scraper_run(
                         # pour qu'il soit re-tente et enrichi lors d'un run futur. Tous les
                         # modeles partagent le meme quota => inutile de poursuivre ce run.
                         break
+                _official = _official_status_to_fr(getattr(item, "official_status", ""))
+                if _official:
+                    ai["project_status"] = _official
                 # Filtre de pertinence: ignorer les appels d'offre dont la date limite est depassee
                 # (date du jour dynamique). Les prospects de renovation sans date sont conserves.
                 if _is_past_deadline(str(ai.get("deadline") or "")):
