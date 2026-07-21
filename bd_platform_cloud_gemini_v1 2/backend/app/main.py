@@ -386,6 +386,12 @@ def scraper_run(
         for item in opportunities:
             try:
                 if crud.project_exists(db, item.title, item.source_url):
+                    try:
+                        _fr_exist = _official_status_to_fr(getattr(item, "official_status", ""))
+                        if _fr_exist:
+                            crud.refresh_status_by_key(db, item.title, item.source_url, _fr_exist)
+                    except Exception:
+                        pass
                     skipped += 1
                     continue
                 if _ai_budget <= 0:
