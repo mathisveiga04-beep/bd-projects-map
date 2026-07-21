@@ -29,12 +29,20 @@ def official_status_to_fr(value):
     )
     if not raw:
         return ""
+    # Codes numeriques IATI (activity-status) : 1 Pipeline, 2 Implementation,
+    # 3 Finalisation, 4 Closed, 5 Cancelled, 6 Suspended.
+    _iati_num = {
+        "1": FR_EN_ATTENTE, "2": FR_EN_COURS, "3": FR_TERMINE,
+        "4": FR_TERMINE, "5": FR_ANNULE, "6": FR_ANNULE,
+    }
+    if raw in _iati_num:
+        return _iati_num[raw]
     if any(k in raw for k in ("pipeline", "concept", "identif", "prepar", "proposed", "planned", "en attente")):
         return FR_EN_ATTENTE
     if any(k in raw for k in ("active", "implementation", "execution", "ongoing", "disburs", "en cours")):
         return FR_EN_COURS
-    if any(k in raw for k in ("closed", "completed", "complete", "terminated", "termine")):
+    if any(k in raw for k in ("closed", "completed", "complete", "terminated", "termine", "finalis", "achev")):
         return FR_TERMINE
-    if any(k in raw for k in ("dropped", "cancel", "abandon", "annul")):
+    if any(k in raw for k in ("dropped", "cancel", "abandon", "annul", "suspend", "withdrawn")):
         return FR_ANNULE
     return ""
