@@ -13,6 +13,7 @@ from .ai import analyze_with_gemini, generate_with_gemini
 from .auth import get_user_id, get_user_role, verify_supabase_jwt
 from .sources import active_sources
 from .scrapers.worldbank import scrape_world_bank_cambodia
+from .scrapers.adb import scrape_adb_cambodia
 from .scrapers.geo import geocode
 from .scrapers.rss import scrape_rss_sources
 from .scrapers.source_watchlist import scrape_default_source_watchlist
@@ -349,6 +350,8 @@ def scraper_run(
     _buckets = []
     if payload.source in (None, "all", "worldbank"):
         _buckets.append(scrape_world_bank_cambodia())
+    if payload.source in (None, "all", "adb"):
+        _buckets.append(scrape_adb_cambodia())
     if payload.source in (None, "all", "rss"):
         _buckets.append(scrape_rss_sources())
     if payload.source in (None, "all", "sources", "watchlist"):
