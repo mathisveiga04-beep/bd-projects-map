@@ -14516,3 +14516,41 @@ if(window.renderDPBody){
   }catch(_){}
 })();
 </script>
+
+<!-- PATCH freshness: badge "Donnees mises a jour le ..." (additif, non bloquant) -->
+<script>
+(function(){
+  var tries = 0;
+  function initFreshnessBadge(){
+    try {
+      var c = window._sbCapture;
+      if (!c || typeof c.from !== 'function') {
+        if (tries++ < 20) { setTimeout(initFreshnessBadge, 1500); }
+        return;
+      }
+      c.from('projects').select('created_at,updated_at').order('created_at', { ascending: false }).limit(1).then(function(res){
+        try {
+          if (!res || !res.data || !res.data.length) return;
+          var row = res.data[0] || {};
+          var raw = row.updated_at || row.created_at;
+          if (!raw) return;
+          var dt = new Date(raw);
+          if (isNaN(dt.getTime())) return;
+          var s = dt.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+          if (document.getElementById('bd-freshness-badge')) return;
+          var el = document.createElement('div');
+          el.id = 'bd-freshness-badge';
+          el.textContent = 'Donn\u00e9es mises \u00e0 jour le ' + s;
+          el.style.cssText = 'position:fixed;bottom:12px;left:12px;z-index:2147483000;background:rgba(17,24,39,0.85);color:#e5e7eb;font:12px/1.4 Calibri,Segoe UI,Arial,sans-serif;letter-spacing:.02em;padding:5px 11px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.25);pointer-events:none;';
+          document.body.appendChild(el);
+        } catch(e){}
+      }).catch(function(){});
+    } catch(e){}
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function(){ setTimeout(initFreshnessBadge, 1500); });
+  } else {
+    setTimeout(initFreshnessBadge, 1500);
+  }
+})();
+</script>
