@@ -41,3 +41,21 @@ def test_absent_ou_inconnu_retombe_sur_ia():
     assert official_status_to_fr("") == ""
     assert official_status_to_fr(None) == ""
     assert official_status_to_fr("Bogus XYZ") == ""
+
+
+def test_iati_finalisation_et_suspendu():
+    # Termes IATI/ADB non couverts par la Banque mondiale.
+    assert official_status_to_fr("Finalisation") == "Terminé"
+    assert official_status_to_fr("Achevé") == "Terminé"
+    assert official_status_to_fr("Suspended") == "Annulé"
+    assert official_status_to_fr("Withdrawn") == "Annulé"
+
+
+def test_iati_codes_numeriques():
+    # Codelist IATI activity-status : 1..6.
+    assert official_status_to_fr("1") == "En attente"
+    assert official_status_to_fr(2) == "En cours"
+    assert official_status_to_fr("3") == "Terminé"
+    assert official_status_to_fr("4") == "Terminé"
+    assert official_status_to_fr("5") == "Annulé"
+    assert official_status_to_fr("6") == "Annulé"
