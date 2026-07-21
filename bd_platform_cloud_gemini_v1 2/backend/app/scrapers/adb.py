@@ -11,7 +11,6 @@ canonique (1->En attente, 2->En cours, 3/4->Termine, 5/6->Annule).
 casser les autres sources du run /scraper/run.
 """
 import logging
-import requests
 from .common import Opportunity
 
 logger = logging.getLogger(__name__)
@@ -80,6 +79,7 @@ def _parse_activities(rows, country_name):
 
 
 def _scrape_country(iso2, country_name, limit=10):
+    import requests  # import paresseux : le parsing pur reste testable sans requests
     url = "https://d-portal.org/q"
     params = {
         "reporting_ref": ADB_IATI_REF,
