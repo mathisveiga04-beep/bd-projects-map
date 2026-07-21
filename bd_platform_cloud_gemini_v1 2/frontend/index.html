@@ -14591,3 +14591,21 @@ if(window.renderDPBody){
   (function loop(){ if(install()) return; if(tries++<40) setTimeout(loop, 700); })();
 })();
 </script>
+
+<!-- PATCH statut v2: detection hors-delai elargie aux statuts IATI/ADB (Finalisation, codes 3-6, termes de cloture). Redefinit window.__bdStatusClosed, lu dynamiquement par le wrapper de PATCH v1. Additif, non bloquant. -->
+<script>
+(function(){
+  function norm(s){ s=(s==null?"":String(s)).toLowerCase(); try{ s=s.normalize("NFD").replace(/[\u0300-\u036f]/g,""); }catch(e){} return s; }
+  var KILL = ["termine","clotur","clos","closed","complete","achev","finalis","annul","cancel","dropped","abandon","suspend","withdrawn","retire"];
+  var NUM = {"3":1,"4":1,"5":1,"6":1};
+  window.__bdStatusClosed = function(b){
+    if(!b) return false;
+    var s = norm(b.project_status);
+    if(!s) return false;
+    if(/^\d+$/.test(s) && NUM[s]) return true;
+    for(var i=0;i<KILL.length;i++){ if(s.indexOf(KILL[i])>=0) return true; }
+    return false;
+  };
+  try{ if(typeof renderMarkers==="function") renderMarkers(); }catch(e){}
+})();
+</script>
