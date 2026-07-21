@@ -90,6 +90,27 @@ def project_exists(db: Session, title, source_url) -> bool:
     )
 
 
+def refresh_status_by_key(db: Session, title, source_url, new_status) -> bool:
+    """Rafraichit uniquement project_status d'une ligne existante (match title+source_url),
+    sans passer par l'IA, pour re-synchroniser un statut officiel qui a change
+    (ex: projet passe en Termine/Annule) sans re-consommer le quota Gemini."""
+    if not new_status:
+        return False
+    proj = (
+        db.query(models.Project)
+        .filter(models.Project.title == title, models.Project.source_url == source_url)
+        .first()
+    )
+    if proj is None:
+        return False
+    if (proj.project_status or "") == new_status:
+        return False
+    proj.project_status = new_status
+    db.add(proj)
+    db.commit()
+    return True
+
+
 def create_or_update_project(db: Session, data: schemas.ProjectCreate):
     """Retourne (projet, created) ; created=False si fusion dans un projet existant."""
     existing = _find_project_match(db, data)
