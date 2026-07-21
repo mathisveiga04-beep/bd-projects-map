@@ -14554,3 +14554,40 @@ if(window.renderDPBody){
   }
 })();
 </script>
+
+
+<!-- PATCH statut: masque les projets Termine/Annule (et deadlines expirees) sur la carte, toutes banques. Additif, non bloquant. -->
+<script>
+(function(){
+  function norm(s){ s=(s==null?"":String(s)).toLowerCase(); try{ s=s.normalize("NFD").replace(/[\u0300-\u036f]/g,""); }catch(e){} return s; }
+  window.__bdStatusClosed = function(b){
+    if(!b) return false;
+    var s = norm(b.project_status);
+    if(!s) return false;
+    var kill = ["termine","clotur","closed","complete","annul","cancel","dropped","abandon"];
+    for(var i=0;i<kill.length;i++){ if(s.indexOf(kill[i])>=0) return true; }
+    return false;
+  };
+  function hidden(b){
+    try{
+      if(window.__bdStatusClosed && window.__bdStatusClosed(b)) return true;
+      if(typeof __bdDeadlineExpired==="function" && b && __bdDeadlineExpired(b.deadline)) return true;
+    }catch(e){}
+    return false;
+  }
+  function install(){
+    if(typeof window.curatedMarkerProjects !== "function") return false;
+    if(window.__bdCuratedWrapped) return true;
+    var _orig = window.curatedMarkerProjects;
+    window.curatedMarkerProjects = function(){
+      var arr = _orig.apply(this, arguments) || [];
+      try{ return arr.filter(function(b){ return !hidden(b); }); }catch(e){ return arr; }
+    };
+    window.__bdCuratedWrapped = true;
+    try{ if(typeof renderMarkers==="function") renderMarkers(); }catch(e){}
+    return true;
+  }
+  var tries=0;
+  (function loop(){ if(install()) return; if(tries++<40) setTimeout(loop, 700); })();
+})();
+</script>
