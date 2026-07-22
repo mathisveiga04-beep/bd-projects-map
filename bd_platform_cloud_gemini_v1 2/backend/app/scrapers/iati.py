@@ -35,7 +35,12 @@ _ADB_REF = "XM-DAC-46004"
 # Correspondances identifiant IATI -> nom lisible (seulement les surs ; sinon on
 # retombe sur le nom d'organisation fourni par d-portal, puis sur l'identifiant brut).
 _FUNDER_BY_REF = {
-    _ADB_REF: "ADB",
+    _ADB_REF: "ADB",                          # XM-DAC-46004
+    "XM-DAC-44000": "Banque mondiale",         # World Bank Group
+    "XM-DAC-44001": "Banque mondiale (BIRD)",  # IBRD
+    "XM-DAC-44002": "Banque mondiale (IDA)",   # IDA
+    "XM-DAC-41114": "PNUD",                    # UNDP
+    "XM-DAC-41122": "UNICEF",                  # UNICEF
 }
 
 # Mots-cles "projet physique" (construction / infrastructure / batiment).
@@ -46,6 +51,15 @@ _RELEVANT_KW = (
     "railway", "metro", "airport", "seaport", "terminal", "facility",
     "rehabilitation", "reconstruction", "renovation", "civil works",
     "transport", "irrigation", "dam", "building construction",
+    "wastewater", "drainage", "flood protection", "tunnel", "expressway",
+    "bypass", "solar", "hydropower", "hydroelectric", "substation",
+    "transmission line", "pipeline", "treatment plant", "water treatment",
+    "desalination", "waste management", "solid waste", "landfill",
+    "public building", "market", "stadium", "port", "wharf", "jetty",
+    "embankment", "levee", "canal", "reservoir", "pumping station",
+    "bus rapid transit", "light rail", "tramway", "district heating",
+    "industrial park", "economic zone", "social housing",
+    "affordable housing", "resettlement",
 )
 
 
