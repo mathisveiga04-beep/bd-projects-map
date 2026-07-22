@@ -158,6 +158,32 @@ def _normalize_project_status(value: Any) -> str:
     return "En attente"
 
 
+def _retry_delay_seconds(exc):
+    """Lit le delai de reprise (secondes) suggere par Google dans une erreur 429,
+    via le champ retryDelay du message (ex 30s). Renvoie None si absent.
+    Delai court = limite par minute (RPM, on reessaie) ; delai long/absent =
+    quota journalier (RPD, on bascule de modele)."""
+    s = str(exc)
+    i = s.find("retryDelay")
+    if i < 0:
+        return None
+    j = i + len("retryDelay")
+    while j < len(s) and not s[j].isdigit():
+        if s[j] in "}\n":
+            break
+        j += 1
+    digits = ""
+    while j < len(s) and s[j].isdigit():
+        digits += s[j]
+        j += 1
+    if not digits:
+        return None
+    try:
+        return int(digits)
+    except Exception:
+        return None
+
+
 def analyze_with_gemini(title: str, text: str, source_url: str = "") -> Dict[str, Any]:
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
     model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
@@ -185,7 +211,14 @@ def analyze_with_gemini(title: str, text: str, source_url: str = "") -> Dict[str
                 except Exception as exc:
                     last_error = exc
                     if "RESOURCE_EXHAUSTED" in str(exc) or "429" in str(exc):
-                        # quota epuise sur ce modele: on tente le modele suivant (quota distinct, ex flash-lite)
+                        # Quota atteint. Si Google renvoie un retryDelay court (limite par
+                        # minute / RPM), on patiente puis on reessaie le MEME modele ; sinon
+                        # (quota journalier / RPD, ou delai trop long) on bascule vers le
+                        # modele suivant, comme avant.
+                        _rd = _retry_delay_seconds(exc)
+                        if _rd is not None and _rd <= 30 and attempt < 2:
+                            time.sleep(_rd + 1.0)
+                            continue
                         break
                     time.sleep(min(3.0, 1.0 * (attempt + 1)))
             if _ok:
