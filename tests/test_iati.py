@@ -38,8 +38,8 @@ def test_exclut_adb_statuts_non_courants_et_hors_sujet():
 def test_opportunity_bien_formee():
     out = _parse_activities(_ROWS, "Cambodia")
     o = next(x for x in out if x.title.startswith("National Road"))
-    assert o.funder == "World Bank"
-    assert o.source == "IATI (World Bank)"
+    assert o.funder == "Banque mondiale"
+    assert o.source == "IATI (Banque mondiale)"
     assert o.country == "Cambodia"
     assert o.official_status == "2"
     assert "WB-001" in o.source_url
