@@ -14,7 +14,7 @@ from .auth import get_user_id, get_user_role, verify_supabase_jwt
 from .sources import active_sources
 from .scrapers.worldbank import scrape_world_bank_cambodia
 from .scrapers.adb import scrape_adb_cambodia
-from .scrapers.iati import scrape_iati_sea
+from .scrapers.iati import scrape_iati_sea, iati_fallback_ai
 from .scrapers.geo import geocode
 from .scrapers.rss import scrape_rss_sources
 from .scrapers.source_watchlist import scrape_default_source_watchlist
@@ -407,10 +407,18 @@ def scraper_run(
                         ai_error_sample.append(str(ai.get("ai_error"))[:300])
                     _err = str(ai.get("ai_error"))
                     if "RESOURCE_EXHAUSTED" in _err or "429" in _err or "quota" in _err.lower():
-                        # Quota Gemini epuise: on N'ENREGISTRE PAS l'item (enrichissement vide)
-                        # pour qu'il soit re-tente et enrichi lors d'un run futur. Tous les
-                        # modeles partagent le meme quota => inutile de poursuivre ce run.
-                        break
+                        # Quota Gemini epuise: repli deterministe (sans IA) pour les items IATI,
+                        # afin de continuer a enregistrer les projets meme sans enrichissement IA.
+                        _fb = iati_fallback_ai(
+                            getattr(item, "source", ""),
+                            getattr(item, "official_status", ""),
+                            item.title, item.text,
+                            getattr(item, "country", ""),
+                        )
+                        if _fb is None:
+                            skipped += 1
+                            continue
+                        ai = _fb
                 _raw_official = getattr(item, "official_status", "")
                 _official = _official_status_to_fr(_raw_official)
                 if _official:
