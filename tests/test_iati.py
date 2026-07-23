@@ -4,7 +4,7 @@ import sys
 _APP = os.path.join(os.path.dirname(__file__), "..", "bd_platform_cloud_gemini_v1 2", "backend", "app")
 sys.path.insert(0, os.path.abspath(_APP))
 
-from scrapers.iati import _parse_activities, _funder, _is_relevant, _activity_url, _ADB_REF  # noqa: E402
+from scrapers.iati import _parse_activities, _funder, _is_relevant, _activity_url, _ADB_REF, iati_fallback_ai  # noqa: E402
 from official_status import official_status_to_fr  # noqa: E402
 
 _ROWS = [
@@ -72,3 +72,18 @@ def test_entrees_robustes():
 def test_activity_url():
     assert "aid=WB-001" in _activity_url("WB-001")
     assert _activity_url("").startswith("https://d-portal.org")
+
+def test_funder_par_nom():
+    assert _funder("XX-1", "African Development Bank") == "BAfD"
+    assert _funder("XX-2", "European Investment Bank") == "BEI"
+    assert _funder("XX-3", "Japan International Cooperation Agency") == "JICA"
+    assert _funder("XX-4", "Random Local NGO") == "Random Local NGO"
+
+
+def test_iati_fallback():
+    road = iati_fallback_ai("IATI (World Bank)", "", "Rural road rehabilitation", "", "Cambodia")
+    assert road["sector"] == "Transport"
+    water = iati_fallback_ai("IATI (ADB)", "", "Water supply and drainage", "", "Cambodia")
+    assert water["sector"] == "Eau & assainissement"
+    assert iati_fallback_ai("Other source", "", "road", "", "Cambodia") is None
+    assert iati_fallback_ai("IATI", "", "", "", "Cambodia") is None
