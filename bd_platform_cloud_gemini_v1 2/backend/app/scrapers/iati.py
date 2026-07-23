@@ -63,11 +63,38 @@ _RELEVANT_KW = (
 )
 
 
+_FUNDER_BY_NAME = (
+    ("world bank", "Banque mondiale"),
+    ("asian infrastructure investment bank", "AIIB"),
+    ("asian development bank", "ADB"),
+    ("african development bank", "BAfD"),
+    ("inter-american development bank", "BID"),
+    ("islamic development bank", "BIsD"),
+    ("european investment bank", "BEI"),
+    ("european bank for reconstruction", "BERD"),
+    ("agence francaise de developpement", "AFD"),
+    ("french development agency", "AFD"),
+    ("japan international cooperation", "JICA"),
+    ("kreditanstalt", "KfW"),
+    ("international finance corporation", "IFC"),
+    ("green climate fund", "Fonds vert climat"),
+    ("united nations development programme", "PNUD"),
+    ("unicef", "UNICEF"),
+    ("world health organization", "OMS"),
+    ("food and agriculture organization", "FAO"),
+)
+
+
 def _funder(ref, name):
     ref = (ref or "").strip()
     name = (name or "").strip()
     if ref in _FUNDER_BY_REF:
         return _FUNDER_BY_REF[ref]
+    if name:
+        _low = name.lower()
+        for _needle, _label in _FUNDER_BY_NAME:
+            if _needle in _low:
+                return _label
     return name or ref or "IATI"
 
 
@@ -156,3 +183,38 @@ def scrape_iati_sea(limit_per_country=40):
             logger.warning("IATI country %s error: %s", iso2, e)
             continue
     return out
+
+
+_FALLBACK_SECTORS = (
+    (("water", "sanitation", "sewer", "wastewater", "drainage", "irrigation", "flood", "hydraulic", "dam"), "Eau & assainissement"),
+    (("road", "bridge", "transport", "rail", "port", "airport", "metro", "highway", "expressway"), "Transport"),
+    (("energy", "power", "grid", "electric", "solar", "wind", "hydropower", "renewable", "substation", "transmission"), "Energie"),
+    (("building", "construction", "housing", "urban", "school", "hospital", "market", "stadium"), "Batiment & urbain"),
+)
+
+
+def iati_fallback_ai(source, official_status, title, text, country):
+    """Enrichissement de REPLI (sans IA) pour les items IATI, utilise quand le quota
+    Gemini est epuise. Renvoie un dict compatible avec le pipeline d enregistrement,
+    ou None si l item n est pas un item IATI exploitable (re-tente avec l IA plus tard)."""
+    if not str(source or "").startswith("IATI"):
+        return None
+    blob = (str(title or "") + " " + str(text or "")).strip().lower()
+    if not blob:
+        return None
+    sector = "Infrastructure"
+    for _kws, _label in _FALLBACK_SECTORS:
+        if any(k in blob for k in _kws):
+            sector = _label
+            break
+    return {
+        "country": str(country or ""),
+        "city": "",
+        "sector": sector,
+        "project_type": "Opportunity",
+        "priority": "medium",
+        "project_status": "",
+        "recommendation": "",
+        "deadline": "",
+        "ai_fallback": True,
+    }
