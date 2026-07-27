@@ -8,41 +8,44 @@ jobs:
       - name: Auditer les dates des projets
         run: |
           python3 - <<'PY'
-          import json, urllib.request
-          from collections import Counter
-          url = "https://bd-projects-map-akh.onrender.com/projects"
-          data = json.load(urllib.request.urlopen(url, timeout=90))
-          print("TOTAL", len(data))
-          if data:
-              print("FIELDS", sorted(data[0].keys()))
-          keys = set()
-          for d in data:
-              for k in d.keys():
-                  if any(s in k.lower() for s in ["date","created","updated","start","end","expire","deadline","seen"]):
-                      keys.add(k)
-          print("DATE_KEYS", sorted(keys))
-          for k in sorted(keys):
-              vals = [str(d.get(k)) for d in data if d.get(k)]
-              nulls = sum(1 for d in data if not d.get(k))
-              if vals:
-                  print("KEY", k, "min", min(vals), "max", max(vals), "present", len(vals), "nulls", nulls)
-              else:
-                  print("KEY", k, "ALL_NULL", nulls)
-          for sk in ["status", "project_status"]:
-              if data and sk in data[0]:
-                  print("STATUS_DIST", sk, dict(Counter(str(d.get(sk)) for d in data)))
-          best = None
-          for c in ["updated_at", "last_seen", "created_at", "start_date"]:
-              if c in keys:
-                  best = c
-                  break
-          print("BEST", best)
-          if best:
-              srt = sorted([d for d in data if d.get(best)], key=lambda d: str(d[best]))
-              print("OLDEST")
-              for d in srt[:15]:
-                  print("O|", d.get(best), "|", str(d.get("status") or d.get("project_status") or ""), "|", str(d.get("title") or "")[:70])
-              print("NEWEST")
-              for d in srt[-5:]:
-                  print("N|", d.get(best), "|", str(d.get("title") or "")[:70])
+          import json, urllib.request, urllib.error
+          base = "https://bd-projects-map-akh.onrender.com"
+          def get(path):
+              try:
+                  r = urllib.request.urlopen(base + path, timeout=90)
+                  return r.status, r.read().decode("utf-8", "replace")
+              except urllib.error.HTTPError as e:
+                  return e.code, e.read().decode("utf-8", "replace")
+              except Exception as e:
+                  return -1, repr(e)
+          # 1) enumerer les routes
+          st, body = get("/openapi.json")
+          print("OPENAPI_STATUS", st)
+          try:
+              spec = json.loads(body)
+              print("ROUTES", sorted(spec.get("paths", {}).keys()))
+          except Exception as e:
+              print("OPENAPI_PARSE_ERR", repr(e), body[:300])
+          # 2) tester les endpoints candidats
+          for p in ["/projects", "/projects?include_archived=true", "/projects?include_archived=false", "/tenders", "/health", "/api/version"]:
+              st, body = get(p)
+              head = body[:400].replace("\n", " ")
+              print("PATH", p, "STATUS", st, "LEN", len(body), "HEAD", head)
+          # 3) si /projects marche, auditer les dates
+          st, body = get("/projects")
+          if st == 200:
+              data = json.loads(body)
+              print("TOTAL", len(data))
+              if data:
+                  print("FIELDS", sorted(data[0].keys()))
+              keys = set()
+              for d in data:
+                  for k in d.keys():
+                      if any(s in k.lower() for s in ["date","created","updated","start","end","expire","deadline","seen"]):
+                          keys.add(k)
+              for k in sorted(keys):
+                  vals = [str(d.get(k)) for d in data if d.get(k)]
+                  nulls = sum(1 for d in data if not d.get(k))
+                  if vals:
+                      print("KEY", k, "min", min(vals), "max", max(vals), "present", len(vals), "nulls", nulls)
           PY
