@@ -4,6 +4,10 @@ on:
   schedule:
     # Every 12 hours. GitHub Actions schedules are UTC.
     - cron: '0 */12 * * *'
+    # Juste apres le reset quotidien du quota Gemini (~minuit Pacifique).
+    # GitHub cron est en UTC et n'ajuste pas l'heure d'ete: 08:30 UTC couvre
+    # le reset ete (07:00 UTC) comme hiver (08:00 UTC).
+    - cron: '30 8 * * *'
   workflow_dispatch:  # allow manual trigger
 
 jobs:
