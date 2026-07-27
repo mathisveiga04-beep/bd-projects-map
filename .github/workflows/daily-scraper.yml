@@ -34,7 +34,7 @@ jobs:
           if [ -z "$DEPLOYED" ] || [ "$DEPLOYED" = "unknown" ]; then
             echo "::warning::Impossible de lire le commit deploye (/ao/version indisponible ou RENDER_GIT_COMMIT absente)."
           elif [ "$DEPLOYED" != "${{ github.sha }}" ]; then
-            echo "::warning::Render sert un commit different de main : le scrape a peut-etre tourne sur du code obsolete. Verifier le deploiement Render."
+            echo "::notice::Render sert un commit different de main : normal si le dernier commit ne touche que le workflow ou la doc, ou en cas de latence de deploiement. Verifier Render uniquement si du code backend a change."
           else
             echo "OK : Render execute bien le dernier commit de main."
           fi
