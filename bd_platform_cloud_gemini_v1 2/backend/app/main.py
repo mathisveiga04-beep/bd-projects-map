@@ -383,6 +383,7 @@ def scraper_run(
     # Budget d'appels IA par run (au lieu de tronquer la liste): on scanne large et on ne
     # depense du quota Gemini que sur les items reellement nouveaux.
     _ai_budget = payload.limit if (getattr(payload, "limit", 0) and payload.limit > 0) else 20
+    _quota_exhausted = False  # verrou: bascule sur le repli des le 1er 429, sans re-solliciter Gemini
     opportunities = opportunities[:400]  # borne de securite sur le nombre d'items scannes / run
     if not payload.dry_run:
         errors = []
@@ -397,16 +398,20 @@ def scraper_run(
                         pass
                     skipped += 1
                     continue
-                if _ai_budget <= 0:
-                    break
-                _ai_budget -= 1
-                ai = analyze_with_gemini(item.title, item.text, item.source_url)
+                if _quota_exhausted:
+                    ai = {"ai_error": "RESOURCE_EXHAUSTED (verrou quota: appel Gemini evite)"}
+                else:
+                    if _ai_budget <= 0:
+                        break
+                    _ai_budget -= 1
+                    ai = analyze_with_gemini(item.title, item.text, item.source_url)
                 if ai.get("ai_error"):
                     ai_errors += 1
                     if len(ai_error_sample) < 3:
                         ai_error_sample.append(str(ai.get("ai_error"))[:300])
                     _err = str(ai.get("ai_error"))
                     if "RESOURCE_EXHAUSTED" in _err or "429" in _err or "quota" in _err.lower():
+                        _quota_exhausted = True
                         # Quota Gemini epuise: repli deterministe (sans IA) pour les items IATI,
                         # afin de continuer a enregistrer les projets meme sans enrichissement IA.
                         _fb = iati_fallback_ai(
