@@ -9,6 +9,7 @@ jobs:
         run: |
           python3 - <<'PY'
           import json, urllib.request, urllib.error
+          from collections import Counter
           base = "https://bd-projects-map-akh.onrender.com"
           def get(path):
               try:
@@ -18,50 +19,47 @@ jobs:
                   return e.code, e.read().decode("utf-8", "replace")
               except Exception as e:
                   return -1, repr(e)
-          st, body = get("/ao/projects")
-          print("AO_PROJECTS_STATUS", st, "LEN", len(body))
-          if st != 200:
-              print("AO_BODY_HEAD", body[:400].replace(chr(10), " "))
-          else:
+          def as_list(body):
               data = json.loads(body)
               if isinstance(data, dict):
-                  print("AO_DICT_KEYS", sorted(data.keys()))
-                  for k in ["items", "projects", "results", "data", "rows"]:
+                  for k in ["items","projects","tenders","results","data","rows"]:
                       if isinstance(data.get(k), list):
-                          data = data[k]
-                          break
-              print("TOTAL", len(data))
-              if data:
-                  print("FIELDS", sorted(data[0].keys()))
-              keys = set()
+                          return data[k]
+                  return []
+              return data
+          def date_keys(data):
+              ks = set()
               for d in data:
-                  for k in d.keys():
-                      if any(s in k.lower() for s in ["date","created","updated","start","end","expire","deadline","seen","published"]):
-                          keys.add(k)
-              print("DATE_KEYS", sorted(keys))
-              for k in sorted(keys):
-                  vals = [str(d.get(k)) for d in data if d.get(k)]
-                  nulls = sum(1 for d in data if not d.get(k))
-                  if vals:
-                      print("KEY", k, "min", min(vals), "max", max(vals), "present", len(vals), "nulls", nulls)
-                  else:
-                      print("KEY", k, "ALL_NULL", nulls)
-              from collections import Counter
-              for sk in ["status", "project_status", "activity_status"]:
-                  if data and sk in data[0]:
-                      print("STATUS_DIST", sk, dict(Counter(str(d.get(sk)) for d in data)))
-              best = None
-              for c in ["updated_at","last_seen","published_at","created_at","start_date","end_date"]:
-                  if c in keys:
-                      best = c
-                      break
-              print("BEST", best)
-              if best:
-                  srt = sorted([d for d in data if d.get(best)], key=lambda d: str(d[best]))
-                  print("OLDEST")
-                  for d in srt[:20]:
-                      print("O|", d.get(best), "|", str(d.get("status") or d.get("project_status") or d.get("activity_status") or ""), "|", str(d.get("title") or d.get("name") or "")[:70])
-                  print("NEWEST")
-                  for d in srt[-5:]:
-                      print("N|", d.get(best), "|", str(d.get("title") or d.get("name") or "")[:70])
+                  if isinstance(d, dict):
+                      for k in d.keys():
+                          if any(s in k.lower() for s in ["date","created","updated","start","end","expire","deadline","seen","published","closing","publication"]):
+                              ks.add(k)
+              return sorted(ks)
+          # ---- TENDERS ----
+          st, body = get("/ao/tenders")
+          print("TENDERS_STATUS", st, "LEN", len(body))
+          if st == 200:
+              t = as_list(body)
+              print("TENDERS_TOTAL", len(t))
+              if t:
+                  print("TENDERS_FIELDS", sorted(t[0].keys()))
+                  dk = date_keys(t)
+                  print("TENDERS_DATE_KEYS", dk)
+                  for k in dk:
+                      vals = [str(d.get(k)) for d in t if d.get(k)]
+                      if vals:
+                          print("TKEY", k, "min", min(vals), "max", max(vals), "present", len(vals))
+          # ---- PROJECTS pagination probe ----
+          for q in ["/ao/projects?limit=2000", "/ao/projects?limit=1000&offset=500", "/ao/projects?page=2"]:
+              st, body = get(q)
+              n = len(as_list(body)) if st == 200 else -1
+              print("PAGE_PROBE", q, "STATUS", st, "COUNT", n)
+          # ---- CLOSED sample ----
+          st, body = get("/ao/projects")
+          if st == 200:
+              data = as_list(body)
+              closed = [d for d in data if str(d.get("status")).lower() in ("closed","awarded")]
+              print("CLOSED_AWARDED_COUNT", len(closed))
+              for d in closed[:15]:
+                  print("C|", d.get("status"), "|", d.get("country_iso2"), "|", str(d.get("name") or "")[:60], "|", str(d.get("source_url") or "")[:60])
           PY
