@@ -120,13 +120,30 @@ def get_tender(tender_id: int):
     return rows[0]
 
 # --- Entites du graphe relationnel (lecture publique via RLS) -----------------
+def _dedupe_by_name(rows):
+    """Fusionne les projets de meme nom en gardant le premier (le plus recent selon l'ordre created_at.desc)."""
+    if not isinstance(rows, list):
+        return rows
+    seen = set()
+    out = []
+    for r in rows:
+        name = r.get("name") if isinstance(r, dict) else None
+        if name and name in seen:
+            continue
+        if name:
+            seen.add(name)
+        out.append(r)
+    return out
+
+
 @router.get("/projects")
 def list_projects(
     country: Optional[str] = Query(None, description="ISO2, ex: KH"),
     sector: Optional[str] = None,
     discipline: Optional[str] = None,
     status: Optional[str] = Query(None, description="Filtre statut exact, ex: open"),
-    include_finished: bool = Query(False, description="Inclure les projets termines (closed/awarded)"),
+    include_finished: bool = Query(False, description="Inclure les projets termines (closed/awarded/cancelled)"),
+    dedupe: bool = Query(True, description="Fusionner les projets de meme nom (garde le plus recent)"),
     limit: int = Query(1000, le=2000),
     offset: int = 0,
 ):
@@ -141,19 +158,20 @@ def list_projects(
     if status:
         filters.append(("status", f"eq.{status}"))
     elif not include_finished:
-        filters.append(("status", "not.in.(closed,awarded)"))
+        filters.append(("status", "not.in.(closed,awarded,cancelled)"))
     tail = [("limit", str(limit)), ("offset", str(offset)), ("order", "created_at.desc.nullslast,name.asc")]
     try:
         # On expose les colonnes date si elles existent en base ; repli transparent sinon.
         dated = [("select", PROJECT_COLS_DATED)] + filters + tail
-        return _sb_get(f"ao_projects?{urllib.parse.urlencode(dated)}")
+        rows = _sb_get(f"ao_projects?{urllib.parse.urlencode(dated)}")
     except Exception:
         try:
             base = [("select", PROJECT_COLS)] + filters + tail
-            return _sb_get(f"ao_projects?{urllib.parse.urlencode(base)}")
+            rows = _sb_get(f"ao_projects?{urllib.parse.urlencode(base)}")
         except Exception:
             logger.exception("Lecture projects impossible")
             raise HTTPException(502, "Lecture des projets temporairement indisponible.")
+    return _dedupe_by_name(rows) if dedupe else rows
 
 @router.get("/organisations")
 def list_organisations(
