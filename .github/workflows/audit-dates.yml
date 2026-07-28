@@ -49,6 +49,17 @@ jobs:
                       vals = [str(d.get(k)) for d in t if d.get(k)]
                       if vals:
                           print("TKEY", k, "min", min(vals), "max", max(vals), "present", len(vals))
+          # ---- PROJECTS fields/date check ----
+          stp, bodyp = get("/ao/projects")
+          print("PROJECTS_STATUS", stp)
+          if stp == 200:
+              pj = as_list(bodyp)
+              print("PROJECTS_COUNT", len(pj))
+              if pj:
+                  print("PROJECTS_FIELDS", sorted(pj[0].keys()))
+                  print("PROJECTS_DATE_KEYS", date_keys(pj))
+                  print("HAS_CREATED_AT", "created_at" in pj[0])
+                  print("HAS_UPDATED_AT", "updated_at" in pj[0])
           # ---- PROJECTS pagination probe ----
           for q in ["/ao/projects?limit=2000", "/ao/projects?limit=1000&offset=500", "/ao/projects?page=2"]:
               st, body = get(q)
