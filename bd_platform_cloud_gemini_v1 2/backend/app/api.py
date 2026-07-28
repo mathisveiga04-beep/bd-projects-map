@@ -15,6 +15,7 @@ import logging
 import os
 import urllib.parse
 import urllib.request
+import datetime
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query, Depends, Header
@@ -49,6 +50,7 @@ FULL_COLS = "*"
 PROJECT_COLS = ("id,external_id,source_code,name,country_iso2,city,"
                 "latitude,longitude,donor_org_id,authority_org_id,"
                 "sector,discipline,estimated_budget,currency,status,source_url")
+PROJECT_COLS_DATED = PROJECT_COLS + ",created_at,updated_at"
 ORG_COLS = "id,name,org_type,country_iso2,acronym,source_url"
 COMPANY_COLS = "id,name,company_type,country_iso2,website,source_url"
 ROLE_COLS = ("id,role,tender_id,project_uid,company_id,organisation_id,"
@@ -73,6 +75,7 @@ def list_tenders(
     donor: Optional[str] = Query(None, description="ex: World Bank, ADB"),
     bbox: Optional[str] = Query(None, description="minLng,minLat,maxLng,maxLat"),
     deadline_after: Optional[str] = None,
+    include_expired: bool = Query(False, description="Inclure les AO dont la date limite est passee"),
     limit: int = Query(500, le=2000),
     offset: int = 0,
 ):
@@ -91,6 +94,9 @@ def list_tenders(
         params.append(("donor", f"ilike.*{donor}*"))
     if deadline_after:
         params.append(("deadline_at", f"gte.{deadline_after}"))
+    elif not include_expired:
+        _today = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
+        params.append(("deadline_at", f"gte.{_today}"))
     if bbox:
         try:
             min_lng, min_lat, max_lng, max_lat = [float(x) for x in bbox.split(",")]
@@ -119,24 +125,35 @@ def list_projects(
     country: Optional[str] = Query(None, description="ISO2, ex: KH"),
     sector: Optional[str] = None,
     discipline: Optional[str] = None,
+    status: Optional[str] = Query(None, description="Filtre statut exact, ex: open"),
+    include_finished: bool = Query(False, description="Inclure les projets termines (closed/awarded)"),
     limit: int = Query(500, le=2000),
     offset: int = 0,
 ):
     """Projets (un projet agrege plusieurs AO). Sert la future vue 'par projet'."""
-    params = [("select", PROJECT_COLS), ("limit", str(limit)), ("offset", str(offset)),
-              ("order", "name.asc")]
+    filters = []
     if country:
-        params.append(("country_iso2", f"eq.{country.upper()}"))
+        filters.append(("country_iso2", f"eq.{country.upper()}"))
     if sector:
-        params.append(("sector", f"ilike.*{sector}*"))
+        filters.append(("sector", f"ilike.*{sector}*"))
     if discipline:
-        params.append(("discipline", f"eq.{discipline}"))
-    qs = urllib.parse.urlencode(params)
+        filters.append(("discipline", f"eq.{discipline}"))
+    if status:
+        filters.append(("status", f"eq.{status}"))
+    elif not include_finished:
+        filters.append(("status", "not.in.(closed,awarded)"))
+    tail = [("limit", str(limit)), ("offset", str(offset)), ("order", "name.asc")]
     try:
-        return _sb_get(f"ao_projects?{qs}")
-    except Exception as e:
-        logger.exception("Lecture projects impossible")
-        raise HTTPException(502, "Lecture des projets temporairement indisponible.")
+        # On expose les colonnes date si elles existent en base ; repli transparent sinon.
+        dated = [("select", PROJECT_COLS_DATED)] + filters + tail
+        return _sb_get(f"ao_projects?{urllib.parse.urlencode(dated)}")
+    except Exception:
+        try:
+            base = [("select", PROJECT_COLS)] + filters + tail
+            return _sb_get(f"ao_projects?{urllib.parse.urlencode(base)}")
+        except Exception:
+            logger.exception("Lecture projects impossible")
+            raise HTTPException(502, "Lecture des projets temporairement indisponible.")
 
 @router.get("/organisations")
 def list_organisations(
