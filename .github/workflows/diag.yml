@@ -1,0 +1,52 @@
+name: Diag backend
+on:
+  workflow_dispatch:
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Diagnostiquer le backend
+        run: |
+          python3 - <<'PY'
+          import json, urllib.request, urllib.error
+          from collections import Counter
+          base = "https://bd-projects-map-akh.onrender.com"
+          def get(path):
+              try:
+                  r = urllib.request.urlopen(base + path, timeout=90)
+                  return r.status, r.read().decode("utf-8","replace")
+              except urllib.error.HTTPError as e:
+                  return e.code, e.read().decode("utf-8","replace")
+              except Exception as e:
+                  return -1, repr(e)
+          def as_list(body):
+              try:
+                  data = json.loads(body)
+              except Exception:
+                  return []
+              if isinstance(data, dict):
+                  for k in ["items","projects","tenders","results","data","rows"]:
+                      if isinstance(data.get(k), list):
+                          return data[k]
+                  return []
+              return data
+          st, body = get("/projects")
+          print("LEGACY_PROJECTS_STATUS", st)
+          print("LEGACY_PROJECTS_BODY", body[:400])
+          st, body = get("/ao/projects?limit=2000")
+          print("AOP_STATUS", st)
+          data = as_list(body)
+          print("AOP_COUNT", len(data))
+          if data:
+              print("AOP_FIRST3_CREATED", [d.get("created_at") for d in data[:3]])
+              names = [d.get("name") for d in data]
+              c = Counter(names)
+              dups = [(n,k) for n,k in c.items() if k > 1]
+              print("AOP_UNIQUE_NAMES", len(c))
+              print("AOP_DUP_NAME_GROUPS", len(dups))
+              print("AOP_DUP_EXTRA_ROWS", sum(k-1 for n,k in dups))
+              for n,k in sorted(dups, key=lambda x:-x[1])[:10]:
+                  print("DUP", k, "|", str(n)[:60])
+              sd = Counter(d.get('status') for d in data)
+              print("AOP_STATUS_DIST", dict(sd))
+          PY
