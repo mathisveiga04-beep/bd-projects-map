@@ -127,7 +127,7 @@ def list_projects(
     discipline: Optional[str] = None,
     status: Optional[str] = Query(None, description="Filtre statut exact, ex: open"),
     include_finished: bool = Query(False, description="Inclure les projets termines (closed/awarded)"),
-    limit: int = Query(500, le=2000),
+    limit: int = Query(1000, le=2000),
     offset: int = 0,
 ):
     """Projets (un projet agrege plusieurs AO). Sert la future vue 'par projet'."""
@@ -142,7 +142,7 @@ def list_projects(
         filters.append(("status", f"eq.{status}"))
     elif not include_finished:
         filters.append(("status", "not.in.(closed,awarded)"))
-    tail = [("limit", str(limit)), ("offset", str(offset)), ("order", "name.asc")]
+    tail = [("limit", str(limit)), ("offset", str(offset)), ("order", "created_at.desc.nullslast,name.asc")]
     try:
         # On expose les colonnes date si elles existent en base ; repli transparent sinon.
         dated = [("select", PROJECT_COLS_DATED)] + filters + tail
