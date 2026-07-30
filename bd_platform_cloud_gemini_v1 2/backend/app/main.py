@@ -527,7 +527,7 @@ def scraper_run(
     }
 
 
-# ââ Admin config ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+# ── Admin config ──────────────────────────────────────────────────────────────
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip() or SUPABASE_KEY
