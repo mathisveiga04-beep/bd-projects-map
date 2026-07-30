@@ -1,5 +1,5 @@
 from typing import Optional
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class ProjectBase(BaseModel):
@@ -44,6 +44,20 @@ class ProjectUpdate(ProjectBase):
 class ProjectOut(ProjectBase):
     model_config = ConfigDict(from_attributes=True)
     id: int
+
+    @field_validator(
+        "owner_id", "owner_email", "title", "description", "country", "city",
+        "address", "sector", "project_type", "status", "project_status",
+        "priority", "color", "source", "source_url", "funder",
+        "estimated_budget", "deadline", "reliability", "confidence",
+        "opportunity_size", "scope_summary", "ai_summary", "ai_recommendation",
+        "contributor",
+        mode="before",
+    )
+    @classmethod
+    def _none_to_empty_str(cls, v):
+        """Les colonnes nullables en base peuvent renvoyer NULL ; on les normalise en chaine vide pour la sortie."""
+        return "" if v is None else v
 
 
 class TenderBase(BaseModel):
