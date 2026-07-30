@@ -14,8 +14,10 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install pytest
-        run: pip install pytest
+        run: pip install pytest pydantic
       - name: Compile backend (detecte toute erreur de syntaxe/import)
         run: python -m compileall -q "bd_platform_cloud_gemini_v1 2/backend/app"
+      - name: Valider les modeles Pydantic (detecte les erreurs a l'import)
+        run: cd "bd_platform_cloud_gemini_v1 2/backend/app" && python -c "import schemas"
       - name: Run tests
         run: python -m pytest tests/ -q
