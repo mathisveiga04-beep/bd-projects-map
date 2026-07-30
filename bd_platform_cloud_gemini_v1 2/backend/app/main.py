@@ -93,6 +93,33 @@ def get_projects(include_archived: bool = False, db: Session = Depends(get_db)):
     return items
 
 
+@app.get("/projects_debug")
+def projects_debug(db: Session = Depends(get_db)):
+    """Diagnostic temporaire: identifie la ligne/erreur qui fait planter /projects."""
+    import traceback
+    out = {"stage": "start"}
+    try:
+        out["stage"] = "query"
+        items = crud.list_projects(db)
+        out["count"] = len(items)
+        out["stage"] = "validate"
+        errors = []
+        for it in items:
+            try:
+                schemas.ProjectOut.model_validate(it)
+            except Exception as e:
+                errors.append({"id": getattr(it, "id", None), "error": str(e)[:600]})
+                if len(errors) >= 3:
+                    break
+        out["validation_errors"] = errors
+        out["stage"] = "done"
+        return out
+    except Exception as e:
+        out["error"] = str(e)[:1000]
+        out["traceback"] = traceback.format_exc()[:2500]
+        return out
+
+
 def verify_app_or_jwt(authorization: str | None = Header(default=None), x_app_token: str | None = Header(default=None)) -> dict:
     # SECURITE: bypass par token partage supprime - JWT Supabase obligatoire.
     return verify_supabase_jwt(authorization)
