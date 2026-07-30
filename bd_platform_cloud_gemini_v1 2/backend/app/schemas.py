@@ -57,7 +57,7 @@ class ProjectOut(ProjectBase):
     @classmethod
     def _none_to_empty_str(cls, v):
         """Les colonnes nullables en base peuvent renvoyer NULL ; on les normalise en chaine vide pour la sortie."""
-        return "" if v is None else v
+        return "" if v is None else v if isinstance(v, str) else str(v)
 
 
 class TenderBase(BaseModel):
