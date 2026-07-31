@@ -1,21 +1,38 @@
 name: AO Ingestion
 
 on:
-  workflow_dispatch:        # declenchement manuel depuis l'onglet Actions
+  workflow_dispatch:          # declenchement manuel depuis l'onglet Actions
+  schedule:
+    - cron: '0 6 * * *'       # rafraichissement quotidien a 06h00 UTC
 
 jobs:
   run-ao-ingest:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger AO ingestion (run-all) on Render
+      - name: Refresh AO tenders (Supabase auth + Render ingest)
         run: |
+          # 1) Obtenir un JWT admin Supabase via le grant password
+          RESP=$(curl -s -X POST \
+            "${{ secrets.SUPABASE_URL }}/auth/v1/token?grant_type=password" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            --data "{\"email\":\"${{ secrets.AO_INGEST_EMAIL }}\",\"password\":\"${{ secrets.AO_INGEST_PASSWORD }}\"}")
+          TOKEN=$(printf '%s' "$RESP" | python3 -c "import sys, json; print(json.loads(sys.stdin.read() or '{}').get('access_token', ''))" 2>/dev/null || true)
+          if [ -z "$TOKEN" ]; then
+            echo "Echec de l'authentification Supabase (pas d'access_token)"
+            printf '%s\n' "$RESP"
+            exit 1
+          fi
+          echo "::add-mask::$TOKEN"
+          # 2) Declencher l'ingestion AO (run-all) sur Render avec le Bearer admin
           HTTP_STATUS=$(curl -s -o /tmp/response.json -w "%{http_code}" \
             -X POST https://bd-projects-map-akh.onrender.com/ao/ingest/run-all \
-            -H "X-App-Token: ${{ secrets.APP_TOKEN }}" \
+            -H "Authorization: Bearer $TOKEN" \
             -H "Content-Type: application/json" \
             --max-time 300)
           echo "HTTP status: $HTTP_STATUS"
-          cat /tmp/response.json
+          cat /tmp/response.json || true
+          echo ""
           if [ "$HTTP_STATUS" != "200" ]; then
             echo "AO ingestion failed with status $HTTP_STATUS"
             exit 1
